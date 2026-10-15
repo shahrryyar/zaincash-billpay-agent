@@ -26,6 +26,18 @@ Scope: **P2P transfers + bill payments. Nothing else.**
 
 ---
 
+## Quick start
+
+```bash
+pnpm install
+pnpm typecheck
+pnpm test
+```
+
+Copy `.env.example` to `.env` for keys (never commit `.env`). Project state and decisions: [MEMORY.md](MEMORY.md). Note: `docs/` is kept local, so the links below only work on the author's machine.
+
+---
+
 ## Document map
 
 | # | File | What it answers |
