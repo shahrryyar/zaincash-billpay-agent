@@ -5,3 +5,4 @@ export * from "./token";
 export * from "./similarity";
 export * from "./resolver";
 export * from "./words";
+export * from "./copy";
