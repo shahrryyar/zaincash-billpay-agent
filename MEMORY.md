@@ -8,7 +8,7 @@ ZainCash Agentic AI Challenge Iraq, **Topic 04: Bill Pay & Transfer Agent**. Sol
 ## Deadlines (organiser pack, 11/10/2026)
 | Date | What |
 |---|---|
-| 22/10/2026 | Design brief (not scored). Done locally in `brief/` (gitignored). Upload via Typeform. |
+| 22/10/2026 | Design brief (not scored). **Uploaded.** Source in `brief/` (gitignored). It names this repo: github.com/shahrryyar/zaincash-billpay-agent |
 | 08/11/2026 | **MVP, scored.** Core works end to end, repo + commit history, first test-set results, one-page update. Top 10 continue. |
 | TBC | Progress review, Demo Day |
 
@@ -38,16 +38,25 @@ Accepted into the build stage already. Elimination is after the MVP.
 - [x] Planning docs, research, design brief (local).
 - [x] M0: pnpm workspace, CI, `.env.example`, smoke tests green.
 - [x] **M1 done** (`packages/core`, 257 tests): normaliser, `parseAmount`, Zod schema + cross-checks, token guard, Jaro-Winkler + resolver, `amountInWords`/`formatIQD`, copy table, state machine reducer (5k random + 5k guided sequences, mutation-tested 16/16).
-- [x] **M2 done** (`apps/wallet-api`, 70 tests, 17/18 then 18/18 wallet mutants killed): Hono + SQLite mock wallet, one BEGIN IMMEDIATE txn per execute, token issue endpoint, quotes, fault injection, audit log. Measured: `eval/results/wallet-safety-stress.json` (4 OS processes, 1,000 requests: 50 executions, 950 replays, 0 duplicates). Run `pnpm stress`.
-- [x] **M3 built and tested OFFLINE** (scripted model): `packages/llm` (62 tests: Claude + OpenAI-format adapters, retry/budget/fallback/cache, env factory, agent loop with 5 read-only tools + `propose`), `packages/orchestrator` (93 tests + safety property test; mutation-tested 18/18): hero scenario, clarification, cards, cancel/expiry/edit, retries, lookup, faults. **Live model NOT yet run: needs `ANTHROPIC_API_KEY` in a local `.env` (copy `.env.example`).** Then `pnpm --filter @zc/orchestrator smoke` (15 sentences, sanity only) and `... cli`.
+- [x] **M2 done** (`apps/wallet-api`, 72 tests, 18/18 wallet mutants killed): Hono + SQLite mock wallet, one BEGIN IMMEDIATE txn per execute, token issue endpoint, quotes, fault injection, audit log. Measured: `eval/results/wallet-safety-stress.json` (4 OS processes, 1,000 requests: 50 executions, 950 replays, 0 duplicates). Run `pnpm stress`.
+- [x] **M3 built and tested OFFLINE** (scripted model): `packages/llm` (63 tests: Claude + OpenAI-format adapters, retry/budget/fallback/cache, env factory, agent loop with 5 read-only tools + `propose`), `packages/orchestrator` (93 tests + safety property test; mutation-tested 18/18): hero scenario, clarification, cards, cancel/expiry/edit, retries, lookup, faults. **Live model NOT yet run: needs `ANTHROPIC_API_KEY` in a local `.env` (copy `.env.example`).** Then `pnpm --filter @zc/orchestrator smoke` (15 sentences, sanity only) and `... cli`.
 - [ ] M4 web UI. M5 data. M6 eval. M7 voice. M8 demo. M9 docs.
 
 ## Next steps
-1. Add `.env` with the Anthropic key, run `smoke` (tools vs workflow), fix prompt on what fails. 2. M4 web UI (Next.js RTL) calling `turn`/`confirm`. 3. Dev set generation (M5) + eval harness (M6).
-2. Start dev-set generation early (runs in background).
-3. Voice spike (LiveKit + RegaLabs) in week 1.
-4. 2 to 3 interviews if possible; log in `docs/17`.
-5. Commit small and often (commit history is a judging gate).
+1. Put the Anthropic key in a local `.env`, run `smoke` in both modes (tools vs workflow), fix the prompt where it fails.
+2. M4 web UI (Next.js, RTL, phone-shaped) over `turn` / `confirm` / `cancel` / `tick`; the UI only knows `card_id`.
+3. Dev-set generation (M5) early: it runs in the background; hand-label; hash-freeze held-out. Then eval harness (M6) for the MVP on **dev** only.
+4. Voice spike (LiveKit + RegaLabs) in weeks 1 to 2; keep the text path independent.
+5. 2 to 3 interviews if possible (docs/17); a second Iraqi labeller if possible.
+6. Add gitleaks + OSV-Scanner to CI.
+7. "Same as last time" (`previous` mention) is not implemented: the orchestrator asks instead.
+
+## Working rules (from the author)
+- **Commits are authored by the author only: no `Co-Authored-By` trailer, no "Generated with" footer.** Commit small, imperative subject, no AI attribution lines.
+- Disclosure of AI tools stays in `docs/19` (organisers require it).
+- Check `git push` actually pushed (`git status -sb` shows tracking); use `-u origin main` if the upstream is lost.
+- Typecheck exit code matters: don't pipe it into `tail`/`head` and trust the status.
+- Never commit `.env`; secret scanning + push protection are on.
 
 ## Open-source findings (docs/research/03, local)
 - No Arabic number-word parser exists in JS; `pyarabic` (GPL) got 8/24 on Iraqi money phrases with silent wrong answers. Own parser stays.
@@ -56,7 +65,7 @@ Accepted into the build stage already. Elimination is after the MVP.
 - Add gitleaks + OSV-Scanner to CI. Avoid GPL/NC assets (pyarabic, MADAR mirrors, factlogic corpus).
 
 ## Open questions
-Repo public or private (currently private; organisers need access), whether RegaLabs ASR is acceptable (asked, no reply), whether judge input includes voice.
+Repo is **public** (decided). Still unanswered by the organisers: whether the RegaLabs ASR is acceptable (author emailed, no reply), whether judge input includes voice, demo format. Contributor sidebar may show an old co-author from rewritten history; the author said that is acceptable.
 
 ## Run
 `pnpm install && pnpm typecheck && pnpm test`
