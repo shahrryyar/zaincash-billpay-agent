@@ -37,7 +37,8 @@ Accepted into the build stage already. Elimination is after the MVP.
 ## Status
 - [x] Planning docs, research, design brief (local).
 - [x] M0: pnpm workspace, CI, `.env.example`, smoke tests green.
-- [ ] M1 `packages/core`: schema, normaliser, `parseAmount`, resolver, state machine, copy (tests first).
+- [x] M1 so far: normaliser, `parseAmount`, Zod schema + cross-checks, confirmation-token guard (tests first, 118 tests).
+- [ ] M1 left: resolver, state machine (reducer), copy strings.
 - [ ] M2 mock wallet (idempotency, tokens, faults).
 - [ ] M3 LLM adapters + orchestrator.
 - [ ] M4 web UI. M5 data. M6 eval. M7 voice. M8 demo. M9 docs.
@@ -48,6 +49,12 @@ Accepted into the build stage already. Elimination is after the MVP.
 3. Voice spike (LiveKit + RegaLabs) in week 1.
 4. 2 to 3 interviews if possible; log in `docs/17`.
 5. Commit small and often (commit history is a judging gate).
+
+## Open-source findings (docs/research/03, local)
+- No Arabic number-word parser exists in JS; `pyarabic` (GPL) got 8/24 on Iraqi money phrases with silent wrong answers. Own parser stays.
+- Jaro-Winkler cannot separate same-person typos from different people (حسن/حسين 0.933). Fuzzy only proposes candidates; user always picks. Fuse.js rejected.
+- Own code on the money path (normaliser, parser, JW, reducer). Libs: Zod, Hono, better-sqlite3, Anthropic SDK. Dev: fast-check, promptfoo, jaro-winkler (oracle).
+- Add gitleaks + OSV-Scanner to CI. Avoid GPL/NC assets (pyarabic, MADAR mirrors, factlogic corpus).
 
 ## Open questions
 Repo public or private (currently private; organisers need access), whether RegaLabs ASR is acceptable (asked, no reply), whether judge input includes voice.
