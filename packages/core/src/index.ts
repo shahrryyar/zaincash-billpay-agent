@@ -4,3 +4,4 @@ export * from "./schema";
 export * from "./token";
 export * from "./similarity";
 export * from "./resolver";
+export * from "./words";
