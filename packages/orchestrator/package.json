@@ -1,0 +1,22 @@
+{
+  "name": "@zc/orchestrator",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Wires the LLM, the deterministic core and the wallet: /turn and /confirm. Performs the state machine's effects.",
+  "main": "src/index.ts",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json",
+    "cli": "tsx src/cli.ts"
+  },
+  "dependencies": {
+    "@zc/core": "workspace:*",
+    "@zc/llm": "workspace:*"
+  },
+  "devDependencies": {
+    "@zc/wallet-api": "workspace:*",
+    "fast-check": "^4.10.2",
+    "tsx": "^4.23.15"
+  }
+}

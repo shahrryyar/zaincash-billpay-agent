@@ -77,6 +77,25 @@ importers:
         specifier: ^4.10.2
         version: 4.10.2
 
+  packages/orchestrator:
+    dependencies:
+      '@zc/core':
+        specifier: workspace:*
+        version: link:../core
+      '@zc/llm':
+        specifier: workspace:*
+        version: link:../llm
+    devDependencies:
+      '@zc/wallet-api':
+        specifier: workspace:*
+        version: link:../../apps/wallet-api
+      fast-check:
+        specifier: ^4.10.2
+        version: 4.10.2
+      tsx:
+        specifier: ^4.23.15
+        version: 4.23.15
+
 packages:
 
   '@anthropic-ai/sdk@0.135.0':
