@@ -1,0 +1,19 @@
+# Planning docs and the design brief stay local
+docs/
+brief/
+
+# Secrets and local env
+.env
+.env.*
+!.env.example
+
+# Dependencies and build output
+node_modules/
+dist/
+.next/
+*.log
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
