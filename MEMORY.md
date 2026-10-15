@@ -37,14 +37,13 @@ Accepted into the build stage already. Elimination is after the MVP.
 ## Status
 - [x] Planning docs, research, design brief (local).
 - [x] M0: pnpm workspace, CI, `.env.example`, smoke tests green.
-- [x] M1 so far: normaliser, `parseAmount`, Zod schema + cross-checks, confirmation-token guard (tests first, 118 tests).
-- [ ] M1 left: resolver, state machine (reducer), copy strings.
-- [ ] M2 mock wallet (idempotency, tokens, faults).
+- [x] **M1 done** (`packages/core`, 257 tests): normaliser, `parseAmount`, Zod schema + cross-checks, token guard, Jaro-Winkler + resolver, `amountInWords`/`formatIQD`, copy table, state machine reducer (5k random + 5k guided sequences, mutation-tested 16/16).
+- [ ] M2 mock wallet (Hono + SQLite: idempotency in one txn, tokens, faults) — next.
 - [ ] M3 LLM adapters + orchestrator.
 - [ ] M4 web UI. M5 data. M6 eval. M7 voice. M8 demo. M9 docs.
 
 ## Next steps
-1. M1 with tests first for each invariant.
+1. M2 mock wallet with tests first (20x50 concurrent same-key, timeout-after-commit, token/payload 403s).
 2. Start dev-set generation early (runs in background).
 3. Voice spike (LiveKit + RegaLabs) in week 1.
 4. 2 to 3 interviews if possible; log in `docs/17`.
