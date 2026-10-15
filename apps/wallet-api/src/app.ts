@@ -185,6 +185,18 @@ export function createApp(opts: AppOptions) {
     return c.json({ token, payload_hash, expires_at }, 201);
   });
 
+  app.post("/confirmation-tokens/revoke", async (c) => {
+    const parsed = z.strictObject({ session_id: z.string().min(1), token: z.string().min(1) }).safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) return err(c, 400, "BAD_REQUEST", "invalid revoke request");
+    const { session_id, token } = parsed.data;
+    const r = db.transaction(() => {
+      const res = db.prepare("UPDATE confirmation_tokens SET used_at=? WHERE token=? AND session_id=? AND used_at IS NULL").run(now(), token, session_id);
+      if (res.changes === 1) audit("token.revoked", session_id, {});
+      return res.changes === 1;
+    }).immediate();
+    return c.json({ revoked: r });
+  });
+
   // ------------------------------------------------------------------ execution (the money path)
   function executeTxn(kind: "transfer" | "bill_pay", path: string, body: Row, key: string, tokenValue: string | undefined): Outcome {
     const sessionId = body.session_id as string;

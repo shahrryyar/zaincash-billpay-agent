@@ -65,6 +65,26 @@ describe("POST /confirmation-tokens (server-issued, payload-bound)", () => {
   });
 });
 
+describe("POST /confirmation-tokens/revoke (an edited or cancelled card kills its token)", () => {
+  it("a revoked token can no longer execute", async () => {
+    const w = makeWallet();
+    const token = await w.mint(S, transferPayload(ahmed, 50_000));
+    const r = await w.call("POST", "/confirmation-tokens/revoke", { session_id: S, token });
+    expect(r.json).toEqual({ revoked: true });
+    const x = await exec(w, "/transfers", "k", token, transferBody(S, ahmed, 50_000));
+    expect(x.status).toBe(403);
+    expect(w.balance(DEMO_USER)).toBe(200_000);
+  });
+  it("only the owning session can revoke; unknown or used tokens report false", async () => {
+    const w = makeWallet();
+    const token = await w.mint("sess-A", transferPayload(ahmed, 50_000));
+    expect((await w.call("POST", "/confirmation-tokens/revoke", { session_id: "sess-B", token })).json).toEqual({ revoked: false });
+    expect((await w.call("POST", "/confirmation-tokens/revoke", { session_id: "sess-A", token: "ct_" + "1".repeat(32) })).json).toEqual({ revoked: false });
+    await exec(w, "/transfers", "k", token, transferBody("sess-A", ahmed, 50_000));
+    expect((await w.call("POST", "/confirmation-tokens/revoke", { session_id: "sess-A", token })).json).toEqual({ revoked: false });
+  });
+});
+
 describe("POST /quotes (pre-check, no side effects)", () => {
   const q = (w: ReturnType<typeof makeWallet>, body: unknown) => w.call("POST", "/quotes", body);
   it("transfer: ok with fee and balance after", async () => {
