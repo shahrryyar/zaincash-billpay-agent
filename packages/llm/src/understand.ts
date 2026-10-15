@@ -48,6 +48,7 @@ export function createUnderstander(opts: UnderstanderOptions): Understander {
       const messages: Msg[] = [{ role: "user", content: [{ type: "text", text: input.text }] }];
       const trace: ToolTrace[] = [];
       let usage: Usage = { input: 0, output: 0 };
+      let via = chat.id;
       let executed = 0;
       const maxTurns = mode === "workflow" ? 1 : maxToolCalls + 2;
 
@@ -55,16 +56,17 @@ export function createUnderstander(opts: UnderstanderOptions): Understander {
         const forced = mode === "workflow" || executed >= maxToolCalls || turn === maxTurns;
         const res = await chat.complete({ system, messages, tools, toolChoice: forced ? { name: FINAL_TOOL } : "auto", maxTokens });
         usage = addUsage(usage, res.usage);
+        via = res.via ?? via;
         const uses = res.content.filter((b): b is Extract<Block, { type: "tool_use" }> => b.type === "tool_use");
 
         const propose = uses.find((u) => u.name === FINAL_TOOL);
-        if (propose) return { raw: propose.input, toolCalls: trace, usage, model: chat.id, mode, turns: turn };
+        if (propose) return { raw: propose.input, toolCalls: trace, usage, model: via, mode, turns: turn };
 
         if (uses.length === 0) {
           const text = res.content.filter((b): b is Extract<Block, { type: "text" }> => b.type === "text").map((b) => b.text).join("").trim();
           let raw: unknown = text;
           try { raw = JSON.parse(text); } catch { /* not JSON: the machine will reject it (NEEDS_REPHRASE) */ }
-          return { raw, toolCalls: trace, usage, model: chat.id, mode, turns: turn };
+          return { raw, toolCalls: trace, usage, model: via, mode, turns: turn };
         }
 
         messages.push({ role: "assistant", content: res.content });
@@ -88,7 +90,7 @@ export function createUnderstander(opts: UnderstanderOptions): Understander {
         messages.push({ role: "user", content: results });
       }
       // The model never proposed even when forced: hand back nothing usable; the machine fails closed.
-      return { raw: null, toolCalls: trace, usage, model: chat.id, mode, turns: maxTurns };
+      return { raw: null, toolCalls: trace, usage, model: via, mode, turns: maxTurns };
     },
   };
 }

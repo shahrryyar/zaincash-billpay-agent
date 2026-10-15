@@ -13,7 +13,7 @@ export type ToolChoice = "auto" | { name: string };
 
 export type CompleteRequest = { system: string; messages: Msg[]; tools: ToolDef[]; toolChoice: ToolChoice; maxTokens: number };
 export type Usage = { input: number; output: number };
-export type CompleteResponse = { content: Block[]; stop: "tool_use" | "end" | "max_tokens"; usage: Usage };
+export type CompleteResponse = { content: Block[]; stop: "tool_use" | "end" | "max_tokens"; usage: Usage; via?: string };
 
 export interface ChatClient {
   /** e.g. "anthropic:claude-haiku-5-5", logged with every result. */
