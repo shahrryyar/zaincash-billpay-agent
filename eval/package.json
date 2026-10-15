@@ -1,0 +1,12 @@
+{
+  "name": "@zc/eval",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Evaluation harness and datasets",
+  "main": "src/index.ts",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json"
+  }
+}

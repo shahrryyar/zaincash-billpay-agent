@@ -1,0 +1,12 @@
+{
+  "name": "@zc/llm",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "LLM adapters (Claude primary, OpenAI-format fallbacks) behind one interface",
+  "main": "src/index.ts",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json"
+  }
+}

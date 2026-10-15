@@ -1,0 +1,12 @@
+{
+  "name": "@zc/wallet-api",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Mock ZainCash wallet (Hono + SQLite). Synthetic data only",
+  "main": "src/index.ts",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json"
+  }
+}
