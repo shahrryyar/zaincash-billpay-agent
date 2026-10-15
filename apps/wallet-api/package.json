@@ -8,5 +8,15 @@
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.1.5",
+    "@zc/core": "workspace:*",
+    "better-sqlite3": "^13.0.3",
+    "hono": "^4.13.13"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^9.6.0",
+    "tsx": "^4.23.15"
   }
 }
