@@ -9,6 +9,7 @@ export const COPY = {
   ask_amount_thousands: { ar: "تقصد {value} ألف دينار؟", en: "Do you mean {value} thousand dinars?" },
   ask_rephrase: { ar: "ما فهمت عليك زين، تگدر تعيدها بطريقة ثانية؟", en: "I didn't quite get that, can you say it another way?" },
   ask_fuzzy_contact: { ar: "تقصد {name}؟", en: "Do you mean {name}?" },
+  ask_recipient: { ar: "لمين تريد تدز؟", en: "Who do you want to send to?" },
   ask_biller: { ar: "أي فاتورة تريد تدفع؟", en: "Which bill do you want to pay?" },
   asr_low: { ar: "ما سمعتك زين، تعيدها؟", en: "I couldn't hear that well. Can you repeat?" },
   readback_asr: { ar: "سمعتك تگول: «{text}» — صح؟", en: "I heard: \"{text}\". Correct?" },
