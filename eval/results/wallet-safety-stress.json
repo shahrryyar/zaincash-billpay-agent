@@ -1,0 +1,18 @@
+{
+  "generated_by": "apps/wallet-api/test/concurrency.test.ts (SAFETY_REPORT=1)",
+  "processes": 4,
+  "keys": 50,
+  "repeats_per_process": 5,
+  "requests": 1000,
+  "elapsed_ms": 709,
+  "real_executions": 50,
+  "replays": 950,
+  "non_200_responses": 0,
+  "transactions_created": 50,
+  "duplicate_transactions": 0,
+  "money_conserved": true,
+  "negative_balances": 0,
+  "tokens_consumed": 50,
+  "node": "v25.9.0",
+  "note": "measured, not estimated; rerun with `pnpm stress`"
+}

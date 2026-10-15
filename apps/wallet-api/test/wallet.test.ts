@@ -296,10 +296,13 @@ describe("POST /bill-payments", () => {
   });
   it("shows the fee: generator 60,000 + 250", async () => {
     const w = makeWallet();
+    const m0 = totalMoney(w.db);
     const t = await w.mint(S, billPayload("b_generator", "GN-20311", 60_000, 250));
     const r = await exec(w, "/bill-payments", "k", t, body("ba_gen"));
     expect(r.json.transaction).toMatchObject({ amount_iqd: 60_000, fee_iqd: 250 });
     expect(w.balance(DEMO_USER)).toBe(139_750);
+    expect((w.db.prepare("SELECT balance_iqd b FROM settlements WHERE biller_id='b_generator'").get() as any).b).toBe(60_250); // amount + fee
+    expect(totalMoney(w.db)).toBe(m0); // the fee is not destroyed
   });
   it("paying again (new card, new key): 409 BILL_ALREADY_PAID, nothing debited", async () => {
     const w = makeWallet();

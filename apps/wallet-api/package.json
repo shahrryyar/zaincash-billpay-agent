@@ -7,7 +7,9 @@
   "main": "src/index.ts",
   "scripts": {
     "test": "vitest run",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "dev": "tsx src/server.ts",
+    "stress": "SAFETY_REPORT=1 vitest run test/concurrency.test.ts"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.5",

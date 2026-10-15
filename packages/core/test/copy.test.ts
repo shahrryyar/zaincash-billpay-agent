@@ -45,6 +45,8 @@ describe("copyKeyForWalletError", () => {
     ["SERVICE_UNAVAILABLE", "busy"],
     ["CONFIRMATION_INVALID", "confirm_invalid"],
     ["AMOUNT_CHANGED", "amount_changed"],
+    ["CONTACT_NOT_WALLET_USER", "contact_not_wallet"],
+    ["INVALID_AMOUNT", "invalid_amount"],
   ])("%s -> %s", (code, key) => expect(copyKeyForWalletError(code)).toBe(key));
   it("unknown codes fall back to the safe generic message", () => expect(copyKeyForWalletError("WAT")).toBe("failed_safe"));
 });
