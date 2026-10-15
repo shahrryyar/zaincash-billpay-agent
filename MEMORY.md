@@ -39,11 +39,11 @@ Accepted into the build stage already. Elimination is after the MVP.
 - [x] M0: pnpm workspace, CI, `.env.example`, smoke tests green.
 - [x] **M1 done** (`packages/core`, 257 tests): normaliser, `parseAmount`, Zod schema + cross-checks, token guard, Jaro-Winkler + resolver, `amountInWords`/`formatIQD`, copy table, state machine reducer (5k random + 5k guided sequences, mutation-tested 16/16).
 - [x] **M2 done** (`apps/wallet-api`, 70 tests, 17/18 then 18/18 wallet mutants killed): Hono + SQLite mock wallet, one BEGIN IMMEDIATE txn per execute, token issue endpoint, quotes, fault injection, audit log. Measured: `eval/results/wallet-safety-stress.json` (4 OS processes, 1,000 requests: 50 executions, 950 replays, 0 duplicates). Run `pnpm stress`.
-- [ ] M3 LLM adapters + orchestrator (next).
+- [x] **M3 built and tested OFFLINE** (scripted model): `packages/llm` (62 tests: Claude + OpenAI-format adapters, retry/budget/fallback/cache, env factory, agent loop with 5 read-only tools + `propose`), `packages/orchestrator` (93 tests + safety property test; mutation-tested 18/18): hero scenario, clarification, cards, cancel/expiry/edit, retries, lookup, faults. **Live model NOT yet run: needs `ANTHROPIC_API_KEY` in a local `.env` (copy `.env.example`).** Then `pnpm --filter @zc/orchestrator smoke` (15 sentences, sanity only) and `... cli`.
 - [ ] M4 web UI. M5 data. M6 eval. M7 voice. M8 demo. M9 docs.
 
 ## Next steps
-1. M3: LLM adapters (Claude primary), read-only tool loop + `propose`, orchestrator `/api/turn` + `/api/confirm`, CLI hero scenario. Orchestrator must send the card amount on execute.
+1. Add `.env` with the Anthropic key, run `smoke` (tools vs workflow), fix prompt on what fails. 2. M4 web UI (Next.js RTL) calling `turn`/`confirm`. 3. Dev set generation (M5) + eval harness (M6).
 2. Start dev-set generation early (runs in background).
 3. Voice spike (LiveKit + RegaLabs) in week 1.
 4. 2 to 3 interviews if possible; log in `docs/17`.
