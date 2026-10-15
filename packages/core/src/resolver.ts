@@ -10,9 +10,9 @@ export type Resolution =
   | { status: "resolved"; contact: Contact; candidates?: undefined }
   | { status: "ambiguous"; candidates: Contact[] }
   | { status: "fuzzy"; candidates: Contact[] } // "تقصد حسين؟" — always asks
-  | { status: "unknown_number"; phone: string } // valid Iraqi mobile that is not a saved contact
-  | { status: "history" } // «نفس المرة الفاتت»: orchestrator resolves from transaction history
-  | { status: "none" };
+  | { status: "unknown_number"; phone: string; candidates?: undefined } // valid Iraqi mobile, not a saved contact
+  | { status: "history"; candidates?: undefined } // «نفس المرة الفاتت»: orchestrator resolves from history
+  | { status: "none"; candidates?: undefined };
 
 export const FUZZY_CANDIDATE_THRESHOLD = 0.85; // proposes only; docs/research/03 spike
 const MAX_CANDIDATES = 5;
