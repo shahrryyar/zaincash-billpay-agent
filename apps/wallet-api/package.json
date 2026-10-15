@@ -20,6 +20,7 @@
   },
   "devDependencies": {
     "@types/better-sqlite3": "^9.6.0",
+    "fast-check": "^4.10.2",
     "tsx": "^4.23.15"
   }
 }
