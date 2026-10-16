@@ -1,0 +1,29 @@
+{
+  "heldout": {
+    "labellers": [
+      "agy",
+      "fable",
+      "haiku"
+    ],
+    "n": 180,
+    "pairs": {
+      "agy-fable": {
+        "state_agree": 0.933,
+        "kappa_state": 0.899,
+        "full_agree": 0.928
+      },
+      "agy-haiku": {
+        "state_agree": 0.9,
+        "kappa_state": 0.85,
+        "full_agree": 0.889
+      },
+      "fable-haiku": {
+        "state_agree": 0.928,
+        "kappa_state": 0.89,
+        "full_agree": 0.922
+      }
+    },
+    "unanimous_full": 157,
+    "needs_adjudication": 23
+  }
+}

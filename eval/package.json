@@ -7,6 +7,16 @@
   "main": "src/index.ts",
   "scripts": {
     "test": "vitest run",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "eval": "tsx src/run.ts"
+  },
+  "dependencies": {
+    "@zc/core": "workspace:*",
+    "@zc/llm": "workspace:*",
+    "@zc/orchestrator": "workspace:*"
+  },
+  "devDependencies": {
+    "@zc/wallet-api": "workspace:*",
+    "tsx": "^4.23.15"
   }
 }
