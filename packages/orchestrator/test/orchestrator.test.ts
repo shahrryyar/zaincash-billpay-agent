@@ -257,7 +257,8 @@ describe("fail closed", () => {
     const e = setup({ script: { "احجزلي تكت": statusIntent("out_of_scope") } });
     const r = await e.orch.turn("s", { text: "احجزلي تكت" });
     expect(r.phase).toBe("FAILED_SAFE");
-    expect(text(r)).toContain("التحويل ودفع الفواتير بس");
+    expect(text(r)).toContain("أنا مساعد زين كاش");
+    expect(text(r)).toContain("أجدول دفعاتك");
   });
   it("dollars (ورقة) are refused", async () => {
     const e = setup({ script: { "دز ورقة لعلي كريم": transferIntent("علي كريم", 100_000, "ورقة") } });
