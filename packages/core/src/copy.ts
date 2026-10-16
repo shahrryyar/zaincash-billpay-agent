@@ -43,6 +43,7 @@ export const COPY = {
   schedule_ran_transfer: { ar: "✅ انرسل التحويل المجدول: {amount} د.ع لـ{name}. رقم العملية {ref}.", en: "Scheduled transfer sent: {amount} IQD to {name}. Ref {ref}." },
   schedule_ran_bill: { ar: "✅ اندفعت الفاتورة المجدولة: {biller} {amount} د.ع. رقم العملية {ref}.", en: "Scheduled bill paid: {biller} {amount} IQD. Ref {ref}." },
   schedule_failed: { ar: "⛔ ما تنفذت الدفعة المجدولة ({what}): {reason}. ما انخصم منك شي.", en: "The scheduled payment ({what}) did not run: {reason}. Nothing was charged." },
+  schedule_low_balance: { ar: "⚠ رصيدك هسه ما يكفي. لازم يتوفر المبلغ قبل الموعد وإلا ما ينرسل شي.", en: "Your balance is not enough right now. The amount must be there before the time, otherwise nothing is sent." },
   schedule_cancelled: { ar: "تمام، لغيت الجدولة. ما صار شي.", en: "OK, the schedule was cancelled. Nothing happened." },
   info_balance: { ar: "رصيدك {balance} د.ع.", en: "Your balance is {balance} IQD." },
   info_bill: { ar: "فاتورة {biller}: {amount} د.ع.", en: "{biller} bill: {amount} IQD." },

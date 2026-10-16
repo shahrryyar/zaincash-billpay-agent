@@ -344,7 +344,7 @@ export function createApp(opts: AppOptions) {
   };
   const scheduleView = (r: Row) => ({
     id: r.id, reference: scheduleRef(r.seq), kind: r.kind, status: r.status, run_at: r.run_at, amount_iqd: r.amount_iqd, fee_iqd: r.fee_iqd,
-    counterparty: r.counterparty, created_at: r.created_at, finished_at: r.finished_at, failure_code: r.failure_code, transaction_id: r.transaction_id,
+    counterparty: r.counterparty, schedule_key: r.schedule_key, created_at: r.created_at, finished_at: r.finished_at, failure_code: r.failure_code, transaction_id: r.transaction_id,
   });
 
   function createSchedule(body: Row, key: string, tokenValue: string | undefined): Outcome {

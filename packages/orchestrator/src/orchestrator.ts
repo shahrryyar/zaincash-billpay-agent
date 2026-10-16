@@ -3,7 +3,7 @@
 // its output enters ONLY through the LLM_OUTPUT event, which the machine validates before anything else.
 import { randomUUID } from "node:crypto";
 import {
-  TERMINAL, amountInWords, copyKeyForWalletError, formatIQD, initialState, normaliseArabic, normaliseDigits, parseAmount, payloadHash, resolveContact, t,
+  TERMINAL, amountInWords, copyKeyForWalletError, formatIQD, formatWhenAr, initialState, normaliseArabic, normaliseDigits, parseAmount, parseWhen, relativeAr, payloadHash, resolveContact, t,
   transition, type Contact, type CopyKey, type Effect, type MachineEvent, type Payload, type Config,
 } from "@zc/core";
 import type { ToolHost, Understander } from "@zc/llm";
@@ -128,6 +128,12 @@ export function createOrchestrator(opts: OrchestratorOptions) {
       case "RETRY": await sleep(retryDelayMs); return execute(s, ef.idempotencyKey, ef.token);
       case "LOOKUP_OUTCOME": {
         try {
+          if (s.card?.scheduled) {
+            const list = ((await wallet.schedules(userId)).json?.scheduled as any[] | undefined) ?? [];
+            const hit = list.find((x) => x.schedule_key === ef.idempotencyKey);
+            if (hit) { s.exec = { scheduled: hit }; return [{ type: "LOOKUP_RESULT", found: "executed" }]; }
+            return [{ type: "LOOKUP_RESULT", found: "not_found" }];
+          }
           const r = await wallet.transactions(userId, { idempotencyKey: ef.idempotencyKey });
           const hit = (r.json?.transactions as any[] | undefined)?.[0];
           if (hit) { s.exec = { transaction: hit, balance_after_iqd: null, from_lookup: true }; return [{ type: "LOOKUP_RESULT", found: "executed" }]; }
@@ -200,7 +206,11 @@ export function createOrchestrator(opts: OrchestratorOptions) {
       const q = r.json as Quote;
       d.quote = q;
       tc.reply.trace.quote = q;
-      return q.ok ? [{ type: "PRECHECK", ok: true }] : [{ type: "PRECHECK", ok: false, code: q.errors[0] ?? "precheck_failed" }];
+      // A schedule is checked again when it RUNS. Today's balance and this month's limit are not blockers for a LATER payment
+      // (the card warns); every other failure (unknown contact, paid bill, wrong amount...) still stops it now.
+      const futureOk = s.machine.schedule !== null && q.errors.length > 0 && q.errors.every((e) => e === "INSUFFICIENT_BALANCE" || e === "LIMIT_EXCEEDED");
+      d.lowBalance = futureOk && q.errors.includes("INSUFFICIENT_BALANCE");
+      return q.ok || futureOk ? [{ type: "PRECHECK", ok: true }] : [{ type: "PRECHECK", ok: false, code: q.errors[0] ?? "precheck_failed" }];
     } catch { return [{ type: "PRECHECK", ok: false, code: "SERVICE_UNAVAILABLE" }]; }
   }
 
@@ -209,9 +219,10 @@ export function createOrchestrator(opts: OrchestratorOptions) {
     const q = d?.quote;
     if (!d || !q) return [{ type: "PRECHECK", ok: false, code: "precheck_failed" }];
     const isTransfer = d.action.type === "transfer";
+    const due = s.machine.schedule?.dueAt ?? null; // scheduled payment: this exact instant is part of what the user approves
     const payload: Payload = isTransfer
-      ? { kind: "transfer", from: userId, to_id: (d.recipient as Contact).id, amount_iqd: q.amount_iqd, fee_iqd: q.fee_iqd }
-      : { kind: "bill_pay", from: userId, biller_id: (d.account as BillAccount).biller_id, account_ref: (d.account as BillAccount).account_ref, amount_iqd: q.amount_iqd, fee_iqd: q.fee_iqd };
+      ? { kind: "transfer", from: userId, to_id: (d.recipient as Contact).id, amount_iqd: q.amount_iqd, fee_iqd: q.fee_iqd, ...(due !== null ? { run_at: due } : {}) }
+      : { kind: "bill_pay", from: userId, biller_id: (d.account as BillAccount).biller_id, account_ref: (d.account as BillAccount).account_ref, amount_iqd: q.amount_iqd, fee_iqd: q.fee_iqd, ...(due !== null ? { run_at: due } : {}) };
     try {
       let firstTime = false;
       if (isTransfer) {
@@ -223,7 +234,8 @@ export function createOrchestrator(opts: OrchestratorOptions) {
       const cardId = newId();
       const idempotencyKey = newId();
       const view: CardView = {
-        card_id: cardId, kind: payload.kind, title: t(isTransfer ? "card_title_transfer" : "card_title_bill"),
+        card_id: cardId, kind: payload.kind,
+        title: t(due !== null ? (isTransfer ? "card_title_schedule_transfer" : "card_title_schedule_bill") : isTransfer ? "card_title_transfer" : "card_title_bill"),
         recipient: isTransfer ? { name: (d.recipient as Contact).display_name, masked: mask((d.recipient as Contact).phone) } : null,
         biller: isTransfer ? null : { name: (d.account as BillAccount).biller_name_ar, account_ref: (d.account as BillAccount).account_ref },
         amount_iqd: q.amount_iqd, amount_text: formatIQD(q.amount_iqd),
@@ -231,13 +243,15 @@ export function createOrchestrator(opts: OrchestratorOptions) {
         fee_iqd: q.fee_iqd, fee_text: formatIQD(q.fee_iqd), total_iqd: q.total_iqd,
         balance_before_iqd: q.balance_after_iqd + q.total_iqd, balance_after_iqd: q.balance_after_iqd,
         first_time_recipient: firstTime, expires_at: issued.json.expires_at, ttl_seconds: 120,
-        nothing_sent: t("card_nothing_sent"),
-        labels: { confirm: t(isTransfer ? "confirm_button_transfer" : "confirm_button_bill"), cancel: t("cancel_button") },
+        nothing_sent: t(due !== null ? "card_nothing_sent_scheduled" : "card_nothing_sent"),
+        labels: { confirm: t(due !== null ? "confirm_button_schedule" : isTransfer ? "confirm_button_transfer" : "confirm_button_bill"), cancel: t("cancel_button") },
+        schedule: due === null ? null : { due_at: due, when_text: formatWhenAr(due), relative: relativeAr(due, now()), note: t("schedule_note"), low_balance_warning: d.lowBalance ? t("schedule_low_balance") : null },
       };
       const execBody: Record<string, unknown> = isTransfer
         ? { session_id: s.id, from: userId, to_contact: (d.recipient as Contact).id, amount_iqd: q.amount_iqd }
         : { session_id: s.id, from: userId, bill_account: (d.account as BillAccount).id, amount_iqd: q.amount_iqd }; // always the amount the user saw
-      s.card = { cardId, token: issued.json.token, payloadHash: issued.json.payload_hash, idempotencyKey, kind: payload.kind, payload, execBody, view } satisfies CardInfo;
+      if (due !== null) Object.assign(execBody, { kind: payload.kind, run_at: due });
+      s.card = { cardId, token: issued.json.token, payloadHash: issued.json.payload_hash, idempotencyKey, kind: payload.kind, payload, execBody, view, scheduled: due === null ? null : { dueAt: due } } satisfies CardInfo;
       d.firstTime = firstTime;
       say(tc, "card", t("confirm_prompt"));
       if (firstTime) say(tc, "info", t("first_time_recipient"));
@@ -249,8 +263,8 @@ export function createOrchestrator(opts: OrchestratorOptions) {
     const card = s.card;
     if (!card) return [{ type: "EXEC_RESULT", outcome: "rejected", code: "CONFIRMATION_INVALID" }];
     try {
-      const r = await wallet.execute(card.kind, card.execBody, key, token);
-      if (r.status === 200) { s.exec = r.json; return [{ type: "EXEC_RESULT", outcome: "ok" }]; }
+      const r = card.scheduled ? await wallet.createSchedule(card.execBody, key, token) : await wallet.execute(card.kind, card.execBody, key, token);
+      if (r.status === 200 || (card.scheduled && r.status === 201)) { s.exec = card.scheduled ? { scheduled: r.json.schedule } : r.json; return [{ type: "EXEC_RESULT", outcome: "ok" }]; }
       const code: string = r.json?.error?.code ?? "rejected";
       // 5xx other than "biller unavailable" is an UNKNOWN outcome: retry with the same key, never assume nothing happened
       if (r.status >= 500 && code !== "BILLER_UNAVAILABLE") return [{ type: "EXEC_RESULT", outcome: "timeout" }];
@@ -299,6 +313,15 @@ export function createOrchestrator(opts: OrchestratorOptions) {
     const e = s.exec;
     const d = s.draft;
     if (!e) return;
+    if (e.scheduled) {
+      const sc = e.scheduled;
+      const when = `${formatWhenAr(sc.run_at)} (${relativeAr(sc.run_at, now())})`;
+      say(tc, "success", sc.kind === "transfer"
+        ? t("scheduled_ok_transfer", { amount: num(sc.amount_iqd), name: sc.counterparty, when, ref: sc.reference })
+        : t("scheduled_ok_bill", { biller: sc.counterparty, amount: num(sc.amount_iqd), when, ref: sc.reference }));
+      tc.reply.result = { reference: sc.reference, amount_iqd: sc.amount_iqd, balance_after_iqd: null, scheduled: { id: sc.id, due_at: sc.run_at, when_text: when } };
+      return;
+    }
     const tx = e.transaction;
     const balance = e.balance_after_iqd ?? (await balanceOf());
     const isTransfer = tx.kind === "transfer";
@@ -370,6 +393,13 @@ export function createOrchestrator(opts: OrchestratorOptions) {
       return allowFallback ? null : [{ type: "SLOT_ANSWER", slot, filled: false }];
     }
 
+    if (slot === "time") {
+      const w = parseWhen(text, now(), s.machine.whenPrior ?? {}, { bareHour: true });
+      if (w.kind === "ok") return [{ type: "SLOT_ANSWER", slot, filled: true, dueAt: w.dueAt }];
+      if (allowFallback && w.kind === "unparsed") return null; // maybe a new request: the model may read it
+      return [{ type: "SLOT_ANSWER", slot, filled: false, why: w.kind, ...(w.kind === "need_time" ? { prior: w.prior } : {}) }];
+    }
+
     // biller
     const q = normaliseArabic(text);
     const known = billerNamesCache ?? [];
@@ -377,6 +407,12 @@ export function createOrchestrator(opts: OrchestratorOptions) {
     if (code) { d.billerCode = code; return [{ type: "SLOT_ANSWER", slot, filled: true }]; }
     return allowFallback ? null : [{ type: "SLOT_ANSWER", slot, filled: false }];
   }
+
+  /** «اجدولها», «جدولها باچر الساعة 9»: scheduling the pending card, not a new request. */
+  const wantsSchedule = (text: string): boolean => {
+    const c = normaliseArabic(text);
+    return /^(?:و|ف)?(?:ا)?جدول\S*(?: |$)/.test(c) && !/دفع|فاتور|تحويل|حول|دز|ارسل|ابعث/.test(c);
+  };
 
   // ------------------------------------------------------------------ the loop
   async function dispatch(s: Session, first: MachineEvent, tc: TurnCtx): Promise<void> {
@@ -429,7 +465,8 @@ export function createOrchestrator(opts: OrchestratorOptions) {
         if (phase === "EXECUTING" || phase === "UNKNOWN_OUTCOME") { sayKey(tc, "checking"); return finalize(s, tc); }
 
         if (phase === "AWAITING_CONFIRM") {
-          if (isCancel(text) || isNo(text)) await dispatch(s, { type: "CANCEL" }, tc);
+          if (wantsSchedule(text)) await dispatch(s, { type: "SCHEDULE_THIS", when: parseWhen(text, now()) }, tc); // «جدولها» (+ maybe a time): same payment, later
+          else if (isCancel(text) || isNo(text)) await dispatch(s, { type: "CANCEL" }, tc);
           else if (isYes(text)) say(tc, "info", t("press_confirm_button")); // a typed or spoken «yes» never executes
           else await dispatch(s, { type: "INPUT_RECEIVED", text, asrConfidence: input.asrConfidence }, tc); // an edit: new request replaces the card
           return finalize(s, tc);
@@ -486,6 +523,27 @@ export function createOrchestrator(opts: OrchestratorOptions) {
     tick(sessionId: string): Promise<Reply> {
       const s = getSession(sessionId);
       return locked(s, async () => { const tc = begin(s); await dispatch(s, { type: "TICK" }, tc); return finalize(s, tc); });
+    },
+
+    /** The «جدولها» button on a pending card (the card_id must be the live one). */
+    scheduleCard(sessionId: string, cardId: string): Promise<Reply> {
+      const s = getSession(sessionId);
+      return locked(s, async () => {
+        const tc = begin(s);
+        if (s.card && s.card.cardId === cardId && s.machine.phase === "AWAITING_CONFIRM") await dispatch(s, { type: "SCHEDULE_THIS" }, tc);
+        else sayKey(tc, "confirm_invalid");
+        return finalize(s, tc);
+      });
+    },
+
+    /** The user's schedules, read from the wallet (the UI panel and its notifications). */
+    async listSchedules(): Promise<any[]> {
+      try { return ((await wallet.schedules(userId)).json?.scheduled as any[] | undefined) ?? []; } catch { return []; }
+    },
+
+    /** The Cancel button next to a schedule. Not a model tool: the model cannot cancel or create schedules. */
+    async cancelSchedule(scheduleId: string): Promise<{ cancelled: boolean; status?: number }> {
+      try { const r = await wallet.cancelSchedule(userId, scheduleId); return { cancelled: r.status === 200, status: r.status }; } catch { return { cancelled: false }; }
     },
 
     reset(sessionId: string): void { sessions.delete(sessionId); },

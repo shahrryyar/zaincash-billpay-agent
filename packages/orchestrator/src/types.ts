@@ -24,6 +24,8 @@ export type CardView = {
   ttl_seconds: number;
   nothing_sent: string;
   labels: { confirm: string; cancel: string };
+  /** Scheduled payments only: the card says WHEN, and that nothing is sent now. */
+  schedule: { due_at: number; when_text: string; relative: string; note: string; low_balance_warning: string | null } | null;
 };
 
 export type AuditEntry = { ts: number; session_id: string; from: Phase; to: Phase; event: string; reason?: string };
@@ -39,7 +41,7 @@ export type Reply = {
   messages: AgentMessage[];
   card: CardView | null;
   candidates: CandidateView[];
-  result: { reference: string; amount_iqd: number; balance_after_iqd: number | null } | null;
+  result: { reference: string; amount_iqd: number; balance_after_iqd: number | null; scheduled?: { id: string; due_at: number; when_text: string } } | null;
   audit: AuditEntry[];
   trace: Trace;
 };
@@ -58,11 +60,12 @@ export type Draft = {
   account?: BillAccount;
   quote?: Quote;
   firstTime?: boolean;
+  lowBalance?: boolean;
 };
 
 export type CardInfo = {
   cardId: string; token: string; payloadHash: string; idempotencyKey: string;
-  kind: "transfer" | "bill_pay"; payload: Payload; execBody: Record<string, unknown>; view: CardView;
+  kind: "transfer" | "bill_pay"; payload: Payload; execBody: Record<string, unknown>; view: CardView; scheduled: { dueAt: number } | null;
 };
 
 export type Session = {

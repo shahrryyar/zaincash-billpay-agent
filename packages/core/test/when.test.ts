@@ -79,6 +79,17 @@ describe("parseWhen: incomplete answers become a question, never a guess", () =>
   it.each(["", "   ", "شهر الجاي", "بعد العصر", "اي وقت", "someday", "بعد شهر", "يوم 32"])("«%s» is not understood", (t) => expect(parseWhen(t, NOW).kind).toBe("unparsed"));
 });
 
+describe("parseWhen: a bare number answers «الساعة شكد؟»", () => {
+  it("only when the caller says an hour is expected", () => {
+    expect(parseWhen("9", NOW).kind).toBe("unparsed");
+    const date = parseWhen("باچر", NOW);
+    if (date.kind !== "need_time") throw new Error("expected need_time");
+    expect(parseWhen("9", NOW, date.prior, { bareHour: true })).toMatchObject({ kind: "need_time", prior: { hour: 9 } });
+    expect(parseWhen("9 ونص", NOW, date.prior, { bareHour: true })).toMatchObject({ kind: "need_time", prior: { hour: 9, minute: 30 } });
+    expect(parseWhen("21", NOW, date.prior, { bareHour: true })).toEqual({ kind: "ok", dueAt: at(2026, 10, 17, 21, 0) });
+  });
+});
+
 describe("parseWhen: invariants", () => {
   const words = ["باچر", "اليوم", "بعد ساعة", "بعد 5 دقايق", "الساعة 9 الصبح", "الساعة 9 المساء", "يوم 25", "الجمعة", "21:00", "9", "الصبح", "بعد يومين"];
   it("property: an `ok` result is always between the minimum and maximum lead time, whatever the text", () => {

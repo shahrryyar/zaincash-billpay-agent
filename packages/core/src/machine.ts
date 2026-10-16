@@ -33,6 +33,8 @@ export type MachineState = {
   schedule: { dueAt: number } | null;
   whenPrior: WhenPrior | null;
   queueWhen: (When | null)[];
+  /** The user pressed «جدولها» on a pending card: the SAME action (same resolved recipient) goes through the schedule path. */
+  scheduling: boolean;
 };
 
 export type MachineEvent =
@@ -48,7 +50,8 @@ export type MachineEvent =
   | { type: "TICK" }
   | { type: "EXEC_RESULT"; outcome: "ok" | "rejected" | "timeout"; code?: string | undefined }
   | { type: "LOOKUP_RESULT"; found: "executed" | "not_found" | "unknown" }
-  | { type: "NEXT_ACTION" };
+  | { type: "NEXT_ACTION" }
+  | { type: "SCHEDULE_THIS"; when?: When }; // «جدولها» on a pending card: same payment, later
 
 export type Effect =
   | { type: "CALL_LLM" }
@@ -74,7 +77,7 @@ export type Result = { state: MachineState; effects: Effect[] };
 const DEFAULTS: Config = { ttlMs: TOKEN_TTL_MS, maxClarify: 2, maxRetries: 3, asrLow: 0.5 };
 
 export function initialState(): MachineState {
-  return { phase: "IDLE", current: null, queue: [], clarifySlot: null, clarifyTurns: {}, lastAsk: null, card: null, retries: 0, reason: null, when: null, schedule: null, whenPrior: null, queueWhen: [] };
+  return { phase: "IDLE", current: null, queue: [], clarifySlot: null, clarifyTurns: {}, lastAsk: null, card: null, retries: 0, reason: null, when: null, schedule: null, whenPrior: null, queueWhen: [], scheduling: false };
 }
 
 // ---- helpers (all pure)
@@ -121,7 +124,7 @@ function processAction(state: MachineState, cfg: Config): Result {
     return ask(state, "biller", "ask_biller", {}, cfg);
   }
   // scheduled payment: the instant must be exact before anything is resolved or shown
-  if (whenTextOf(a)) {
+  if (whenTextOf(a) || state.scheduling) {
     if (state.schedule === null && state.when?.kind === "ok") state = { ...state, schedule: { dueAt: state.when.dueAt } };
     if (state.schedule === null) {
       const q = timeQuestion(state.when);
@@ -267,6 +270,13 @@ function step(state: MachineState, ev: MachineEvent, ctx: Ctx, cfg: Config): Res
       return out({ ...state, phase: "EXECUTING", card: { ...card, executeSent: true } }, [
         { type: "EXECUTE", idempotencyKey: card.idempotencyKey, payloadHash: card.payloadHash, token: card.token },
       ]);
+    }
+
+    case "SCHEDULE_THIS": {
+      const cur = state.current;
+      if (phase !== "AWAITING_CONFIRM" || !cur || cur.type === "info") return reject(state, "nothing_to_schedule");
+      const r = processAction({ ...state, phase: "VALIDATED", card: null, scheduling: true, schedule: null, when: ev.when ?? null, whenPrior: null, clarifyTurns: {}, reason: null }, cfg);
+      return withEffects(r, revoke(state.card));
     }
 
     case "EDIT": {

@@ -78,7 +78,7 @@ const meridiemOf = (s: string): Meridiem | undefined => (AM.test(s) ? "am" : NIG
 type Clock = { hour: number; minute: number; meridiem?: Meridiem; clear: boolean };
 
 /** Pull an hour/minute out of the text. `clear` = the 24h value is certain (21:00, 13, 0:30). */
-function parseClock(s: string): Clock | null {
+function parseClock(s: string, bareHour = false): Clock | null {
   const mer = meridiemOf(s);
   let h: number | undefined, mi = 0, m: RegExpExecArray | null;
   if ((m = /(\d{1,2}):(\d{2})/.exec(s))) { h = Number(m[1]); mi = Number(m[2]); }
@@ -88,6 +88,10 @@ function parseClock(s: string): Clock | null {
     else if (m[3]) { mi = m[3] === "ربع" ? 45 : 40; h = h - 1; }
     else if (m[4]) mi = Number(m[4]);
   } else if ((m = /(?:^| )(\d{1,2})(?: و ?(نص|نصف|ربع))? ?(?:ال)?(?:صبح|صباحا|صباح|مساء|بالليل|ليل|ليلا|عصر|عصرا|ظهر|ظهرا|مغرب|فجر)/.exec(s))) {
+    h = Number(m[1]);
+    if (m[2]) mi = m[2] === "ربع" ? 15 : 30;
+  } else if (bareHour && (m = /^(\d{1,2})(?: و ?(نص|نصف|ربع))?$/.exec(s))) {
+    // the question was «الساعة شكد؟», so a bare «9» or «9 ونص» is the hour
     h = Number(m[1]);
     if (m[2]) mi = m[2] === "ربع" ? 15 : 30;
   } else if (NOON.test(s) && !/\d/.test(s)) {
@@ -151,12 +155,12 @@ function check(dueAt: number, now: number): When {
  * Read «باچر الساعة 9 الصبح», «بعد ساعة», «يوم 25 الساعة 8 المساء», «الجمعة 10:30» ... relative to `now` (epoch ms).
  * `prior` carries what an earlier incomplete answer already gave.
  */
-export function parseWhen(text: string, now: number, prior: WhenPrior = {}): When {
+export function parseWhen(text: string, now: number, prior: WhenPrior = {}, opts: { bareHour?: boolean } = {}): When {
   const s = prep(text);
   if (!s) return { kind: "unparsed" };
   const t = local(now);
   const today: DateParts = { y: t.y, m: t.m, d: t.d };
-  const clock = parseClock(s);
+  const clock = parseClock(s, opts.bareHour === true);
 
   let relDate: DateParts | undefined;
   if (prior.date === undefined && prior.hour === undefined) {

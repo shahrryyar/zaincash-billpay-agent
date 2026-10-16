@@ -55,6 +55,11 @@ export class WalletClient {
   quote(body: unknown) { return this.req("POST", "/quotes", body); }
   issueToken(sessionId: string, payload: Payload) { return this.req("POST", "/confirmation-tokens", { session_id: sessionId, payload }); }
   revokeToken(sessionId: string, token: string) { return this.req("POST", "/confirmation-tokens/revoke", { session_id: sessionId, token }); }
+  createSchedule(body: unknown, idempotencyKey: string, token: string) {
+    return this.req("POST", "/scheduled", body, { "idempotency-key": idempotencyKey, "x-confirmation-token": token });
+  }
+  schedules(userId: string) { return this.req("GET", `/users/${encodeURIComponent(userId)}/scheduled`); }
+  cancelSchedule(userId: string, scheduleId: string) { return this.req("POST", `/users/${encodeURIComponent(userId)}/scheduled/${encodeURIComponent(scheduleId)}/cancel`); }
   execute(kind: "transfer" | "bill_pay", body: unknown, idempotencyKey: string, token: string) {
     return this.req("POST", kind === "transfer" ? "/transfers" : "/bill-payments", body, { "idempotency-key": idempotencyKey, "x-confirmation-token": token });
   }
