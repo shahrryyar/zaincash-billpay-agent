@@ -74,6 +74,8 @@ export type Session = {
   amountCandidates: [number, number] | null;
   card: CardInfo | null;
   exec: any | null;
+  /** The previous exchange as plain text, given to the model as read-only context for pronouns («ادفعها»). */
+  recent: string | null;
   handles: Map<string, { type: "contact" | "bill"; id: string }>;
   audit: AuditEntry[];
   lock: Promise<unknown>;

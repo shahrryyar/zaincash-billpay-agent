@@ -4,7 +4,7 @@ import { argSchemas, FINAL_TOOL, READ_TOOLS, toolsFor, type ReadToolName, type T
 import { buildSystemPrompt, type PromptMode } from "./prompt";
 import { addUsage, type Block, type ChatClient, type Msg, type Usage } from "./types";
 
-export type UnderstandInput = { text: string; context: { billers: string[]; awaiting?: string | undefined } };
+export type UnderstandInput = { text: string; context: { billers: string[]; awaiting?: string | undefined; recent?: string | undefined } };
 export type ToolTrace = { name: string; args: unknown; ok: boolean };
 export type UnderstandResult = { raw: unknown; toolCalls: ToolTrace[]; usage: Usage; model: string; mode: PromptMode; turns: number };
 

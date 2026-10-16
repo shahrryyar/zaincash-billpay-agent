@@ -45,7 +45,7 @@ export function createOrchestrator(opts: OrchestratorOptions) {
 
   const fresh = (id: string): Session => ({
     id, machine: initialState(), draft: null, candidates: [], fuzzy: null, amountCandidates: null, card: null, exec: null,
-    handles: new Map(), audit: [], lock: Promise.resolve(),
+    handles: new Map(), audit: [], lock: Promise.resolve(), recent: null,
   });
   const getSession = (id: string): Session => { let s = sessions.get(id); if (!s) { s = fresh(id); sessions.set(id, s); } return s; };
   const resetRequest = (s: Session) => {
@@ -98,7 +98,7 @@ export function createOrchestrator(opts: OrchestratorOptions) {
         s.handles.clear();
         const u = opts.understanderFor(createToolHost({ wallet, userId, session: s }));
         try {
-          const res = await u.understand({ text: tc.text, context: { billers: await billerNames(), awaiting: awaitingText(s) } });
+          const res = await u.understand({ text: tc.text, context: { billers: await billerNames(), awaiting: awaitingText(s), recent: s.recent ?? undefined } });
           tc.reply.trace = { ...tc.reply.trace, intent: res.raw, model: res.model, mode: res.mode, tool_calls: res.toolCalls, usage: res.usage };
           return [{ type: "LLM_OUTPUT", raw: res.raw, input: tc.text }];
         } catch (e) {
@@ -399,6 +399,8 @@ export function createOrchestrator(opts: OrchestratorOptions) {
     reply.phase = s.machine.phase;
     reply.card = s.machine.phase === "AWAITING_CONFIRM" && s.card ? s.card.view : null;
     reply.audit = s.audit.slice(tc.auditFrom);
+    const said = reply.messages.map((m) => m.text).join(" | ");
+    if (said) s.recent = `User: «${tc.text || "(tapped a button)"}» / Assistant: «${said}»`.slice(0, 500);
     return reply;
   }
   const begin = (s: Session, text = "", asr?: number): TurnCtx => ({ text, asr, reply: newReply(s), auditFrom: s.audit.length, suppressAsk: false });
