@@ -113,3 +113,15 @@ describe("validateIntent: null optionals are absent, null recipient/amount stay 
     expect(validateIntent({ ...base, actions: [{ type: "transfer", recipient: { kind: "name", text: null }, amount: null }] }).ok).toBe(false);
   });
 });
+
+describe("validateIntent: a missing amount or recipient means null (ask), not invalid", () => {
+  const base = { status: "ok", confidence: 0.9, language: "ar-iq" };
+  it("bill_pay without an amount key", () => {
+    const r = validateIntent({ ...base, actions: [{ type: "bill_pay", biller: "electricity", biller_text: "الكهرباء", when_text: "بعد دقيقة" }] });
+    expect(r.ok && r.intent.actions[0]).toMatchObject({ amount: null });
+  });
+  it("transfer without recipient or amount keys", () => {
+    const r = validateIntent({ ...base, actions: [{ type: "transfer" }] });
+    expect(r.ok && r.intent.actions[0]).toMatchObject({ recipient: null, amount: null });
+  });
+});

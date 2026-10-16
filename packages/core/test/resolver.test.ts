@@ -132,3 +132,10 @@ describe("resolveContact: contacts stored with a relation word in front", () => 
   it("relation qualifier filters by relation: «كرار» + «خوي»", () => expect(resolveContact({ kind: "name", text: "كرار", qualifier: "خوي" }, rb)).toMatchObject({ status: "resolved", contact: { id: "c_karrar" } }));
   it("relation qualifier that fits nobody is still none", () => expect(resolveContact({ kind: "name", text: "كرار", qualifier: "خالي" }, rb).status).toBe("none"));
 });
+
+describe("resolveContact: the model may tag a full name as a relation", () => {
+  const rb = [{ id: "c_karrar", display_name: "أخوي كرار", phone: "07700000701", relation: "اخ" }, { id: "c_mama", display_name: "ماما", phone: "07700000601", relation: "ام" }];
+  it("«أخوي كرار» tagged relation still finds the contact by name", () => expect(resolveContact({ kind: "relation", text: "أخوي كرار" }, rb)).toMatchObject({ status: "resolved", contact: { id: "c_karrar" } }));
+  it("a bare relation word is still looked up by relation", () => expect(resolveContact({ kind: "relation", text: "أمي" }, rb)).toMatchObject({ status: "resolved", contact: { id: "c_mama" } }));
+  it("a relation nobody has is still none", () => expect(resolveContact({ kind: "relation", text: "خالي" }, rb).status).toBe("none"));
+});

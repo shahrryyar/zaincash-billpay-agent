@@ -29,6 +29,7 @@ export const COPY = {
   confirm_button_bill: { ar: "أكّد وادفع", en: "Confirm and pay" },
   cancel_button: { ar: "إلغاء", en: "Cancel" },
   ask_time: { ar: "الساعة شكد بالضبط؟ مثلاً: «9 الصبح» أو «9 المساء».", en: "What time exactly? For example «9 AM» or «9 PM»." },
+  ask_meridiem: { ar: "الساعة {hour} الصبح لو المساء؟", en: "{hour} in the morning or in the evening?" },
   ask_time_date: { ar: "متى تريد أجدولها؟ مثلاً: «باچر الساعة 9 الصبح» أو «يوم 25 الساعة 8 المساء» أو «بعد ساعة».", en: "When should I schedule it? For example «tomorrow 9 AM», «on the 25th at 8 PM» or «in an hour»." },
   ask_time_soon: { ar: "الموعد لازم يكون بعد دقيقتين على الأقل. متى تريد؟", en: "The time must be at least 2 minutes ahead. When do you want it?" },
   ask_time_far: { ar: "أگدر أجدول لحد 90 يوم بس. متى تريد؟", en: "I can schedule up to 90 days ahead. When do you want it?" },

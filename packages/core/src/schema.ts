@@ -21,8 +21,8 @@ export const RecipientMention = z.strictObject({
 
 export const TransferAction = z.strictObject({
   type: z.literal("transfer"),
-  recipient: RecipientMention.nullable(), // null -> must clarify
-  amount: Money.nullable(), // null -> must clarify
+  recipient: RecipientMention.nullable().default(null), // null (or missing) -> must clarify
+  amount: Money.nullable().default(null), // null (or missing) -> must clarify
   note: z.string().max(140).optional(),
   when_text: z.string().min(1).max(80).optional(), // the user's own words about WHEN («باچر الساعة 9»); code computes the instant
 });
@@ -34,7 +34,7 @@ export const BillPayAction = z.strictObject({
   biller: z.enum(BILLERS),
   biller_text: z.string(),
   account_ref: z.string().optional(),
-  amount: Money.nullable(), // null -> use the outstanding bill amount from the wallet
+  amount: Money.nullable().default(null), // null (or missing) -> use the outstanding bill amount from the wallet
   when_text: z.string().min(1).max(80).optional(),
 });
 

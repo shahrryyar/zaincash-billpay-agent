@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { wilson, ruleOfThree, percentile } from "../src/stats";
-import { scoreStage, plainId } from "../src/score";
+import { scoreStage, plainId, localToMs } from "../src/score";
 
 describe("wilson", () => {
   it("matches known values", () => {
@@ -15,7 +15,7 @@ describe("wilson", () => {
 });
 
 describe("scoreStage", () => {
-  const obs = { phase: "AWAITING_CONFIRM", clarifySlot: null, candidateIds: [], to: "c_mama__low", biller: null, amount: 50000 };
+  const obs = { phase: "AWAITING_CONFIRM", clarifySlot: null, candidateIds: [], to: "c_mama__low", biller: null, amount: 50000, dueAt: null };
   it("card must match recipient and amount", () => {
     expect(scoreStage({ final_state: "AWAITING_CONFIRM", to: "c_mama", amount_iqd: 50000 }, obs).fullOk).toBe(true);
     expect(scoreStage({ final_state: "AWAITING_CONFIRM", to: "c_baba", amount_iqd: 50000 }, obs).fullOk).toBe(false);
@@ -26,7 +26,7 @@ describe("scoreStage", () => {
     expect(r.stateOk).toBe(false); expect(r.fullOk).toBe(false);
   });
   it("clarifying compares slot and candidate set order-insensitively", () => {
-    const o = { phase: "CLARIFYING", clarifySlot: "recipient", candidateIds: ["c_b", "c_a"], to: null, biller: null, amount: null };
+    const o = { phase: "CLARIFYING", clarifySlot: "recipient", candidateIds: ["c_b", "c_a"], to: null, biller: null, amount: null, dueAt: null };
     expect(scoreStage({ final_state: "CLARIFYING", clarify_slot: "recipient", candidates: ["c_a", "c_b"] }, o).fullOk).toBe(true);
     expect(scoreStage({ final_state: "CLARIFYING", clarify_slot: "recipient", candidates: ["c_a"] }, o).fullOk).toBe(false);
   });
@@ -36,4 +36,18 @@ describe("scoreStage", () => {
     expect(scoreStage({ final_state: "FAILED_SAFE", accept_states: ["FAILED_SAFE"] }, o).stateOk).toBe(false);
   });
   it("plainId strips the low-profile suffix", () => { expect(plainId("c_x__low")).toBe("c_x"); expect(plainId(null)).toBeNull(); });
+});
+
+describe("scheduled cards", () => {
+  const due = localToMs("2026-10-16T09:00");
+  const obs = { phase: "AWAITING_CONFIRM", clarifySlot: null, candidateIds: [], to: "c_mama", biller: null, amount: 50000, dueAt: due };
+  it("localToMs reads Baghdad local time (UTC+3)", () => expect(localToMs("2026-10-16T09:00")).toBe(Date.UTC(2026, 9, 16, 6, 0)));
+  it("the instant must match exactly", () => {
+    expect(scoreStage({ final_state: "AWAITING_CONFIRM", to: "c_mama", due_local: "2026-10-16T09:00" }, obs).fullOk).toBe(true);
+    expect(scoreStage({ final_state: "AWAITING_CONFIRM", to: "c_mama", due_local: "2026-10-16T21:00" }, obs).fullOk).toBe(false);
+  });
+  it("a schedule where the user asked for it now is a failure", () => {
+    expect(scoreStage({ final_state: "AWAITING_CONFIRM", to: "c_mama" }, obs).fullOk).toBe(false);
+    expect(scoreStage({ final_state: "AWAITING_CONFIRM", to: "c_mama" }, { ...obs, dueAt: null }).fullOk).toBe(true);
+  });
 });

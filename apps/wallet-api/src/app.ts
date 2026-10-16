@@ -170,13 +170,13 @@ export function createApp(opts: AppOptions) {
     if (!user) return err(c, 404, "USER_NOT_FOUND", "unknown user");
     if (q.kind === "transfer") {
       const r = transferChecks(user, q.to_contact, q.amount_iqd, true);
-      return c.json({ ok: r.codes.length === 0, kind: "transfer", amount_iqd: q.amount_iqd, fee_iqd: p2pFee(q.amount_iqd), total_iqd: q.amount_iqd + p2pFee(q.amount_iqd), balance_after_iqd: user.balance_iqd - q.amount_iqd - p2pFee(q.amount_iqd), errors: r.codes, counterparty_name: r.contact?.display_name ?? null });
+      return c.json({ ok: r.codes.length === 0, kind: "transfer", amount_iqd: q.amount_iqd, limit_iqd: MONTHLY_LIMIT_IQD.transfer, fee_iqd: p2pFee(q.amount_iqd), total_iqd: q.amount_iqd + p2pFee(q.amount_iqd), balance_after_iqd: user.balance_iqd - q.amount_iqd - p2pFee(q.amount_iqd), errors: r.codes, counterparty_name: r.contact?.display_name ?? null });
     }
     const loaded = loadBill(q.bill_account, user.id);
     if (!loaded) return c.json({ ok: false, kind: "bill_pay", errors: ["BILL_ACCOUNT_NOT_FOUND"] });
     const r = billChecks(user, loaded.account, loaded.biller, loaded.bill, q.amount_iqd ?? null, true);
     const fee = loaded.biller.fee_iqd;
-    return c.json({ ok: r.codes.length === 0, kind: "bill_pay", amount_iqd: r.amount, fee_iqd: fee, total_iqd: r.amount + fee, balance_after_iqd: user.balance_iqd - r.amount - fee, errors: r.codes, counterparty_name: loaded.biller.name_ar });
+    return c.json({ ok: r.codes.length === 0, kind: "bill_pay", amount_iqd: r.amount, limit_iqd: loaded.biller.code === "mobile_topup" ? MONTHLY_LIMIT_IQD.mobile_topup : MONTHLY_LIMIT_IQD.bill, fee_iqd: fee, total_iqd: r.amount + fee, balance_after_iqd: user.balance_iqd - r.amount - fee, errors: r.codes, counterparty_name: loaded.biller.name_ar });
   });
 
   // ------------------------------------------------------------------ confirmation tokens (server-issued, payload-bound)

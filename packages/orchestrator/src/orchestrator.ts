@@ -208,7 +208,8 @@ export function createOrchestrator(opts: OrchestratorOptions) {
       tc.reply.trace.quote = q;
       // A schedule is checked again when it RUNS. Today's balance and this month's limit are not blockers for a LATER payment
       // (the card warns); every other failure (unknown contact, paid bill, wrong amount...) still stops it now.
-      const futureOk = s.machine.schedule !== null && q.errors.length > 0 && q.errors.every((e) => e === "INSUFFICIENT_BALANCE" || e === "LIMIT_EXCEEDED");
+      // (a payment bigger than the monthly limit ITSELF can never succeed later, so that one still stops now)
+      const futureOk = s.machine.schedule !== null && q.errors.length > 0 && q.errors.every((e) => e === "INSUFFICIENT_BALANCE" || (e === "LIMIT_EXCEEDED" && q.amount_iqd <= (q.limit_iqd ?? Infinity)));
       d.lowBalance = futureOk && q.errors.includes("INSUFFICIENT_BALANCE");
       return q.ok || futureOk ? [{ type: "PRECHECK", ok: true }] : [{ type: "PRECHECK", ok: false, code: q.errors[0] ?? "precheck_failed" }];
     } catch { return [{ type: "PRECHECK", ok: false, code: "SERVICE_UNAVAILABLE" }]; }

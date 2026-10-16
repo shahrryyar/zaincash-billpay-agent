@@ -50,7 +50,7 @@ export type BillAccount = {
   id: string; biller_id: string; biller_code: string; biller_name_ar: string; account_ref: string; fee_iqd: number;
   bill: { id: string; amount_iqd: number; due_date: string; status: string } | null;
 };
-export type Quote = { ok: boolean; amount_iqd: number; fee_iqd: number; total_iqd: number; balance_after_iqd: number; errors: string[]; counterparty_name: string | null };
+export type Quote = { ok: boolean; limit_iqd?: number; amount_iqd: number; fee_iqd: number; total_iqd: number; balance_after_iqd: number; errors: string[]; counterparty_name: string | null };
 
 export type Draft = {
   action: Action;

@@ -114,7 +114,8 @@ export function resolveContact(mention: Mention, contacts: readonly Contact[]): 
   if (rel && (mention.kind === "relation" || !all.some((c) => key(c.display_name) === key(text)))) {
     return finish(all.filter((c) => c.relation !== undefined && relationOf(c.relation) === rel), mention.qualifier);
   }
-  if (mention.kind === "relation") return { status: "none" };
+  // the model may tag «أخوي كرار» as a relation: only a bare relation word is looked up by relation; anything longer is a name
+  if (mention.kind === "relation" && relationOf(text) !== undefined) return { status: "none" };
 
   let cands = matchName(text, all);
   // «لأحمد»: drop the preposition ل only if the literal form matched nobody

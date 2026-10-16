@@ -70,7 +70,7 @@ async function runCase(c: Case): Promise<CaseResult> {
     const s = orch.inspect(sid);
     return {
       phase: r.phase, clarifySlot: (s.machine.clarifySlot as string | null) ?? null, candidateIds: r.candidates.map((x) => x.id),
-      to: s.draft?.recipient?.id ?? null, biller: s.draft?.billerCode ?? s.draft?.account?.biller_code ?? null, amount: r.card?.amount_iqd ?? null,
+      to: s.draft?.recipient?.id ?? null, dueAt: r.card?.schedule?.due_at ?? null, biller: s.draft?.billerCode ?? s.draft?.account?.biller_code ?? null, amount: r.card?.amount_iqd ?? null,
     };
   };
   const stages: Stage[] = [];
@@ -103,7 +103,11 @@ async function runCase(c: Case): Promise<CaseResult> {
     confirmed = true; executed = r.result !== null || r.phase === "EXECUTED"; // a queued second action may already be showing its own card
     const after = db.prepare("SELECT balance_iqd b FROM users WHERE id=?").get(user) as { b: number };
     const rows = db.prepare("SELECT amount_iqd a, fee_iqd f FROM transactions ORDER BY rowid DESC LIMIT 1").get() as { a: number; f: number } | undefined;
-    walletOk = executed && txCount() === tx0 + 1 && !!rows && rows.a === last.card.amount_iqd && before.b - after.b === last.card.total_iqd;
+    if (last.card.schedule) {
+      // a schedule: nothing moves now, and the wallet holds exactly one schedule at the approved instant
+      const list = await orch.listSchedules();
+      walletOk = executed && txCount() === tx0 && list.length === 1 && list[0].run_at === last.card.schedule.due_at && before.b === after.b;
+    } else walletOk = executed && txCount() === tx0 + 1 && !!rows && rows.a === last.card.amount_iqd && before.b - after.b === last.card.total_iqd;
   }
   const moved = txCount() !== tx0;
   const movedWithoutConfirm = moved && !confirmed;

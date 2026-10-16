@@ -106,11 +106,14 @@ const resolveSlot = (a: Action | null): "recipient" | "biller" => (a?.type === "
 const whenTextOf = (a: Action | null): string | undefined => (a && a.type !== "info" ? a.when_text : undefined);
 
 /** The question to ask when a scheduled action still has no exact time. */
-function timeQuestion(w: When | null): { key: CopyKey; prior: WhenPrior | null } {
-  if (w?.kind === "need_time") return { key: w.prior.date ? "ask_time" : w.prior.hour !== undefined ? "ask_time" : "ask_time_date", prior: w.prior };
-  if (w?.kind === "too_soon") return { key: "ask_time_soon", prior: null };
-  if (w?.kind === "too_far") return { key: "ask_time_far", prior: null };
-  return { key: "ask_time_date", prior: null };
+function timeQuestion(w: When | null): { key: CopyKey; vars: Vars; prior: WhenPrior | null } {
+  if (w?.kind === "need_time") {
+    if (w.prior.hour !== undefined) return { key: "ask_meridiem", vars: { hour: w.prior.hour }, prior: w.prior }; // we have «9», we need AM or PM
+    return { key: w.prior.date ? "ask_time" : "ask_time_date", vars: {}, prior: w.prior };
+  }
+  if (w?.kind === "too_soon") return { key: "ask_time_soon", vars: {}, prior: null };
+  if (w?.kind === "too_far") return { key: "ask_time_far", vars: {}, prior: null };
+  return { key: "ask_time_date", vars: {}, prior: null };
 }
 
 function processAction(state: MachineState, cfg: Config): Result {
@@ -128,7 +131,7 @@ function processAction(state: MachineState, cfg: Config): Result {
     if (state.schedule === null && state.when?.kind === "ok") state = { ...state, schedule: { dueAt: state.when.dueAt } };
     if (state.schedule === null) {
       const q = timeQuestion(state.when);
-      return ask({ ...state, whenPrior: q.prior }, "time", q.key, {}, cfg);
+      return ask({ ...state, whenPrior: q.prior }, "time", q.key, q.vars, cfg);
     }
   }
   return out({ ...state, phase: "VALIDATED", clarifySlot: null, reason: null }, [{ type: "RESOLVE", slot: resolveSlot(a) }]);
@@ -240,7 +243,7 @@ function step(state: MachineState, ev: MachineEvent, ctx: Ctx, cfg: Config): Res
         if (ev.filled && ev.dueAt !== undefined)
           return out({ ...state, phase: "VALIDATED", clarifySlot: null, schedule: { dueAt: ev.dueAt }, whenPrior: null, reason: null }, [{ type: "RESOLVE", slot: resolveSlot(state.current) }]);
         const q = timeQuestion(ev.why === "need_time" ? { kind: "need_time", prior: ev.prior ?? {} } : ev.why === "too_soon" ? { kind: "too_soon" } : ev.why === "too_far" ? { kind: "too_far" } : { kind: "unparsed" });
-        return ask({ ...state, whenPrior: ev.prior ?? q.prior }, "time", q.key, {}, cfg);
+        return ask({ ...state, whenPrior: ev.prior ?? q.prior }, "time", q.key, q.vars, cfg);
       }
       if (ev.filled)
         return out({ ...state, phase: "VALIDATED", clarifySlot: null, reason: null }, [{ type: "RESOLVE", slot: resolveSlot(state.current) }]);

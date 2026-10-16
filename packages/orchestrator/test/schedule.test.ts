@@ -62,6 +62,7 @@ describe("scheduled payments end to end", () => {
     expect(text(r1)).toContain("الساعة شكد");
     const r2 = await e.orch.turn("s", { text: "9" });
     expect(r2.phase).toBe("CLARIFYING"); // 9 what? AM or PM
+    expect(text(r2)).toContain("الساعة 9 الصبح لو المساء");
     const r3 = await e.orch.turn("s", { text: "الصبح" });
     expect(r3.phase).toBe("AWAITING_CONFIRM");
     expect(r3.card!.schedule!.due_at).toBe(at(2026, 10, 16, 9, 0)); // SEED_NOW is Thursday 15 Oct 15:00 in Baghdad
@@ -119,6 +120,15 @@ describe("scheduled payments end to end", () => {
     expect(runDue(e).failed.map((f) => f.code)).toEqual(["INSUFFICIENT_BALANCE"]);
     expect(e.balance()).toBe(20_000);
     expect((await e.orch.listSchedules())[0]).toMatchObject({ status: "failed", failure_code: "INSUFFICIENT_BALANCE" });
+  });
+
+  it("a schedule bigger than the monthly limit itself is refused now (it could never run)", async () => {
+    const msg = "دز خمسة ملايين لأحمد علي بعد ساعة";
+    const e = setup({ script: { [msg]: withWhen(transferIntent("أحمد علي", 5_000_000, "خمسة ملايين"), "بعد ساعة") } });
+    e.db.prepare("UPDATE users SET balance_iqd = 9000000 WHERE id=?").run(DEMO_USER);
+    const r = await e.orch.turn("s", { text: msg });
+    expect(r.card).toBeNull();
+    expect(r.phase).toBe("FAILED_SAFE");
   });
 
   it("a scheduled bill is paid at the time, once", async () => {
