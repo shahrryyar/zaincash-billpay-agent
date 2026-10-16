@@ -33,9 +33,16 @@ describe("withRetry: exponential backoff on 429/5xx only", () => {
   });
   it("retries a network-level connection error (no HTTP status)", async () => {
     let n = 0;
-    const flaky: ChatClient = { id: "x", async complete() { n++; if (n < 3) { const e = new Error("Connection error."); e.name = "APIConnectionError"; throw e; } return { content: [], stop: "end", usage: { input: 1, output: 1 } }; } };
+    const flaky: ChatClient = { id: "x", async complete() { n++; if (n < 3) { class APIConnectionError extends Error {} // like the SDK's: the class name is the only marker, `name` stays "Error"
+      throw new APIConnectionError("Connection error."); } return { content: [], stop: "end", usage: { input: 1, output: 1 } }; } };
     await withRetry(flaky, { retries: 2, sleep: noSleep }).complete(REQ);
     expect(n).toBe(3);
+  });
+  it("retries a plain socket reset message too", async () => {
+    let n = 0;
+    const flaky: ChatClient = { id: "x", async complete() { n++; if (n < 2) throw new Error("fetch failed: read ECONNRESET"); return { content: [], stop: "end", usage: { input: 1, output: 1 } }; } };
+    await withRetry(flaky, { retries: 2, sleep: noSleep }).complete(REQ);
+    expect(n).toBe(2);
   });
   it("does not retry a 400 (a bug, not a limit)", async () => {
     const f = failing("x", 400);
