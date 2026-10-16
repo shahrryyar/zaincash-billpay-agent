@@ -2,6 +2,7 @@
 // The money path is ONE SQLite transaction (BEGIN IMMEDIATE): idempotency check, confirmation-token check,
 // business checks, debit/credit, token consumption and the stored response all commit together or not at all.
 import { p2pFee, MONTHLY_LIMIT_IQD } from "./fees";
+import { SCHEDULE_MAX_LEAD_MS, SCHEDULE_MIN_LEAD_MS, SCHEDULE_MISSED_AFTER_MS } from "./schedule";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { Hono, type Context } from "hono";
 import { z } from "zod";
@@ -35,8 +36,12 @@ const TokenBody = z.strictObject({
   session_id: z.string().min(1).max(128),
   payload: z.strictObject({
     kind: z.enum(["transfer", "bill_pay"]), from: z.string().min(1), to_id: z.string().optional(), biller_id: z.string().optional(),
-    account_ref: z.string().optional(), amount_iqd: Money, fee_iqd: z.number().int().min(0),
+    account_ref: z.string().optional(), amount_iqd: Money, fee_iqd: z.number().int().min(0), run_at: z.number().int().positive().optional(),
   }),
+});
+const ScheduleBody = z.strictObject({
+  session_id: z.string().min(1).max(128), from: z.string().min(1), kind: z.enum(["transfer", "bill_pay"]),
+  to_contact: z.string().min(1).optional(), bill_account: z.string().min(1).optional(), amount_iqd: Money, run_at: z.number().int().positive(),
 });
 const FaultBody = z.strictObject({
   mode: z.enum(["latency_ms", "timeout_after_commit", "error_5xx_before_commit", "biller_down"]),
@@ -242,6 +247,11 @@ export function createApp(opts: AppOptions) {
       : ({ ok: false, reason: "unknown_token" } as const);
     if (!check.ok) return reject(fail(403, "CONFIRMATION_INVALID", "a valid confirmation for this exact request is required", false, { reason: check.reason }));
 
+    return settle(kind, user, body, bill, key, sessionId, tokenValue ?? null, reject);
+  }
+
+  /** Business checks + money movement. Shared by an immediate execute and by a scheduled run; must run inside one IMMEDIATE transaction. */
+  function settle(kind: "transfer" | "bill_pay", user: Row, body: Row, bill: ReturnType<typeof loadBill>, key: string, sessionId: string, tokenValue: string | null, reject: (o: Outcome) => Outcome): Outcome {
     // 4. business checks (deterministic failures are stored under the key so the outcome stays stable)
     let amount: number, fee: number, counterpartyId: string, counterpartyName: string, walletRecipient: string | null = null;
     if (kind === "transfer") {
@@ -262,8 +272,10 @@ export function createApp(opts: AppOptions) {
     }
 
     // 5. consume the token FIRST (single-use is enforced by the UPDATE itself), then move money
-    const used = db.prepare("UPDATE confirmation_tokens SET used_at=? WHERE token=? AND used_at IS NULL").run(now(), tokenValue);
-    if (used.changes !== 1) return reject(fail(403, "CONFIRMATION_INVALID", "confirmation already used", false, { reason: "already_used" }));
+    if (tokenValue !== null) { // a scheduled run has no token: it was consumed when the schedule was created
+      const used = db.prepare("UPDATE confirmation_tokens SET used_at=? WHERE token=? AND used_at IS NULL").run(now(), tokenValue);
+      if (used.changes !== 1) return reject(fail(403, "CONFIRMATION_INVALID", "confirmation already used", false, { reason: "already_used" }));
+    }
 
     db.prepare("UPDATE users SET balance_iqd = balance_iqd - ? WHERE id=?").run(amount + fee, user.id);
     if (kind === "transfer") {
@@ -315,6 +327,138 @@ export function createApp(opts: AppOptions) {
   app.post("/transfers", (c) => handleExecute(c, "transfer", "/transfers", TransferBody));
   app.post("/bill-payments", (c) => handleExecute(c, "bill_pay", "/bill-payments", BillBody));
 
+  // ------------------------------------------------------------------ scheduled payments (docs/27)
+  // Created only with a valid payload-bound token whose payload includes `run_at`, so the user approved THIS instant.
+  // Executed by runDueSchedules() with key `sched:<id>`: one row can run once (status flip + UNIQUE idempotency key).
+  const scheduleRef = (seq: number) => `SCH-${String(seq).padStart(7, "0")}`;
+  const schedulePayload = (kind: "transfer" | "bill_pay", user: Row, body: Row, runAt: number): Payload | { error: Outcome } => {
+    if (kind === "transfer") {
+      if (!body.to_contact) return { error: fail(400, "BAD_REQUEST", "to_contact is required", false) };
+      return { kind: "transfer", from: user.id, to_id: body.to_contact, amount_iqd: body.amount_iqd, fee_iqd: p2pFee(body.amount_iqd), run_at: runAt };
+    }
+    if (!body.bill_account) return { error: fail(400, "BAD_REQUEST", "bill_account is required", false) };
+    const bill = loadBill(body.bill_account, user.id);
+    if (!bill) return { error: fail(404, "BILL_ACCOUNT_NOT_FOUND", "unknown bill account", false) };
+    const amount = body.amount_iqd ?? bill.bill?.amount_iqd;
+    return { kind: "bill_pay", from: user.id, biller_id: bill.biller.id, account_ref: bill.account.account_ref, amount_iqd: amount, fee_iqd: bill.biller.fee_iqd, run_at: runAt };
+  };
+  const scheduleView = (r: Row) => ({
+    id: r.id, reference: scheduleRef(r.seq), kind: r.kind, status: r.status, run_at: r.run_at, amount_iqd: r.amount_iqd, fee_iqd: r.fee_iqd,
+    counterparty: r.counterparty, created_at: r.created_at, finished_at: r.finished_at, failure_code: r.failure_code, transaction_id: r.transaction_id,
+  });
+
+  function createSchedule(body: Row, key: string, tokenValue: string | undefined): Outcome {
+    const sessionId = body.session_id as string;
+    const path = "/scheduled";
+    const reqHash = sha(canonicalJSON({ path, body }));
+    const prior = db.prepare("SELECT request_hash, response_json, status_code FROM idempotency_keys WHERE key=?").get(key) as Row | undefined;
+    if (prior) {
+      if (prior.request_hash === reqHash) { audit("schedule.replayed", sessionId, { idempotency_key: key }); return { status: prior.status_code, body: JSON.parse(prior.response_json), store: false, replay: true }; }
+      return fail(422, "IDEMPOTENCY_KEY_REUSED", "this idempotency key was used with a different request", false);
+    }
+    const reject = (o: Outcome): Outcome => { audit("schedule.rejected", sessionId, { idempotency_key: key, code: (o.body as any).error.code }); return o; };
+    const user = db.prepare("SELECT * FROM users WHERE id=?").get(body.from) as Row | undefined;
+    if (!user) return reject(fail(404, "USER_NOT_FOUND", "unknown user", false));
+    if (body.run_at < now() + SCHEDULE_MIN_LEAD_MS) return reject(fail(422, "SCHEDULE_TOO_SOON", "the time must be in the future", false));
+    if (body.run_at > now() + SCHEDULE_MAX_LEAD_MS) return reject(fail(422, "SCHEDULE_TOO_FAR", "at most 90 days ahead", false));
+    const payload = schedulePayload(body.kind, user, body, body.run_at);
+    if ("error" in payload) return reject(payload.error);
+
+    const tok = tokenValue ? (db.prepare("SELECT * FROM confirmation_tokens WHERE token=?").get(tokenValue) as Row | undefined) : undefined;
+    const check = tok
+      ? checkToken({ presented: tokenValue as string, sessionId, payload, now: now() }, { token: tok.token, sessionId: tok.session_id, payloadHash: tok.payload_hash, expiresAt: tok.expires_at, usedAt: tok.used_at })
+      : ({ ok: false, reason: "unknown_token" } as const);
+    if (!check.ok) return reject(fail(403, "CONFIRMATION_INVALID", "a valid confirmation for this exact request is required", false, { reason: check.reason }));
+
+    // deterministic pre-checks at creation. Balance and monthly limits are checked when it RUNS (the money is not reserved).
+    let counterparty: string;
+    if (body.kind === "transfer") {
+      const contact = db.prepare("SELECT * FROM contacts WHERE id=? AND owner_id=?").get(body.to_contact, user.id) as Row | undefined;
+      if (!contact) return reject(fail(404, "CONTACT_NOT_FOUND", "CONTACT_NOT_FOUND", true));
+      if (contact.wallet_user_id === null) return reject(fail(422, "CONTACT_NOT_WALLET_USER", "CONTACT_NOT_WALLET_USER", true));
+      if (body.amount_iqd % SMALLEST_UNIT_IQD !== 0 || body.amount_iqd > MAX_AMOUNT_IQD) return reject(fail(422, "INVALID_AMOUNT", "INVALID_AMOUNT", true));
+      counterparty = contact.display_name;
+    } else {
+      const b = loadBill(body.bill_account, user.id)!;
+      if (b.bill && b.bill.status === "paid") return reject(fail(409, "BILL_ALREADY_PAID", "BILL_ALREADY_PAID", true));
+      if (b.bill && body.amount_iqd !== b.bill.amount_iqd) return reject(fail(409, "AMOUNT_CHANGED", "AMOUNT_CHANGED", true));
+      counterparty = b.biller.name_ar;
+    }
+
+    const used = db.prepare("UPDATE confirmation_tokens SET used_at=? WHERE token=? AND used_at IS NULL").run(now(), tokenValue);
+    if (used.changes !== 1) return reject(fail(403, "CONFIRMATION_INVALID", "confirmation already used", false, { reason: "already_used" }));
+    const id = `sp_${randomUUID()}`;
+    const fee = (payload as Payload).fee_iqd;
+    const ins = db.prepare("INSERT INTO scheduled_payments(id,owner_id,kind,body_json,payload_hash,run_at,status,created_at,schedule_key,counterparty,amount_iqd,fee_iqd) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)")
+      .run(id, user.id, body.kind, JSON.stringify({ to_contact: body.to_contact, bill_account: body.bill_account, amount_iqd: body.amount_iqd, session_id: sessionId, from: user.id }), sha(canonicalJSON(payload)), body.run_at, "scheduled", now(), key, counterparty, body.amount_iqd, fee);
+    audit("schedule.created", sessionId, { idempotency_key: key, schedule_id: id, run_at: body.run_at, kind: body.kind });
+    const row = db.prepare("SELECT rowid seq, * FROM scheduled_payments WHERE rowid=?").get(ins.lastInsertRowid) as Row;
+    return { status: 201, store: true, replay: false, body: { schedule: scheduleView(row) } };
+  }
+
+  app.post("/scheduled", async (c) => {
+    const key = c.req.header("idempotency-key");
+    if (!key || key.length > 128) return err(c, 400, "IDEMPOTENCY_KEY_REQUIRED", "Idempotency-Key header (1-128 chars) is required");
+    const parsed = ScheduleBody.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) return err(c, 400, "BAD_REQUEST", "invalid request body");
+    const body = parsed.data;
+    const out = db.transaction((): Outcome => {
+      const o = createSchedule(body, key, c.req.header("x-confirmation-token"));
+      if (o.store) db.prepare("INSERT INTO idempotency_keys(key,request_hash,response_json,status_code,created_at) VALUES (?,?,?,?,?)").run(key, sha(canonicalJSON({ path: "/scheduled", body })), JSON.stringify(o.body), o.status, now());
+      return o;
+    }).immediate();
+    return c.json(out.body as object, out.status as 201, out.replay ? { "Idempotent-Replay": "true" } : {});
+  });
+
+  app.get("/users/:id/scheduled", (c) => {
+    const rows = db.prepare("SELECT rowid seq, * FROM scheduled_payments WHERE owner_id=? ORDER BY CASE status WHEN 'scheduled' THEN 0 ELSE 1 END, run_at DESC LIMIT 50").all(c.req.param("id")) as Row[];
+    return c.json({ scheduled: rows.map(scheduleView) });
+  });
+
+  app.post("/users/:id/scheduled/:sid/cancel", (c) => {
+    const r = db.transaction(() => {
+      const res = db.prepare("UPDATE scheduled_payments SET status='cancelled', finished_at=? WHERE id=? AND owner_id=? AND status='scheduled'").run(now(), c.req.param("sid"), c.req.param("id"));
+      if (res.changes === 1) { audit("schedule.cancelled", null, { schedule_id: c.req.param("sid") }); return { ok: true as const }; }
+      const row = db.prepare("SELECT status FROM scheduled_payments WHERE id=? AND owner_id=?").get(c.req.param("sid"), c.req.param("id")) as Row | undefined;
+      return { ok: false as const, status: row?.status as string | undefined };
+    }).immediate();
+    if (r.ok) return c.json({ cancelled: true });
+    return r.status ? err(c, 409, "NOT_CANCELLABLE", `already ${r.status}`) : err(c, 404, "NOT_FOUND", "unknown schedule");
+  });
+
+  /** Runs every schedule that is due. Safe to call from several processes at once: each row runs at most once. */
+  function runDueSchedules(): { executed: string[]; failed: { id: string; code: string }[] } {
+    const t = now();
+    const ids = (db.prepare("SELECT id FROM scheduled_payments WHERE status='scheduled' AND run_at<=? ORDER BY run_at, rowid LIMIT 100").all(t) as Row[]).map((r) => r.id as string);
+    const result = { executed: [] as string[], failed: [] as { id: string; code: string }[] };
+    for (const id of ids) {
+      db.transaction(() => {
+        const sp = db.prepare("SELECT rowid seq, * FROM scheduled_payments WHERE id=? AND status='scheduled'").get(id) as Row | undefined;
+        if (!sp) return; // another runner got it
+        const finish = (code: string) => {
+          db.prepare("UPDATE scheduled_payments SET status='failed', failure_code=?, finished_at=? WHERE id=?").run(code, now(), id);
+          audit("schedule.failed", `sched:${id}`, { schedule_id: id, code });
+          result.failed.push({ id, code });
+        };
+        if (now() > sp.run_at + SCHEDULE_MISSED_AFTER_MS) return finish("SCHEDULE_MISSED"); // never pay something that is a day stale
+        const body = JSON.parse(sp.body_json) as Row;
+        const user = db.prepare("SELECT * FROM users WHERE id=?").get(sp.owner_id) as Row;
+        const payload = schedulePayload(sp.kind, user, body, sp.run_at);
+        if ("error" in payload) return finish((payload.error.body as any).error.code);
+        if (sha(canonicalJSON(payload)) !== sp.payload_hash) return finish("AUTHORIZATION_MISMATCH"); // what would be paid differs from what the user approved
+        const bill = sp.kind === "bill_pay" ? loadBill(body.bill_account, user.id) : null;
+        const out = settle(sp.kind, user, body, bill, `sched:${id}`, `sched:${id}`, null, (o) => o);
+        if (out.status === 200) {
+          const txId = (out.body as any).transaction.id as string;
+          db.prepare("UPDATE scheduled_payments SET status='executed', transaction_id=?, finished_at=? WHERE id=?").run(txId, now(), id);
+          audit("schedule.executed", `sched:${id}`, { schedule_id: id, transaction_id: txId });
+          result.executed.push(id);
+        } else finish((out.body as any).error.code);
+      }).immediate();
+    }
+    return result;
+  }
+
   // ------------------------------------------------------------------ admin (demo / eval only)
   const adminOk = (c: Context): Response | null => {
     if (!opts.demoMode) return err(c, 404, "NOT_FOUND", "not found");
@@ -330,6 +474,12 @@ export function createApp(opts: AppOptions) {
     const f = p.data;
     faults.push({ mode: f.mode, remaining: f.mode === "biller_down" ? Number.POSITIVE_INFINITY : (f.count ?? 1), ...(f.ms !== undefined ? { ms: f.ms } : {}), ...(f.sleep_ms !== undefined ? { sleep_ms: f.sleep_ms } : {}), ...(f.biller ? { biller: f.biller } : {}) });
     return c.json({ ok: true, active: faults.filter((x) => x.remaining > 0).length });
+  });
+
+  app.post("/admin/run-due", (c) => {
+    const denied = adminOk(c);
+    if (denied) return denied;
+    return c.json(runDueSchedules());
   });
 
   app.post("/admin/reset", (c) => {
@@ -348,5 +498,5 @@ export function createApp(opts: AppOptions) {
     return c.json({ events: rows.map((r) => ({ id: r.id, ts: r.ts, session_id: r.session_id, event: r.event, data: JSON.parse(r.data_json) })) });
   });
 
-  return app;
+  return Object.assign(app, { runDueSchedules });
 }

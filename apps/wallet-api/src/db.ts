@@ -20,6 +20,14 @@ CREATE TABLE IF NOT EXISTS billers(
   status TEXT NOT NULL CHECK(status IN ('active','down','maintenance')));
 CREATE TABLE IF NOT EXISTS settlements(
   biller_id TEXT PRIMARY KEY REFERENCES billers(id), balance_iqd INTEGER NOT NULL DEFAULT 0 CHECK(balance_iqd >= 0));
+CREATE TABLE IF NOT EXISTS scheduled_payments(
+  id TEXT PRIMARY KEY, owner_id TEXT NOT NULL REFERENCES users(id), kind TEXT NOT NULL CHECK(kind IN ('transfer','bill_pay')),
+  body_json TEXT NOT NULL, payload_hash TEXT NOT NULL, run_at INTEGER NOT NULL,
+  status TEXT NOT NULL CHECK(status IN ('scheduled','executed','failed','cancelled')),
+  created_at INTEGER NOT NULL, schedule_key TEXT NOT NULL UNIQUE,
+  counterparty TEXT NOT NULL, amount_iqd INTEGER NOT NULL, fee_iqd INTEGER NOT NULL,
+  transaction_id TEXT, failure_code TEXT, finished_at INTEGER);
+CREATE INDEX IF NOT EXISTS idx_sched_due ON scheduled_payments(status, run_at);
 CREATE TABLE IF NOT EXISTS fee_pool(
   id TEXT PRIMARY KEY, balance_iqd INTEGER NOT NULL DEFAULT 0 CHECK(balance_iqd >= 0));
 CREATE TABLE IF NOT EXISTS bill_accounts(
@@ -57,7 +65,7 @@ export function openDb(path = ":memory:"): Db {
 }
 
 const TABLES_CHILD_FIRST = [
-  "audit_log", "idempotency_keys", "confirmation_tokens", "transactions", "bills", "bill_accounts",
+  "scheduled_payments", "audit_log", "idempotency_keys", "confirmation_tokens", "transactions", "bills", "bill_accounts",
   "settlements", "fee_pool", "billers", "contacts", "users",
 ];
 
