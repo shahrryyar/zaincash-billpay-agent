@@ -63,7 +63,7 @@ async function main() {
     tokens += (r.trace.usage?.input ?? 0) + (r.trace.usage?.output ?? 0);
     calls += r.trace.tool_calls?.length ?? 0;
     if (!fail) pass++; else failures.push(`${c.text}  ->  ${fail}${r.trace.llm_error ? ` (llm error: ${r.trace.llm_error})` : ""}`);
-    console.log(`${fail ? "FAIL" : "PASS"}  ${String(Date.now() - t0).padStart(5)} ms  ${r.phase.padEnd(14)} ${c.text}${fail ? `\n      ${fail}` : ""}`);
+    console.log(`${fail ? "FAIL" : "PASS"}  ${String(Date.now() - t0).padStart(5)} ms  ${r.phase.padEnd(14)} ${c.text}${fail ? `\n      ${fail}` : ""}${r.trace.llm_error ? `\n      llm error: ${r.trace.llm_error.slice(0, 300)}` : ""}`);
   }
   console.log(`\n${pass}/${CASES.length} passed  (mode=${args.has("fake") ? "fake" : mode}, ${tokens} tokens, ${calls} lookups)`);
   console.log("Smoke check only: not an evaluation, do not report as results.");
