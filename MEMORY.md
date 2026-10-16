@@ -40,12 +40,14 @@ Accepted into the build stage already. Elimination is after the MVP.
 - [x] **M1 done** (`packages/core`, 257 tests): normaliser, `parseAmount`, Zod schema + cross-checks, token guard, Jaro-Winkler + resolver, `amountInWords`/`formatIQD`, copy table, state machine reducer (5k random + 5k guided sequences, mutation-tested 16/16).
 - [x] **M2 done** (`apps/wallet-api`, 72 tests, 18/18 wallet mutants killed): Hono + SQLite mock wallet, one BEGIN IMMEDIATE txn per execute, token issue endpoint, quotes, fault injection, audit log. Measured: `eval/results/wallet-safety-stress.json` (4 OS processes, 1,000 requests: 50 executions, 950 replays, 0 duplicates). Run `pnpm stress`.
 - [x] **M3 built and tested OFFLINE** (scripted model): `packages/llm` (63 tests: Claude + OpenAI-format adapters, retry/budget/fallback/cache, env factory, agent loop with 5 read-only tools + `propose`), `packages/orchestrator` (93 tests + safety property test; mutation-tested 18/18): hero scenario, clarification, cards, cancel/expiry/edit, retries, lookup, faults. **Live model NOT yet run: needs `ANTHROPIC_API_KEY` in a local `.env` (copy `.env.example`).** Then `pnpm --filter @zc/orchestrator smoke` (15 sentences, sanity only) and `... cli`.
-- [ ] M4 web UI. M5 data. M6 eval. M7 voice. M8 demo. M9 docs.
+- [x] **M5 data done** (2026-10-16): `eval/gen` (agy generated 300 candidates, deterministic 40/60 split), `eval/data` (dev 120 / held-out 180). Labels by **three LLM families** (agy, Fable, Haiku), adjudicated by `eval/gen/adjudicate.py`; **no human labeller** (disclose in docs/19). Held-out frozen: `eval/data/heldout.sha256`. See `eval/data/README.md` for the policy calls.
+- [x] **M6 harness done** (`eval/src/run.ts`, `pnpm --filter @zc/eval eval -- --split dev --mode tools`). Haiku 5.5 on **dev**: tools mode e2e 97.5% (117/120), S1 0/120; workflow mode 90.0%. Prompt/resolver were tuned on dev, so these are optimistic. **Held-out not run** (needs `--allow-heldout`, once, final candidate only). Latency/tokens in cached runs are not real: rerun with `LLM_CACHE=0` for those numbers.
+- [ ] M4 web UI. M7 voice. M8 demo. M9 docs.
 
 ## Next steps
-1. Put the Anthropic key in a local `.env`, run `smoke` in both modes (tools vs workflow), fix the prompt where it fails.
+1. (done) live smoke 15/15 on Haiku; dev eval runs.
 2. M4 web UI (Next.js, RTL, phone-shaped) over `turn` / `confirm` / `cancel` / `tick`; the UI only knows `card_id`.
-3. Dev-set generation (M5) early: it runs in the background; hand-label; hash-freeze held-out. Then eval harness (M6) for the MVP on **dev** only.
+3. (done) dev set + harness. Remaining eval work: Sonnet comparison on dev, one no-cache run for real latency/cost, error analysis write-up, held-out run once before the progress review.
 4. Voice spike (LiveKit + RegaLabs) in weeks 1 to 2; keep the text path independent.
 5. 2 to 3 interviews if possible (docs/17); a second Iraqi labeller if possible.
 6. Add gitleaks + OSV-Scanner to CI.
