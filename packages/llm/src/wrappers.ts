@@ -3,7 +3,7 @@
 import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
-import type { ChatClient, CompleteRequest, CompleteResponse } from "./types";
+import { weightedTokens, type ChatClient, type CompleteRequest, type CompleteResponse } from "./types";
 
 export const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -46,7 +46,7 @@ export function withBudget(inner: ChatClient, o: { maxTokensPerDay: number; now?
       if (d !== day) { day = d; used = 0; }
       if (used >= o.maxTokensPerDay) throw new BudgetExceededError(`daily token budget of ${o.maxTokensPerDay} reached for ${inner.id}`);
       const res = await inner.complete(req);
-      used += res.usage.input + res.usage.output;
+      used += weightedTokens(res.usage);
       return res;
     },
   };

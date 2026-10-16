@@ -1,7 +1,7 @@
 // The agent loop (docs/03): read-only lookups, then `propose`. Provider-agnostic: works with any ChatClient.
 // Output is the RAW intent. It is untrusted until Zod + cross-checks + resolver pass downstream.
 import { argSchemas, FINAL_TOOL, READ_TOOLS, toolsFor, type ReadToolName, type ToolHost } from "./tools";
-import { buildSystemPrompt, type PromptMode } from "./prompt";
+import { buildSystemParts, type PromptMode } from "./prompt";
 import { addUsage, type Block, type ChatClient, type Msg, type Usage } from "./types";
 
 export type UnderstandInput = { text: string; context: { billers: string[]; awaiting?: string | undefined; recent?: string | undefined } };
@@ -20,7 +20,7 @@ const wrap = (data: unknown): string =>
 export function createUnderstander(opts: UnderstanderOptions): Understander {
   const { chat, mode } = opts;
   const maxToolCalls = opts.maxToolCalls ?? 4;
-  const maxTokens = opts.maxTokens ?? 1024;
+  const maxTokens = opts.maxTokens ?? 700; // a propose call is ~150-350 tokens
   if (mode === "tools" && !opts.host) throw new Error("tools mode needs a ToolHost");
 
   async function runTool(name: ReadToolName, input: unknown): Promise<{ content: string; ok: boolean }> {
@@ -43,7 +43,7 @@ export function createUnderstander(opts: UnderstanderOptions): Understander {
 
   return {
     async understand(input) {
-      const system = buildSystemPrompt(mode, input.context);
+      const { prefix, system } = buildSystemParts(mode, input.context);
       const tools = toolsFor(mode);
       const messages: Msg[] = [{ role: "user", content: [{ type: "text", text: input.text }] }];
       const trace: ToolTrace[] = [];
@@ -54,7 +54,7 @@ export function createUnderstander(opts: UnderstanderOptions): Understander {
 
       for (let turn = 1; turn <= maxTurns; turn++) {
         const forced = mode === "workflow" || executed >= maxToolCalls || turn === maxTurns;
-        const res = await chat.complete({ system, messages, tools, toolChoice: forced ? { name: FINAL_TOOL } : "auto", maxTokens });
+        const res = await chat.complete({ system, systemPrefix: prefix, messages, tools, toolChoice: forced ? { name: FINAL_TOOL } : "auto", maxTokens });
         usage = addUsage(usage, res.usage);
         via = res.via ?? via;
         const uses = res.content.filter((b): b is Extract<Block, { type: "tool_use" }> => b.type === "tool_use");

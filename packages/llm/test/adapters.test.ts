@@ -22,6 +22,26 @@ describe("Anthropic adapter", () => {
     expect(p.tools[1].input_schema.type).toBe("object");
     expect(p.messages).toEqual([{ role: "user", content: [{ type: "text", text: "دز خمسين ألف لأحمد" }] }]);
   });
+  it("with a stable prefix: two system blocks, the first marked for caching; no prefix: a plain string", async () => {
+    const f = fakeClient(resp);
+    const c = anthropicChat({ client: f.client, model: "m" });
+    await c.complete(req({ system: "STABLE\n\nDYNAMIC part", systemPrefix: "STABLE" }));
+    await c.complete(req({ system: "ONLY" }));
+    expect(f.calls[0].system).toEqual([{ type: "text", text: "STABLE", cache_control: { type: "ephemeral" } }, { type: "text", text: "DYNAMIC part" }]);
+    expect(f.calls[1].system).toBe("ONLY");
+  });
+  it("a prefix that is not the start of the system text is ignored (never reorders the prompt)", async () => {
+    const f = fakeClient(resp);
+    await anthropicChat({ client: f.client, model: "m" }).complete(req({ system: "SOMETHING ELSE", systemPrefix: "STABLE" }));
+    expect(f.calls[0].system).toBe("SOMETHING ELSE");
+  });
+  it("reports cache reads and writes separately from normal input", async () => {
+    const f = fakeClient({ ...resp, usage: { input_tokens: 200, output_tokens: 50, cache_read_input_tokens: 4000, cache_creation_input_tokens: 0 } });
+    const r = await anthropicChat({ client: f.client, model: "m" }).complete(req());
+    expect(r.usage).toEqual({ input: 200, output: 50, cacheRead: 4000 });
+    const g = fakeClient({ ...resp, usage: { input_tokens: 10, output_tokens: 5, cache_creation_input_tokens: 4164 } });
+    expect((await anthropicChat({ client: g.client, model: "m" }).complete(req())).usage).toEqual({ input: 10, output: 5, cacheWrite: 4164 });
+  });
   it("forced tool choice", async () => {
     const f = fakeClient(resp);
     await anthropicChat({ client: f.client, model: "m" }).complete(req({ toolChoice: { name: "propose" } }));

@@ -127,3 +127,12 @@ describe("withCache: identical requests cost nothing", () => {
     await expect(c.complete(REQ)).resolves.toBeTruthy();
   });
 });
+
+describe("weightedTokens: a cache read is cheap, a cache write is slightly dearer", () => {
+  it("counts a read at a tenth and a write at 1.25x", async () => {
+    const { weightedTokens, addUsage } = await import("../src/types");
+    expect(weightedTokens({ input: 200, output: 50, cacheRead: 4000 })).toBe(200 + 50 + 400);
+    expect(weightedTokens({ input: 10, output: 5, cacheWrite: 4000 })).toBe(10 + 5 + 5000);
+    expect(addUsage({ input: 1, output: 2, cacheRead: 3 }, { input: 1, output: 1, cacheRead: 4, cacheWrite: 5 })).toEqual({ input: 2, output: 3, cacheRead: 7, cacheWrite: 5 });
+  });
+});

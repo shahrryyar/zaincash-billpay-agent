@@ -33,28 +33,28 @@ function jsonSchema(schema: z.ZodType): Record<string, unknown> {
 export const TOOL_DEFS: Record<ReadToolName | typeof FINAL_TOOL, ToolDef> = {
   search_contacts: {
     name: "search_contacts",
-    description: "Look up the user's saved contacts by the name or relation the user said (e.g. «أحمد», «أمي»). Returns masked candidates with handles (c1, c2...). Use it to see whether a name is ambiguous. Read-only.",
+    description: "Find saved contacts by the name or relation the user said. Returns masked candidates with handles. Read-only.",
     input_schema: jsonSchema(SearchContactsArgs),
   },
   list_bills: {
     name: "list_bills",
-    description: "List the user's bill accounts and the outstanding amount of each (electricity, generator, internet, water, mobile credit). Read-only.",
+    description: "The user's bill accounts and outstanding amounts. Read-only.",
     input_schema: jsonSchema(ListBillsArgs),
   },
   get_balance: { name: "get_balance", description: "The user's current balance in IQD. Read-only.", input_schema: jsonSchema(GetBalanceArgs) },
   get_history: {
     name: "get_history",
-    description: "The user's most recent transactions (max 5), optionally only for one contact handle. Read-only.",
+    description: "Recent transactions (max 5), optionally for one contact handle. Read-only.",
     input_schema: jsonSchema(GetHistoryArgs),
   },
   quote: {
     name: "quote",
-    description: "Check, without side effects, whether a transfer or bill payment would be possible (balance, limits, biller status) and what the fee would be. Read-only; it does NOT send anything.",
+    description: "Check without side effects whether a payment would be possible and its fee. Read-only; sends nothing.",
     input_schema: jsonSchema(QuoteArgs),
   },
   propose: {
     name: "propose",
-    description: "Your ANSWER. Return the structured intent for the user's message. It only describes what the user asked for; it never sends money. Call this exactly once when you are done.",
+    description: "Your ANSWER: the structured intent. It only describes what the user asked; it never sends money. Call exactly once.",
     input_schema: jsonSchema(Intent),
   },
 };
