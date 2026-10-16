@@ -89,7 +89,7 @@ describe("POST /quotes (pre-check, no side effects)", () => {
   const q = (w: ReturnType<typeof makeWallet>, body: unknown) => w.call("POST", "/quotes", body);
   it("transfer: ok with fee and balance after", async () => {
     const r = await q(makeWallet(), { kind: "transfer", from: DEMO_USER, to_contact: ahmed, amount_iqd: 50_000 });
-    expect(r.json).toMatchObject({ ok: true, amount_iqd: 50_000, fee_iqd: 0, total_iqd: 50_000, balance_after_iqd: 150_000, errors: [], counterparty_name: "أحمد علي" });
+    expect(r.json).toMatchObject({ ok: true, amount_iqd: 50_000, fee_iqd: 300, total_iqd: 50_300, balance_after_iqd: 149_700, errors: [], counterparty_name: "أحمد علي" });
   });
   it("insufficient balance", async () => {
     const r = await q(makeWallet(), { kind: "transfer", from: DEMO_USER, to_contact: "c_mama", amount_iqd: 1_000_000 });
@@ -110,15 +110,15 @@ describe("POST /quotes (pre-check, no side effects)", () => {
     const r = await q(makeWallet(), { kind: "transfer", from: DEMO_USER, to_contact: ahmed, amount_iqd: 50_100 });
     expect(r.json.errors).toContain("INVALID_AMOUNT");
   });
-  it("daily limit", async () => {
+  it("monthly limit for person-to-person transfers (2,500,000 IQD, ZainCash Fees & Limits)", async () => {
     const w = makeWallet();
     w.db.prepare("UPDATE users SET balance_iqd = 9000000 WHERE id = ?").run(DEMO_USER);
-    expect((await q(w, { kind: "transfer", from: DEMO_USER, to_contact: ahmed, amount_iqd: 1_600_000 })).json.errors).toContain("LIMIT_EXCEEDED");
+    expect((await q(w, { kind: "transfer", from: DEMO_USER, to_contact: ahmed, amount_iqd: 2_600_000 })).json.errors).toContain("LIMIT_EXCEEDED");
   });
   it("bill: amount comes from the wallet, fee shown", async () => {
     const w = makeWallet();
     expect((await q(w, { kind: "bill_pay", from: DEMO_USER, bill_account: "ba_elec" })).json).toMatchObject({ ok: true, amount_iqd: 37_500, fee_iqd: 0, balance_after_iqd: 162_500 });
-    expect((await q(w, { kind: "bill_pay", from: DEMO_USER, bill_account: "ba_gen" })).json).toMatchObject({ ok: true, amount_iqd: 60_000, fee_iqd: 250, total_iqd: 60_250, balance_after_iqd: 139_750 });
+    expect((await q(w, { kind: "bill_pay", from: DEMO_USER, bill_account: "ba_gen" })).json).toMatchObject({ ok: true, amount_iqd: 60_000, fee_iqd: 0, total_iqd: 60_000, balance_after_iqd: 140_000 });
   });
   it("bill: already paid, biller down, open amount needs an amount", async () => {
     const w = makeWallet();
@@ -141,10 +141,10 @@ describe("POST /transfers: confirmation gate (docs/07), no execution without a v
     const token = await w.mint(S, transferPayload(ahmed, 50_000));
     const r = await exec(w, "/transfers", "key-1", token, transferBody(S, ahmed, 50_000));
     expect(r.status).toBe(200);
-    expect(r.json.transaction).toMatchObject({ kind: "transfer", amount_iqd: 50_000, fee_iqd: 0, counterparty: { id: ahmed, name: "أحمد علي" } });
+    expect(r.json.transaction).toMatchObject({ kind: "transfer", amount_iqd: 50_000, fee_iqd: 300, counterparty: { id: ahmed, name: "أحمد علي" } });
     expect(r.json.transaction.reference).toMatch(/^ZC-\d{8}$/);
-    expect(r.json.balance_after_iqd).toBe(150_000);
-    expect(w.balance(DEMO_USER)).toBe(150_000);
+    expect(r.json.balance_after_iqd).toBe(149_700);
+    expect(w.balance(DEMO_USER)).toBe(149_700);
     expect(w.balance("u_ahmed_ali")).toBe(100_000);
     expect(totalMoney(w.db)).toBe(m0);
     expect(r.headers.get("idempotent-replay")).toBeNull();
@@ -187,7 +187,7 @@ describe("POST /transfers: confirmation gate (docs/07), no execution without a v
     expect((await exec(w, "/transfers", "k1", token, transferBody(S, ahmed, 50_000))).status).toBe(200);
     const again = await exec(w, "/transfers", "k2", token, transferBody(S, ahmed, 50_000));
     expect(again.status).toBe(403);
-    expect(w.balance(DEMO_USER)).toBe(150_000);
+    expect(w.balance(DEMO_USER)).toBe(149_700);
   });
   it("expired token: 403", async () => {
     const w = makeWallet();
@@ -213,7 +213,7 @@ describe("POST /transfers: idempotency (docs/07), no duplicate debit", () => {
     expect(b.json).toEqual(a.json);
     expect(b.headers.get("idempotent-replay")).toBe("true");
     expect(w.txCount()).toBe(12);
-    expect(w.balance(DEMO_USER)).toBe(150_000);
+    expect(w.balance(DEMO_USER)).toBe(149_700);
   });
   it("same key, different payload: 422 IDEMPOTENCY_KEY_REUSED, no new debit", async () => {
     const w = makeWallet();
@@ -223,7 +223,7 @@ describe("POST /transfers: idempotency (docs/07), no duplicate debit", () => {
     const r = await exec(w, "/transfers", "key-1", t2, transferBody(S, ahmed, 100_000));
     expect(r.status).toBe(422);
     expect(r.json.error.code).toBe("IDEMPOTENCY_KEY_REUSED");
-    expect(w.balance(DEMO_USER)).toBe(150_000);
+    expect(w.balance(DEMO_USER)).toBe(149_700);
   });
   it("two genuinely separate payments of the same amount are both allowed (own card, token, key)", async () => {
     const w = makeWallet();
@@ -231,7 +231,7 @@ describe("POST /transfers: idempotency (docs/07), no duplicate debit", () => {
       const t = await w.mint(S, transferPayload(ahmed, 50_000));
       expect((await exec(w, "/transfers", k, t, transferBody(S, ahmed, 50_000))).status).toBe(200);
     }
-    expect(w.balance(DEMO_USER)).toBe(100_000);
+    expect(w.balance(DEMO_USER)).toBe(99_400); // two payments of 50,000 + 300 fee each
     expect(w.txCount()).toBe(13);
   });
   it("a deterministic failure is stored under the key so the outcome stays stable; the token stays unused", async () => {
@@ -280,21 +280,22 @@ describe("POST /transfers: business rules fail closed", () => {
       expect((await exec(w, "/transfers", "k" + bad, t, { ...transferBody(S, ahmed, 5000), amount_iqd: bad })).status).toBe(400);
     }
   });
-  it("daily limit counts today's earlier transfers", async () => {
+  it("monthly limit counts this month's earlier transfers", async () => {
     const w = makeWallet();
     w.db.prepare("UPDATE users SET balance_iqd = 9000000 WHERE id = ?").run(DEMO_USER);
     const t1 = await w.mint(S, transferPayload(ahmed, 1_000_000));
     expect((await exec(w, "/transfers", "k1", t1, transferBody(S, ahmed, 1_000_000))).status).toBe(200);
-    const t2 = await w.mint(S, transferPayload(ahmed, 600_000));
-    const r = await exec(w, "/transfers", "k2", t2, transferBody(S, ahmed, 600_000));
+    const t2 = await w.mint(S, transferPayload(ahmed, 1_600_000));
+    const r = await exec(w, "/transfers", "k2", t2, transferBody(S, ahmed, 1_600_000));
     expect(r.status).toBe(422);
     expect(r.json.error.code).toBe("LIMIT_EXCEEDED");
   });
   it("the full balance can be sent, never more", async () => {
     const w = makeWallet();
-    const t = await w.mint(S, transferPayload(ahmed, 200_000));
-    expect((await exec(w, "/transfers", "k", t, transferBody(S, ahmed, 200_000))).status).toBe(200);
-    expect(w.balance(DEMO_USER)).toBe(0);
+    // 199,000 + 995 fee = 199,995: the most that fits in 200,000 with the 0.5% fee (amounts are multiples of 250)
+    const t = await w.mint(S, transferPayload(ahmed, 199_000));
+    expect((await exec(w, "/transfers", "k", t, transferBody(S, ahmed, 199_000))).status).toBe(200);
+    expect(w.balance(DEMO_USER)).toBe(5);
     const t2 = await w.mint(S, transferPayload(ahmed, 250));
     expect((await exec(w, "/transfers", "k2", t2, transferBody(S, ahmed, 250))).status).toBe(422);
   });
@@ -314,14 +315,14 @@ describe("POST /bill-payments", () => {
     expect((w.db.prepare("SELECT status s FROM bills WHERE account_id='ba_elec'").get() as any).s).toBe("paid");
     expect(totalMoney(w.db)).toBe(m0);
   });
-  it("shows the fee: generator 60,000 + 250", async () => {
+  it("bills carry no extra fee (ZainCash: government bills and in-app service providers are free)", async () => {
     const w = makeWallet();
     const m0 = totalMoney(w.db);
-    const t = await w.mint(S, billPayload("b_generator", "GN-20311", 60_000, 250));
+    const t = await w.mint(S, billPayload("b_generator", "GN-20311", 60_000, 0));
     const r = await exec(w, "/bill-payments", "k", t, body("ba_gen"));
-    expect(r.json.transaction).toMatchObject({ amount_iqd: 60_000, fee_iqd: 250 });
-    expect(w.balance(DEMO_USER)).toBe(139_750);
-    expect((w.db.prepare("SELECT balance_iqd b FROM settlements WHERE biller_id='b_generator'").get() as any).b).toBe(60_250); // amount + fee
+    expect(r.json.transaction).toMatchObject({ amount_iqd: 60_000, fee_iqd: 0 });
+    expect(w.balance(DEMO_USER)).toBe(140_000);
+    expect((w.db.prepare("SELECT balance_iqd b FROM settlements WHERE biller_id='b_generator'").get() as any).b).toBe(60_000);
     expect(totalMoney(w.db)).toBe(m0); // the fee is not destroyed
   });
   it("paying again (new card, new key): 409 BILL_ALREADY_PAID, nothing debited", async () => {
@@ -341,7 +342,7 @@ describe("POST /bill-payments", () => {
   });
   it("biller down: 503 BILLER_UNAVAILABLE, nothing debited", async () => {
     const w = makeWallet();
-    const t = await w.mint(S, billPayload("b_mobile_topup", "07700000001", 5000, 250));
+    const t = await w.mint(S, billPayload("b_mobile_topup", "07700000001", 5000, 0));
     const r = await exec(w, "/bill-payments", "k", t, body("ba_topup", 5000));
     expect(r.status).toBe(503);
     expect(r.json.error.code).toBe("BILLER_UNAVAILABLE");
@@ -381,7 +382,7 @@ describe("fault injection (demo + eval only): break it on purpose", () => {
     expect(w.balance(DEMO_USER)).toBe(200_000);
     const b = await exec(w, "/transfers", "key-1", t, transferBody(S, ahmed, 50_000));
     expect(b.status).toBe(200);
-    expect(w.balance(DEMO_USER)).toBe(150_000);
+    expect(w.balance(DEMO_USER)).toBe(149_700);
     expect(w.txCount()).toBe(12);
   });
   it("timeout_after_commit (THE demo): response lost, retry replays, exactly one debit", async () => {
@@ -391,13 +392,13 @@ describe("fault injection (demo + eval only): break it on purpose", () => {
     const first = exec(w, "/transfers", "key-1", t, transferBody(S, ahmed, 50_000));
     const raced = await Promise.race([first, sleep(10).then(() => "client-timeout" as const)]);
     expect(raced).toBe("client-timeout"); // the client gave up...
-    expect(w.balance(DEMO_USER)).toBe(150_000); // ...but the server already committed
+    expect(w.balance(DEMO_USER)).toBe(149_700); // ...but the server already committed
     const retry = await exec(w, "/transfers", "key-1", t, transferBody(S, ahmed, 50_000));
     expect(retry.status).toBe(200);
     expect(retry.headers.get("idempotent-replay")).toBe("true");
     const original = (await first) as Awaited<typeof retry>;
     expect(retry.json).toEqual(original.json); // same reference number
-    expect(w.balance(DEMO_USER)).toBe(150_000); // still ONE debit
+    expect(w.balance(DEMO_USER)).toBe(149_700); // still ONE debit
     expect(w.txCount()).toBe(12);
   });
   it("lookup by key decides an unknown outcome (GET transactions?idempotencyKey=)", async () => {
@@ -420,12 +421,12 @@ describe("fault injection (demo + eval only): break it on purpose", () => {
   it("biller_down:<id> makes that biller unavailable until reset", async () => {
     const w = makeWallet();
     await faults(w, { mode: "biller_down", biller: "b_generator" });
-    const t = await w.mint(S, billPayload("b_generator", "GN-20311", 60_000, 250));
+    const t = await w.mint(S, billPayload("b_generator", "GN-20311", 60_000, 0));
     const r = await exec(w, "/bill-payments", "k", t, { session_id: S, from: DEMO_USER, bill_account: "ba_gen" });
     expect(r.status).toBe(503);
     expect(w.balance(DEMO_USER)).toBe(200_000);
     await w.call("POST", "/admin/reset", {}, ADMIN);
-    const t2 = await w.mint(S, billPayload("b_generator", "GN-20311", 60_000, 250));
+    const t2 = await w.mint(S, billPayload("b_generator", "GN-20311", 60_000, 0));
     expect((await exec(w, "/bill-payments", "k2", t2, { session_id: S, from: DEMO_USER, bill_account: "ba_gen" })).status).toBe(200);
   });
   it("faults are counted and expire", async () => {

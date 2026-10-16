@@ -6,6 +6,7 @@ import { join, resolve } from "node:path";
 import { createApp } from "../src/app";
 import { openDb } from "../src/db";
 import { totalMoney, SEED_NOW, DEMO_USER } from "../src/seed";
+import { p2pFee } from "../src/fees";
 import { makeWallet, exec, transferBody, transferPayload } from "./helpers";
 
 const SEED_TX = 11;
@@ -38,7 +39,7 @@ describe("concurrency, in one process: 20 parallel same-key requests x 50 keys",
     const firsts = responses.filter((r) => r.headers.get("idempotent-replay") === null).length;
     expect(firsts).toBe(KEYS); // exactly one real execution per key, everything else is a replay
     expect(w.txCount()).toBe(SEED_TX + KEYS);
-    expect(w.balance(DEMO_USER)).toBe(200_000 - KEYS * AMOUNT);
+    expect(w.balance(DEMO_USER)).toBe(200_000 - KEYS * (AMOUNT + p2pFee(AMOUNT)));
     expect(totalMoney(w.db)).toBe(SEED_MONEY);
     expect(negatives(w.db)).toBe(0);
   });
@@ -50,7 +51,7 @@ describe("concurrency, in one process: 20 parallel same-key requests x 50 keys",
     expect(rs.filter((r) => r.status === 200)).toHaveLength(1);
     expect(rs.filter((r) => r.status === 403)).toHaveLength(19);
     expect(w.txCount()).toBe(SEED_TX + 1);
-    expect(w.balance(DEMO_USER)).toBe(200_000 - AMOUNT);
+    expect(w.balance(DEMO_USER)).toBe(200_000 - AMOUNT - p2pFee(AMOUNT));
   });
 });
 

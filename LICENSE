@@ -1,21 +1,26 @@
-MIT License
+PROPRIETARY LICENSE - ALL RIGHTS RESERVED
 
-Copyright (c) 2026 Shahryar Sabir Muhammed
+Copyright (c) 2026 Shahryar Sabir Muhammed. All rights reserved.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+This software and its documentation (the "Work") were created for the ZainCash
+Agentic AI Challenge (Topic 04: Bill Pay & Transfer Agent).
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+NO LICENSE IS GRANTED. Until this file is replaced by the copyright holder with
+a different license, no person or organisation other than the copyright holder
+may use, run, copy, modify, merge, publish, distribute, sublicense, sell,
+host, or create derivative works of the Work, in whole or in part, for any
+purpose, commercial or non-commercial. Making the source visible on a public
+code-hosting service does not grant any of these rights.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+Any use that is not expressly authorised in writing by the copyright holder is
+prohibited. This notice may be updated, narrowed or replaced only by the
+copyright holder, and only a newer version of this file published by the
+copyright holder changes the terms above.
+
+THE WORK IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND. The Work is a
+prototype that talks to a MOCK wallet with SYNTHETIC data; it is not a payment
+product and must not be connected to real payment systems or real customer data.
+
+ZainCash and other names are trademarks of their respective owners and are
+used here only to describe the challenge. No affiliation or endorsement is
+implied.

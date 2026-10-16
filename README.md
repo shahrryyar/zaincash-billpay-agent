@@ -90,3 +90,7 @@ Held-out is frozen (`eval/data/heldout.sha256`) and runs once, only with `--allo
 | Demo clarity | 5% | Hero scenario in the first 60 seconds |
 
 **Gates before scoring:** repo with commit history across the build period · live run on judge input · full disclosure · ≥3 documented failure modes.
+
+## License
+
+**Proprietary, all rights reserved** (see [LICENSE](LICENSE)). Built for the ZainCash Agentic AI Challenge. No one other than the author may use, run or copy this code until the license is updated.

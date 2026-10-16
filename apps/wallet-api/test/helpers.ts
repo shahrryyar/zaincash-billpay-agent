@@ -1,5 +1,6 @@
 import { payloadHash, type Payload } from "@zc/core";
 import { createApp } from "../src/app";
+import { p2pFee } from "../src/fees";
 import { openDb, type Db } from "../src/db";
 import { applySeed, SEED_NOW, DEMO_USER } from "../src/seed";
 
@@ -34,7 +35,7 @@ export function makeWallet(opts: { dbPath?: string; seed?: boolean } = {}) {
 }
 export type Wallet = ReturnType<typeof makeWallet>;
 
-export const transferPayload = (to: string, amount: number, from = DEMO_USER): Payload => ({ kind: "transfer", from, to_id: to, amount_iqd: amount, fee_iqd: 0 });
+export const transferPayload = (to: string, amount: number, from = DEMO_USER): Payload => ({ kind: "transfer", from, to_id: to, amount_iqd: amount, fee_iqd: p2pFee(amount) });
 export const billPayload = (biller: string, ref: string, amount: number, fee: number, from = DEMO_USER): Payload => ({ kind: "bill_pay", from, biller_id: biller, account_ref: ref, amount_iqd: amount, fee_iqd: fee });
 
 export const transferBody = (session: string, to: string, amount: number, from = DEMO_USER) => ({ session_id: session, from, to_contact: to, amount_iqd: amount });

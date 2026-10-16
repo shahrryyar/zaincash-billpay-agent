@@ -23,16 +23,16 @@ describe("the hero scenario: one sentence to a confirmed, exactly-once transfer"
     const card = r2.card!;
     expect(card).toMatchObject({
       kind: "transfer", recipient: { name: "أحمد علي", masked: "••••4471" }, amount_iqd: 50_000, amount_text: "50,000 د.ع", amount_words: "خمسين الف",
-      fee_iqd: 0, balance_before_iqd: 200_000, balance_after_iqd: 150_000, first_time_recipient: false, ttl_seconds: 120,
+      fee_iqd: 300, balance_before_iqd: 200_000, balance_after_iqd: 149_700, first_time_recipient: false, ttl_seconds: 120,
     });
     expect(card.nothing_sent).toBe("ما انرسل شي بعد");
     expect(e.balance()).toBe(200_000); // still nothing sent
 
     const r3 = await e.orch.confirm("s1", card.card_id);
     expect(r3.phase).toBe("EXECUTED");
-    expect(text(r3)).toMatch(/انرسلت 50,000 د\.ع لأحمد علي\. رقم العملية ZC-\d{8}\. رصيدك هسه 150,000/);
-    expect(r3.result).toMatchObject({ amount_iqd: 50_000, balance_after_iqd: 150_000 });
-    expect(e.balance()).toBe(150_000);
+    expect(text(r3)).toMatch(/انرسلت 50,000 د\.ع لأحمد علي\. رقم العملية ZC-\d{8}\. رصيدك هسه 149,700/);
+    expect(r3.result).toMatchObject({ amount_iqd: 50_000, balance_after_iqd: 149_700 });
+    expect(e.balance()).toBe(149_700);
     expect(e.balance("u_ahmed_ali")).toBe(100_000);
     expect(e.txCount()).toBe(SEED_TX + 1);
   });
@@ -93,7 +93,7 @@ describe("ask, never guess", () => {
     const card = (await e.orch.turn("s", { text: "اي" })).card!;
     const done = await e.orch.confirm("s", card.card_id);
     expect(done.phase).toBe("EXECUTED");
-    expect(e.balance()).toBe(175_000);
+    expect(e.balance()).toBe(174_700); // 25,000 + 300 fee
     expect(done.result?.amount_iqd).toBe(25_000);
   });
   it("…and «لا» -> asks the amount in words", async () => {
@@ -185,11 +185,11 @@ describe("bills", () => {
   it("«ادفع المولدة»: the amount comes from the wallet, the fee is shown", async () => {
     const e = setup({ script: { "ادفع المولدة": billIntent("generator", "المولدة") } });
     const r = await e.orch.turn("s", { text: "ادفع المولدة" });
-    expect(r.card).toMatchObject({ kind: "bill_pay", biller: { name: "اشتراك المولدة (تجريبي)" }, amount_iqd: 60_000, fee_iqd: 250, total_iqd: 60_250, balance_after_iqd: 139_750 });
+    expect(r.card).toMatchObject({ kind: "bill_pay", biller: { name: "اشتراك المولدة (تجريبي)" }, amount_iqd: 60_000, fee_iqd: 0, total_iqd: 60_000, balance_after_iqd: 140_000 });
     const done = await e.orch.confirm("s", r.card!.card_id);
     expect(done.phase).toBe("EXECUTED");
     expect(text(done)).toContain("اندفعت فاتورة");
-    expect(e.balance()).toBe(139_750);
+    expect(e.balance()).toBe(140_000);
   });
   it("already-paid bill fails safe at the pre-check, no card", async () => {
     const e = setup({ script: { "ادفع الماي": billIntent("water", "الماي") } });
@@ -320,7 +320,7 @@ describe("info requests and multiple actions", () => {
     expect(r2.card!.card_id).not.toBe(r1.card!.card_id);
     const r3 = await e.orch.confirm("s", r2.card!.card_id);
     expect(r3.phase).toBe("EXECUTED");
-    expect(e.balance()).toBe(200_000 - 37_500 - 10_000);
+    expect(e.balance()).toBe(200_000 - 37_500 - 10_000 - 300);
     expect(e.txCount()).toBe(SEED_TX + 2);
   });
   it("two actions, the SECOND has a dropped-ألف amount: the first card keeps its own amount, the second asks later", async () => {
@@ -331,7 +331,7 @@ describe("info requests and multiple actions", () => {
     const r2 = await e.orch.confirm("s", r1.card!.card_id);
     expect(r2.phase).toBe("CLARIFYING"); // now the wife's amount is asked, with her name
     expect(text(r2)).toContain("شكد تريد تدز");
-    expect(e.balance()).toBe(200_000 - 20_000);
+    expect(e.balance()).toBe(200_000 - 20_000 - 300);
     const r3 = await e.orch.turn("s", { text: "اربعين الف" });
     expect(r3.card).toMatchObject({ amount_iqd: 40_000, recipient: { name: "مرتي" } });
     expect(e.txCount()).toBe(SEED_TX + 1); // the second is still only a card
@@ -396,7 +396,7 @@ describe("the card: cancel, expiry, edits, double taps (invariant 1)", () => {
     expect(text(stale)).toContain("ما انرسل شي");
     expect(e.balance()).toBe(200_000);
     await e.orch.confirm("s", r.card!.card_id);
-    expect(e.balance()).toBe(180_000);
+    expect(e.balance()).toBe(179_700);
   });
   it("a made-up card_id never executes", async () => {
     const { e } = await cardEnv();
@@ -414,7 +414,7 @@ describe("the card: cancel, expiry, edits, double taps (invariant 1)", () => {
     const { e, card } = await cardEnv();
     const [a, b] = await Promise.all([e.orch.confirm("s", card.card_id), e.orch.confirm("s", card.card_id)]);
     expect(e.txCount()).toBe(SEED_TX + 1);
-    expect(e.balance()).toBe(150_000);
+    expect(e.balance()).toBe(149_700);
     expect(a.result?.reference).toBeTruthy();
     expect(b.result?.reference).toBe(a.result?.reference);
   });
@@ -422,7 +422,7 @@ describe("the card: cancel, expiry, edits, double taps (invariant 1)", () => {
     const { e, card } = await cardEnv();
     await e.orch.confirm("s", card.card_id);
     e.script.set("شكد رصيدي", infoIntent("balance"));
-    expect(text(await e.orch.turn("s", { text: "شكد رصيدي" }))).toContain("150,000");
+    expect(text(await e.orch.turn("s", { text: "شكد رصيدي" }))).toContain("149,700");
   });
 });
 
@@ -439,7 +439,7 @@ describe("retries and unknown outcomes (invariant 2: no duplicate debit)", () =>
     expect(r.phase).toBe("EXECUTED");
     expect(text(r)).toContain("جاي نتأكد");
     expect(text(r)).toMatch(/انرسلت 50,000 د\.ع لعلي كريم/);
-    expect(e.balance()).toBe(150_000);
+    expect(e.balance()).toBe(149_700);
     expect(e.txCount()).toBe(SEED_TX + 1);
     await new Promise((res) => setTimeout(res, 150)); // let the slow first response finish
     expect(e.txCount()).toBe(SEED_TX + 1);
@@ -450,7 +450,7 @@ describe("retries and unknown outcomes (invariant 2: no duplicate debit)", () =>
     const r = await e.orch.confirm("s", card.card_id);
     expect(r.phase).toBe("EXECUTED");
     expect(e.txCount()).toBe(SEED_TX + 1);
-    expect(e.balance()).toBe(150_000);
+    expect(e.balance()).toBe(149_700);
   });
   it("the wallet stays down: 3 retries, then a lookup by key says nothing happened -> FAILED_SAFE", async () => {
     const { e, card } = await ready();
@@ -519,7 +519,7 @@ describe("the model's tools end to end (tools mode)", () => {
     const found = (await host.searchContacts({ mention: "حسين" })) as any;
     expect(found).toMatchObject({ match: "exact", candidates: [{ handle: "c1", name: "حسين", masked: "••••0302" }] });
     const q = (await host.quote({ kind: "transfer", contact_handle: "c1", amount_iqd: 5000 })) as any;
-    expect(q).toMatchObject({ ok: true, fee_iqd: 0 });
+    expect(q).toMatchObject({ ok: true, fee_iqd: 300 }); // 0.5% of 5,000 is below the 300 IQD minimum
     expect(JSON.stringify(found)).not.toContain("0770000");
   });
   it("tool results never expose full phone numbers", async () => {

@@ -52,7 +52,7 @@ describe("property: money moves only on an explicit Confirm of the live card, in
     await fc.assert(
       fc.asyncProperty(convArb, async (ops) => {
         const e = setup({ script: SCRIPT, timeoutMs: 40 });
-        const money0 = (e.db.prepare("SELECT (SELECT COALESCE(SUM(balance_iqd),0) FROM users) + (SELECT COALESCE(SUM(balance_iqd),0) FROM settlements) m").get() as { m: number }).m;
+        const money0 = (e.db.prepare("SELECT (SELECT COALESCE(SUM(balance_iqd),0) FROM users) + (SELECT COALESCE(SUM(balance_iqd),0) FROM settlements) + (SELECT COALESCE(SUM(balance_iqd),0) FROM fee_pool) m").get() as { m: number }).m;
         const seenIds: string[] = [];
         let liveConfirms = 0;
         const replies: string[] = [];
@@ -102,7 +102,7 @@ describe("property: money moves only on an explicit Confirm of the live card, in
         expect(newTx).toBeLessThanOrEqual(liveConfirms);
         if (liveConfirms === 0) { expect(newTx).toBe(0); expect(e.balance()).toBe(200_000); }
         // I3: money conserved, no negatives, balance == opening - sent
-        const money = (e.db.prepare("SELECT (SELECT COALESCE(SUM(balance_iqd),0) FROM users) + (SELECT COALESCE(SUM(balance_iqd),0) FROM settlements) m").get() as { m: number }).m;
+        const money = (e.db.prepare("SELECT (SELECT COALESCE(SUM(balance_iqd),0) FROM users) + (SELECT COALESCE(SUM(balance_iqd),0) FROM settlements) + (SELECT COALESCE(SUM(balance_iqd),0) FROM fee_pool) m").get() as { m: number }).m;
         expect(money).toBe(money0);
         expect((e.db.prepare("SELECT COUNT(*) c FROM users WHERE balance_iqd < 0").get() as { c: number }).c).toBe(0);
         const sent = (e.db.prepare("SELECT COALESCE(SUM(amount_iqd + fee_iqd),0) s FROM transactions WHERE owner_id=? AND idempotency_key NOT LIKE 'seed-key-%'").get(DEMO_USER) as { s: number }).s;

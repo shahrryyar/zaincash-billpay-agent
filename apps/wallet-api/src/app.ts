@@ -1,6 +1,7 @@
 // Mock ZainCash wallet (docs/06). NOT the real ZainCash API: synthetic data only.
 // The money path is ONE SQLite transaction (BEGIN IMMEDIATE): idempotency check, confirmation-token check,
 // business checks, debit/credit, token consumption and the stored response all commit together or not at all.
+import { p2pFee, MONTHLY_LIMIT_IQD } from "./fees";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { Hono, type Context } from "hono";
 import { z } from "zod";
@@ -110,10 +111,13 @@ export function createApp(opts: AppOptions) {
   });
 
   // ------------------------------------------------------------------ business rules (shared by quote and execute)
-  const dailyTotal = (userId: string): number => {
-    const start = now() - (now() % DAY);
-    return (db.prepare("SELECT COALESCE(SUM(amount_iqd + fee_iqd),0) s FROM transactions WHERE owner_id=? AND created_at>=?").get(userId, start) as Row).s;
-  };
+  const monthStart = (): number => { const d = new Date(now()); return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1); };
+  /** Calendar-month (UTC) totals used for ZainCash's monthly limits (see fees.ts). Amounts only, fees excluded. */
+  const monthTransfers = (userId: string): number =>
+    (db.prepare("SELECT COALESCE(SUM(amount_iqd),0) s FROM transactions WHERE owner_id=? AND kind='transfer' AND created_at>=?").get(userId, monthStart()) as Row).s;
+  const monthBills = (userId: string, code?: string): number =>
+    (db.prepare(`SELECT COALESCE(SUM(t.amount_iqd),0) s FROM transactions t JOIN bill_accounts a ON a.id=t.counterparty_id JOIN billers b ON b.id=a.biller_id
+                 WHERE t.owner_id=? AND t.kind='bill_pay' AND t.created_at>=? ${code ? "AND b.code=?" : ""}`).get(...(code ? [userId, monthStart(), code] : [userId, monthStart()])) as Row).s;
 
   /** Ordered business checks. Returns the first failing code or null. `all` collects every failing code (for quotes). */
   function transferChecks(user: Row, contactId: string, amount: number, all: boolean): { codes: string[]; contact?: Row } {
@@ -123,8 +127,8 @@ export function createApp(opts: AppOptions) {
     if (!contact) { codes.push("CONTACT_NOT_FOUND"); return { codes }; }
     if (contact.wallet_user_id === null && push("CONTACT_NOT_WALLET_USER")) return { codes, contact };
     if ((amount % SMALLEST_UNIT_IQD !== 0 || amount > MAX_AMOUNT_IQD) && push("INVALID_AMOUNT")) return { codes, contact };
-    if (dailyTotal(user.id) + amount > user.daily_limit_iqd && push("LIMIT_EXCEEDED")) return { codes, contact };
-    if (user.balance_iqd < amount && push("INSUFFICIENT_BALANCE")) return { codes, contact };
+    if (monthTransfers(user.id) + amount > MONTHLY_LIMIT_IQD.transfer && push("LIMIT_EXCEEDED")) return { codes, contact };
+    if (user.balance_iqd < amount + p2pFee(amount) && push("INSUFFICIENT_BALANCE")) return { codes, contact };
     return { codes, contact };
   }
 
@@ -138,7 +142,8 @@ export function createApp(opts: AppOptions) {
     const final = amount ?? bill?.amount_iqd ?? 0;
     const total = final + biller.fee_iqd;
     if (final % SMALLEST_UNIT_IQD !== 0 && push("INVALID_AMOUNT")) return { codes, amount: final };
-    if (dailyTotal(user.id) + total > user.daily_limit_iqd && push("LIMIT_EXCEEDED")) return { codes, amount: final };
+    if (monthBills(user.id) + final > MONTHLY_LIMIT_IQD.bill && push("LIMIT_EXCEEDED")) return { codes, amount: final };
+    if (biller.code === "mobile_topup" && monthBills(user.id, "mobile_topup") + final > MONTHLY_LIMIT_IQD.mobile_topup && push("LIMIT_EXCEEDED")) return { codes, amount: final };
     if (user.balance_iqd < total && push("INSUFFICIENT_BALANCE")) return { codes, amount: final };
     return { codes, amount: final };
   }
@@ -160,7 +165,7 @@ export function createApp(opts: AppOptions) {
     if (!user) return err(c, 404, "USER_NOT_FOUND", "unknown user");
     if (q.kind === "transfer") {
       const r = transferChecks(user, q.to_contact, q.amount_iqd, true);
-      return c.json({ ok: r.codes.length === 0, kind: "transfer", amount_iqd: q.amount_iqd, fee_iqd: 0, total_iqd: q.amount_iqd, balance_after_iqd: user.balance_iqd - q.amount_iqd, errors: r.codes, counterparty_name: r.contact?.display_name ?? null });
+      return c.json({ ok: r.codes.length === 0, kind: "transfer", amount_iqd: q.amount_iqd, fee_iqd: p2pFee(q.amount_iqd), total_iqd: q.amount_iqd + p2pFee(q.amount_iqd), balance_after_iqd: user.balance_iqd - q.amount_iqd - p2pFee(q.amount_iqd), errors: r.codes, counterparty_name: r.contact?.display_name ?? null });
     }
     const loaded = loadBill(q.bill_account, user.id);
     if (!loaded) return c.json({ ok: false, kind: "bill_pay", errors: ["BILL_ACCOUNT_NOT_FOUND"] });
@@ -221,7 +226,7 @@ export function createApp(opts: AppOptions) {
     let payload: Payload;
     let bill: ReturnType<typeof loadBill> = null;
     if (kind === "transfer") {
-      payload = { kind: "transfer", from: user.id, to_id: body.to_contact, amount_iqd: body.amount_iqd, fee_iqd: 0 };
+      payload = { kind: "transfer", from: user.id, to_id: body.to_contact, amount_iqd: body.amount_iqd, fee_iqd: p2pFee(body.amount_iqd) };
     } else {
       bill = loadBill(body.bill_account, user.id);
       if (!bill) return reject(fail(404, "BILL_ACCOUNT_NOT_FOUND", "unknown bill account", false));
@@ -243,7 +248,7 @@ export function createApp(opts: AppOptions) {
       const r = transferChecks(user, body.to_contact, body.amount_iqd, false);
       const code = r.codes[0];
       if (code) return reject(fail(code === "CONTACT_NOT_FOUND" ? 404 : 422, code, code, true));
-      amount = body.amount_iqd; fee = 0;
+      amount = body.amount_iqd; fee = p2pFee(body.amount_iqd);
       counterpartyId = r.contact!.id; counterpartyName = r.contact!.display_name; walletRecipient = r.contact!.wallet_user_id;
     } else {
       const b = bill!;
@@ -263,6 +268,7 @@ export function createApp(opts: AppOptions) {
     db.prepare("UPDATE users SET balance_iqd = balance_iqd - ? WHERE id=?").run(amount + fee, user.id);
     if (kind === "transfer") {
       db.prepare("UPDATE users SET balance_iqd = balance_iqd + ? WHERE id=?").run(amount, walletRecipient);
+      db.prepare("UPDATE fee_pool SET balance_iqd = balance_iqd + ? WHERE id='p2p'").run(fee); // the fee is kept by the wallet, so total money is conserved
       db.prepare("UPDATE contacts SET last_used_at=? WHERE id=?").run(now(), counterpartyId);
     } else {
       db.prepare("UPDATE settlements SET balance_iqd = balance_iqd + ? WHERE biller_id=?").run(amount + fee, bill!.biller.id);

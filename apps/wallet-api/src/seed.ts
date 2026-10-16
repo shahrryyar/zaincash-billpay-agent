@@ -43,10 +43,10 @@ export const NON_WALLET_CONTACT: C = ["c_nonwallet", "جاري أبو فيصل",
 
 const BILLERS = [
   ["b_electricity", "electricity", "الكهرباء (تجريبي)", "Electricity (demo)", ["الكهرباء", "الكهربا", "كهرباء الوطنية"], 0, "active"],
-  ["b_generator", "generator", "اشتراك المولدة (تجريبي)", "Generator subscription (demo)", ["المولدة", "الأمبيرات", "المولد"], 250, "active"],
+  ["b_generator", "generator", "اشتراك المولدة (تجريبي)", "Generator subscription (demo)", ["المولدة", "الأمبيرات", "المولد"], 0, "active"],
   ["b_internet", "internet", "شركة النور للإنترنت (تجريبي)", "Al-Noor Internet (demo)", ["الانترنت", "النت", "الواي فاي"], 0, "active"],
   ["b_water", "water", "الماء (تجريبي)", "Water (demo)", ["الماي", "الماء"], 0, "active"],
-  ["b_mobile_topup", "mobile_topup", "شحن الرصيد (تجريبي)", "Mobile top-up (demo)", ["رصيد", "كارت", "شحن"], 250, "down"],
+  ["b_mobile_topup", "mobile_topup", "شحن الرصيد (تجريبي)", "Mobile top-up (demo)", ["رصيد", "كارت", "شحن"], 0, "down"],
 ] as const;
 
 /** [account id, owner, biller, ref, bill amount (null = open amount), bill status] */
@@ -92,6 +92,7 @@ export function applySeed(db: Db): void {
     }
     const addBiller = db.prepare("INSERT INTO billers VALUES (?,?,?,?,?,?,?)");
     const addSettle = db.prepare("INSERT INTO settlements VALUES (?,0)");
+    db.prepare("INSERT INTO fee_pool VALUES ('p2p', 0)").run();
     for (const [id, code, ar, en, aliases, fee, status] of BILLERS) {
       addBiller.run(id, code, ar, en, JSON.stringify(aliases), fee, status);
       addSettle.run(id);
@@ -114,5 +115,6 @@ export function applySeed(db: Db): void {
 export function totalMoney(db: Db): number {
   const u = db.prepare("SELECT COALESCE(SUM(balance_iqd),0) s FROM users").get() as { s: number };
   const s = db.prepare("SELECT COALESCE(SUM(balance_iqd),0) s FROM settlements").get() as { s: number };
-  return u.s + s.s;
+  const f = db.prepare("SELECT COALESCE(SUM(balance_iqd),0) s FROM fee_pool").get() as { s: number };
+  return u.s + s.s + f.s;
 }

@@ -20,6 +20,8 @@ CREATE TABLE IF NOT EXISTS billers(
   status TEXT NOT NULL CHECK(status IN ('active','down','maintenance')));
 CREATE TABLE IF NOT EXISTS settlements(
   biller_id TEXT PRIMARY KEY REFERENCES billers(id), balance_iqd INTEGER NOT NULL DEFAULT 0 CHECK(balance_iqd >= 0));
+CREATE TABLE IF NOT EXISTS fee_pool(
+  id TEXT PRIMARY KEY, balance_iqd INTEGER NOT NULL DEFAULT 0 CHECK(balance_iqd >= 0));
 CREATE TABLE IF NOT EXISTS bill_accounts(
   id TEXT PRIMARY KEY, owner_id TEXT NOT NULL REFERENCES users(id), biller_id TEXT NOT NULL REFERENCES billers(id),
   account_ref TEXT NOT NULL, nickname TEXT);
@@ -56,7 +58,7 @@ export function openDb(path = ":memory:"): Db {
 
 const TABLES_CHILD_FIRST = [
   "audit_log", "idempotency_keys", "confirmation_tokens", "transactions", "bills", "bill_accounts",
-  "settlements", "billers", "contacts", "users",
+  "settlements", "fee_pool", "billers", "contacts", "users",
 ];
 
 export function clearAll(db: Db): void {
