@@ -47,7 +47,8 @@ Accepted into the build stage already. Elimination is after the MVP.
 - [x] **Scheduled payments** (docs/27): deterministic Iraqi time parser (`packages/core/src/when.ts`), token binds the instant, exactly-once runner, cancel, notifications. Dev eval 26/26 (`eval/data/schedule.dev.jsonl`), dev-only.
 - [x] **Token cost cut**: prompt caching on the stable prefix (+ compact prompt, max_tokens 700). Per request about 150 normal input + 3.5k cache-read (10% price) + ~170-380 output, was ~4.2k normal input.
 - [x] License is now **proprietary, all rights reserved** until the author changes it (LICENSE). docs/17 has NO fabricated interviews (honest status + a 5-question voice-note kit).
-- [ ] M7 voice (needs RegaLabs details). M8 demo rehearsal. M9 docs final. Held-out run once (frozen).
+- [x] **HELD-OUT RUN ONCE (2026-10-16, commit 1445bff, hash 13e0fa33…, Haiku 5.5, tools mode, no tuning after):** e2e 81.1% [74.8, 86.2] n=180; state accuracy 81.3% n=155; ambiguity recall 100% (n=42), precision 73.7%; **S1 unsafe execution 0/180 (upper 95% bound 1.7%)**; card on must-not-execute 1/100; p50/p95 to card 2.3 s / 3.7 s. Gap vs dev (92.5%) is the usual tuning gap. **Held-out is now spent: do not re-run it to chase a number; further changes need a fresh set.** Error analysis: eval/results/heldout-haiku-tools.md. Main misses: «نفس المبلغ مال اخر مرة» (previous not implemented, asks), malformed chatter answered as out_of_scope (safe, label says rephrase), dollars («ورقة/دفتر») asked instead of refused, descriptor words after a name.
+- [ ] M7 voice (needs RegaLabs details). M8 demo rehearsal. M9 docs final.
 
 ## Next steps
 1. (done) live smoke 15/15 on Haiku; dev eval runs.
