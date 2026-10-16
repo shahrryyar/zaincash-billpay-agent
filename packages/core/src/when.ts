@@ -226,11 +226,13 @@ export function formatWhenAr(dueAt: number): string {
   return `${WEEKDAY_AR[t.dow]} ${t.d}/${t.m}/${t.y}، الساعة ${h12}:${String(t.mi).padStart(2, "0")} ${part}`;
 }
 
-/** «بعد 5 دقايق», «بعد 18 ساعة», «بعد 3 أيام». */
+/** «بعد دقيقتين», «بعد 3 دقائق», «بعد 15 دقيقة», «بعد ساعتين», «بعد 3 أيام». Arabic number agreement: 1, 2, 3-10 (plural), 11+ (singular). */
 export function relativeAr(dueAt: number, now: number): string {
+  const unit = (n: number, one: string, two: string, plural: string, many: string): string =>
+    n === 1 ? `بعد ${one}` : n === 2 ? `بعد ${two}` : n <= 10 ? `بعد ${n} ${plural}` : `بعد ${n} ${many}`;
   const mins = Math.max(1, Math.round((dueAt - now) / 60_000));
-  if (mins < 60) return `بعد ${mins} دقيقة`;
+  if (mins < 60) return unit(mins, "دقيقة", "دقيقتين", "دقائق", "دقيقة");
   const hrs = Math.round(mins / 60);
-  if (hrs < 48) return `بعد ${hrs} ساعة`;
-  return `بعد ${Math.round(hrs / 24)} يوم`;
+  if (hrs < 48) return unit(hrs, "ساعة", "ساعتين", "ساعات", "ساعة");
+  return unit(Math.round(hrs / 24), "يوم", "يومين", "أيام", "يوم");
 }

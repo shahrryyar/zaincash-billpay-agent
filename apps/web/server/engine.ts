@@ -68,7 +68,7 @@ function build() {
       const isTransfer = x.kind === "transfer";
       const what = isTransfer ? `${x.amount_iqd.toLocaleString("en-US")} د.ع لـ${x.counterparty}` : `${x.counterparty} ${x.amount_iqd.toLocaleString("en-US")} د.ع`;
       const notice = x.status === "executed"
-        ? (isTransfer ? t("schedule_ran_transfer", { amount: x.amount_iqd.toLocaleString("en-US"), name: x.counterparty, ref: x.reference }) : t("schedule_ran_bill", { biller: x.counterparty, amount: x.amount_iqd.toLocaleString("en-US"), ref: x.reference }))
+        ? (isTransfer ? t("schedule_ran_transfer", { amount: x.amount_iqd.toLocaleString("en-US"), name: x.counterparty, ref: x.transaction_reference ?? x.reference }) : t("schedule_ran_bill", { biller: x.counterparty, amount: x.amount_iqd.toLocaleString("en-US"), ref: x.transaction_reference ?? x.reference }))
         : x.status === "failed" ? t("schedule_failed", { what, reason: FAIL_REASON[x.failure_code ?? ""] ?? "سبب غير متوقع" })
         : null;
       return {

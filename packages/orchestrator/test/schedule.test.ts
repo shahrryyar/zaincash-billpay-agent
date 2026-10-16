@@ -16,7 +16,7 @@ describe("scheduled payments end to end", () => {
     const r1 = await e.orch.turn("s", { text: MSG });
     expect(r1.phase).toBe("AWAITING_CONFIRM");
     expect(r1.card).toMatchObject({ kind: "transfer", amount_iqd: 50_000, fee_iqd: 300, nothing_sent: "ما راح ينرسل شي هسه", title: "تأكيد جدولة التحويل" });
-    expect(r1.card!.schedule).toMatchObject({ due_at: e.clock.now() + 2 * HOUR, relative: "بعد 2 ساعة" });
+    expect(r1.card!.schedule).toMatchObject({ due_at: e.clock.now() + 2 * HOUR, relative: "بعد ساعتين" });
     expect(r1.card!.schedule!.when_text).toContain("الساعة");
     expect(r1.card!.labels.confirm).toBe("أكّد وجدول");
 

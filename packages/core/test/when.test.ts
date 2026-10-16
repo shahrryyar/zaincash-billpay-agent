@@ -110,9 +110,10 @@ describe("formatWhenAr and relativeAr (what the confirmation card shows)", () =>
     expect(formatWhenAr(at(2026, 10, 25, 20, 30))).toBe("الأحد 25/10/2026، الساعة 8:30 مساءً");
     expect(formatWhenAr(at(2026, 10, 18, 0, 5))).toBe("الأحد 18/10/2026، الساعة 12:05 صباحاً");
   });
-  it("relative wording", () => {
-    expect(relativeAr(NOW + 5 * 60_000, NOW)).toBe("بعد 5 دقيقة");
-    expect(relativeAr(NOW + 18 * 3_600_000, NOW)).toBe("بعد 18 ساعة");
-    expect(relativeAr(NOW + 5 * 86_400_000, NOW)).toBe("بعد 5 يوم");
+  it("relative wording follows Arabic number agreement", () => {
+    const r = (mins: number) => relativeAr(NOW + mins * 60_000, NOW);
+    expect(r(1)).toBe("بعد دقيقة"); expect(r(2)).toBe("بعد دقيقتين"); expect(r(3)).toBe("بعد 3 دقائق"); expect(r(10)).toBe("بعد 10 دقائق"); expect(r(15)).toBe("بعد 15 دقيقة");
+    expect(r(60)).toBe("بعد ساعة"); expect(r(120)).toBe("بعد ساعتين"); expect(r(18 * 60)).toBe("بعد 18 ساعة"); expect(r(5 * 60)).toBe("بعد 5 ساعات");
+    expect(r(3 * 1440)).toBe("بعد 3 أيام"); expect(r(30 * 1440)).toBe("بعد 30 يوم");
   });
 });

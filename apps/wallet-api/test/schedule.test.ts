@@ -96,6 +96,8 @@ describe("running due schedules: exactly once, with the same safety as paying no
     const tx = w.db.prepare("SELECT idempotency_key k, amount_iqd a, fee_iqd f FROM transactions ORDER BY rowid DESC LIMIT 1").get() as any;
     expect(tx).toEqual({ k: `sched:${r.json.schedule.id}`, a: 50_000, f: 300 });
     expect(rows(w)[0]).toMatchObject({ status: "executed" });
+    const listed = (await w.call("GET", `/users/${DEMO_USER}/scheduled`)).json.scheduled[0];
+    expect(listed.transaction_reference).toMatch(/^ZC-\d{8}$/);
     // running again, many times, changes nothing
     for (let i = 0; i < 20; i++) runDue(w);
     expect(w.txCount()).toBe(12);

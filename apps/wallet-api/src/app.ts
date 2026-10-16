@@ -342,9 +342,14 @@ export function createApp(opts: AppOptions) {
     const amount = body.amount_iqd ?? bill.bill?.amount_iqd;
     return { kind: "bill_pay", from: user.id, biller_id: bill.biller.id, account_ref: bill.account.account_ref, amount_iqd: amount, fee_iqd: bill.biller.fee_iqd, run_at: runAt };
   };
+  const txReference = (txId: string | null): string | null => {
+    if (!txId) return null;
+    const t = db.prepare("SELECT seq FROM transactions WHERE id=?").get(txId) as Row | undefined;
+    return t ? reference(t.seq) : null;
+  };
   const scheduleView = (r: Row) => ({
     id: r.id, reference: scheduleRef(r.seq), kind: r.kind, status: r.status, run_at: r.run_at, amount_iqd: r.amount_iqd, fee_iqd: r.fee_iqd,
-    counterparty: r.counterparty, schedule_key: r.schedule_key, created_at: r.created_at, finished_at: r.finished_at, failure_code: r.failure_code, transaction_id: r.transaction_id,
+    counterparty: r.counterparty, schedule_key: r.schedule_key, created_at: r.created_at, finished_at: r.finished_at, failure_code: r.failure_code, transaction_id: r.transaction_id, transaction_reference: txReference(r.transaction_id),
   });
 
   function createSchedule(body: Row, key: string, tokenValue: string | undefined): Outcome {
