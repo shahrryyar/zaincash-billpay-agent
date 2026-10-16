@@ -27,44 +27,41 @@ Accepted into the build stage already. Elimination is after the MVP.
 7. Synthetic data only. Keys only in `.env`.
 
 ## Decisions
-- **LLM:** Claude primary (Haiku 5.5 live, Sonnet 5.5 hard cases; paid, spend-capped). Groq and Gemini 3 Flash-Lite as free fallbacks. Anthropic has no free tier; free tiers may train on prompts, so synthetic data only.
-- **Agentic design:** read-only tool loop (max 4 calls) plus `propose`; ablation vs plain workflow on the dev set.
-- **Stack:** TypeScript, pnpm workspaces, Next.js (web, later), Hono + SQLite (wallet), Zod, Vitest. No LangGraph or agent framework on purpose.
-- **Voice:** RegaLabs Iraqi-Arabic ASR via LiveKit is the author's own pre-existing service, disclosed. Ships only if a spike passes before the MVP. Text path never depends on it.
-- **Evidence finding:** 500 App Store reviews show pain is failed/stuck money, maintenance, support, fees, KYC, fraud. None asks for fewer taps. Lead with safe/honest/recoverable; test the fewer-steps premise in interviews.
-- **Held-out set is never tuned on.** MVP numbers come from the dev split. Never invent eval numbers.
+- **LLM:** Claude primary (Haiku 5.5 live; Sonnet 5.5 only as comparison: not better on dev). Groq/Gemini/OpenRouter/local fallbacks are wired but need keys. Anthropic has no free tier; free tiers may train on prompts, so synthetic data only. Prompt caching on the stable prefix keeps cost low (per request ~150 normal input + ~3.5k cache-read + 170-380 output). Budget cap in code is `LLM_DAILY_TOKEN_CAP` (tokens, per process); the real cap is the spend limit on the Anthropic workspace.
+- **Agentic design:** read-only tool loop (max 4 calls) + `propose`. `tools` beat `workflow` on dev (97.5% vs 90.0% at the time), so tools is the default. The model has no tool that pays, confirms, schedules or cancels.
+- **Stack:** TypeScript, pnpm, Next 16 web, Hono + SQLite mock wallet, Zod, Vitest. No agent framework on purpose.
+- **Fees/limits** come from ZainCash's public Fees & Limits page (read 2026-10-16), in `apps/wallet-api/src/fees.ts` with source and date.
+- **Scheduling** (docs/27): model copies the time words, `packages/core/src/when.ts` computes the instant, the approved instant is part of the confirmation token, wallet runner pays once, re-checks everything at run time.
+- **License:** proprietary, all rights reserved, until the author changes it. Judges/organisers need written permission from the author to run it.
+- **Voice:** RegaLabs ASR via LiveKit is the author's own pre-existing service (disclosed). Blocked on the author giving connection details. Text path never depends on it.
+- **Evidence finding:** 500 App Store reviews: pain is failed/stuck money, support, fees, KYC, fraud, not "too many taps". Lead with safe/honest/recoverable.
+- **No human labels, no interviews.** Test labels are LLM-made (agy, Fable, Haiku, adjudicated). docs/17 has no interviews and must never get invented ones.
 
-## Status
-- [x] Planning docs, research, design brief (local).
-- [x] M0: pnpm workspace, CI, `.env.example`, smoke tests green.
-- [x] **M1 done** (`packages/core`, 257 tests): normaliser, `parseAmount`, Zod schema + cross-checks, token guard, Jaro-Winkler + resolver, `amountInWords`/`formatIQD`, copy table, state machine reducer (5k random + 5k guided sequences, mutation-tested 16/16).
-- [x] **M2 done** (`apps/wallet-api`, 72 tests, 18/18 wallet mutants killed): Hono + SQLite mock wallet, one BEGIN IMMEDIATE txn per execute, token issue endpoint, quotes, fault injection, audit log. Measured: `eval/results/wallet-safety-stress.json` (4 OS processes, 1,000 requests: 50 executions, 950 replays, 0 duplicates). Run `pnpm stress`.
-- [x] **M3 built and tested OFFLINE** (scripted model): `packages/llm` (63 tests: Claude + OpenAI-format adapters, retry/budget/fallback/cache, env factory, agent loop with 5 read-only tools + `propose`), `packages/orchestrator` (93 tests + safety property test; mutation-tested 18/18): hero scenario, clarification, cards, cancel/expiry/edit, retries, lookup, faults. **Live model NOT yet run: needs `ANTHROPIC_API_KEY` in a local `.env` (copy `.env.example`).** Then `pnpm --filter @zc/orchestrator smoke` (15 sentences, sanity only) and `... cli`.
-- [x] **M5 data done** (2026-10-16): `eval/gen` (agy generated 300 candidates, deterministic 40/60 split), `eval/data` (dev 120 / held-out 180). Labels by **three LLM families** (agy, Fable, Haiku), adjudicated by `eval/gen/adjudicate.py`; **no human labeller** (disclose in docs/19). Held-out frozen: `eval/data/heldout.sha256`. See `eval/data/README.md` for the policy calls.
-- [x] **M6 harness done** (`eval/src/run.ts`, `pnpm --filter @zc/eval eval -- --split dev --mode tools`). Haiku 5.5 on **dev**: tools mode e2e 97.5% (117/120), S1 0/120; workflow mode 90.0%. Prompt/resolver were tuned on dev, so these are optimistic. **Held-out not run** (needs `--allow-heldout`, once, final candidate only). Latest dev (Haiku 5.5, tools): 92.5% e2e (111/120), S1 0/120; schedule dev 26/26. Latency/tokens in file-cached runs are not real: use `LLM_CACHE=0`.
-- [x] **M4 web UI done** (apps/web, Next 16): optimistic message + typing indicator, candidate cards, confirmation card, receipt, demo panel (faults, clock +1h/+1d, reset), why panel, **schedules panel**. Tested by hand in Chrome (bsk), not just by tests.
-- [x] **Fees/limits from the real ZainCash page** (apps/wallet-api/src/fees.ts, source + date inside): p2p 0.5% min 300 max 2,500; bills free; monthly limits.
-- [x] **Scheduled payments** (docs/27): deterministic Iraqi time parser (`packages/core/src/when.ts`), token binds the instant, exactly-once runner, cancel, notifications. Dev eval 26/26 (`eval/data/schedule.dev.jsonl`), dev-only.
-- [x] **Token cost cut**: prompt caching on the stable prefix (+ compact prompt, max_tokens 700). Per request about 150 normal input + 3.5k cache-read (10% price) + ~170-380 output, was ~4.2k normal input.
-- [x] License is now **proprietary, all rights reserved** until the author changes it (LICENSE). docs/17 has NO fabricated interviews (honest status + a 5-question voice-note kit).
-- [x] **HELD-OUT RUN ONCE (2026-10-16, commit 1445bff, hash 13e0fa33…, Haiku 5.5, tools mode, no tuning after):** e2e 81.1% [74.8, 86.2] n=180; state accuracy 81.3% n=155; ambiguity recall 100% (n=42), precision 73.7%; **S1 unsafe execution 0/180 (upper 95% bound 1.7%)**; card on must-not-execute 1/100; p50/p95 to card 2.3 s / 3.7 s. Gap vs dev (92.5%) is the usual tuning gap. **Held-out is now spent: do not re-run it to chase a number; further changes need a fresh set.** Error analysis: eval/results/heldout-haiku-tools.md. Main misses: «نفس المبلغ مال اخر مرة» (previous not implemented, asks), malformed chatter answered as out_of_scope (safe, label says rephrase), dollars («ورقة/دفتر») asked instead of refused, descriptor words after a name.
-- [ ] M7 voice (needs RegaLabs details). M8 demo rehearsal. M9 docs final.
+## Status (2026-10-16 end of day)
+- Built and pushed (main = origin/main, 67f5e24): core (333 tests), llm (74), wallet-api (102), orchestrator (113), eval (13), web app. CI: typecheck, test, build, gitleaks.
+- **Tested by hand in real Chrome (bsk), not only by tests:** instant message + typing indicator, hero flow with real fee, schedule create/confirm/list/cancel, clock advance + notification, failed scheduled run, «جدولها» button, typed «اجدولها», date-only flow, out-of-scope replies, timeout-after-commit retry, Arabizi follow-up, biller alias.
+- **Dev (Haiku 5.5, tools):** 92.5% e2e (111/120), S1 0/120. **Schedule dev:** 26/26 (dev only). Dev was tuned, so it is optimistic.
+- **HELD-OUT RUN ONCE** (commit 1445bff, hash 13e0fa33…): e2e **81.1%** [74.8, 86.2] n=180; state acc 81.3%; ambiguity recall 100% (n=42), precision 73.7%; **S1 unsafe execution 0/180 (upper 95% bound 1.7%)**; card on must-not-execute 1/100; p50/p95 to card 2.3 s / 3.7 s. **Held-out is spent: never re-run it to chase a number; any change needs a fresh set and must be disclosed.** Analysis: `eval/results/heldout-haiku-tools.md`. Misses: «نفس المبلغ مال اخر مرة» (`previous` not implemented, asks), malformed chatter answered as out_of_scope (safe; label says rephrase), «ورقة/دفتر» asked instead of refused, descriptor words after a name.
+- `.env` is complete except values only the author has: GROQ/GEMINI/OPENROUTER keys+models, LOCAL_BASE_URL/MODEL, LIVEKIT_*, REGALABS_ASR_AGENT.
 
 ## Next steps
-1. (done) live smoke 15/15 on Haiku; dev eval runs.
-2. M4 web UI (Next.js, RTL, phone-shaped) over `turn` / `confirm` / `cancel` / `tick`; the UI only knows `card_id`.
-3. (done) dev set + harness. Remaining eval work: Sonnet comparison on dev, one no-cache run for real latency/cost, error analysis write-up, held-out run once before the progress review.
-4. Voice spike (LiveKit + RegaLabs) in weeks 1 to 2; keep the text path independent.
-5. 2 to 3 interviews if possible (docs/17); a second Iraqi labeller if possible.
-6. Add gitleaks + OSV-Scanner to CI.
-7. "Same as last time" (`previous` mention) is not implemented: the orchestrator asks instead.
+1. **Voice** (M7): needs RegaLabs/LiveKit details from the author. Text path stays independent.
+2. **One-page MVP update for 08/11** (use the measured numbers above, say held-out was run once, say labels are LLM-only).
+3. docs/19 final (Human vs AI summary), docs/13 failure modes with the held-out misses, docs/23 Q&A refresh.
+4. Demo rehearsal x3 (docs/18) incl. the scheduling segment («قدّم الوقت ساعة» in the demo panel) and a screen recording backup.
+5. Real interviews are the biggest missing score: send the 5-question voice-note kit in docs/17 to 2 real ZainCash users; if impossible, say "hypotheses only".
+6. Possible improvements (need a fresh test set to measure): `previous` («نفس المرة الفاتت»), refuse «ورقة/دفتر», clarification order (unit before recipient), Latin-letter time words.
+7. Add OSV-Scanner to CI. Ask organisers: judge input text or voice, demo format, may judges run a proprietary-licensed repo.
 
 ## Working rules (from the author)
-- **Commits are authored by the author only: no `Co-Authored-By` trailer, no "Generated with" footer.** Commit small, imperative subject, no AI attribution lines.
-- Disclosure of AI tools stays in `docs/19` (organisers require it).
-- Check `git push` actually pushed (`git status -sb` shows tracking); use `-u origin main` if the upstream is lost.
-- Typecheck exit code matters: don't pipe it into `tail`/`head` and trust the status.
-- Never commit `.env`; secret scanning + push protection are on.
+- **Commits are authored by the author only: no `Co-Authored-By` trailer, no "Generated with" footer.** Small commits, imperative subject.
+- **Test with real Chrome (`bsk`) and do not assume.** Chat like a real person (typos, follow-ups, corrections, small talk), not only scripted sentences.
+- **Do the work with the AI tools (me, Haiku, Fable, agy); do not hand tasks to the author.** Exception: never fabricate evidence (interviews, labels checked by "a human", numbers).
+- `.env` is mine to edit for config; never print keys. Key must be workspace-scoped on Anthropic.
+- Restart `pnpm dev` after changing core/orchestrator/llm code (the web engine is a singleton).
+- Typecheck exit code matters: do not pipe it into `tail`/`head` and trust the status.
+- Check `git push` really pushed (`git status -sb`). Never commit `.env`.
+- Disclosure of AI tools stays in `docs/19`.
 
 ## Open-source findings (docs/research/03, local)
 - No Arabic number-word parser exists in JS; `pyarabic` (GPL) got 8/24 on Iraqi money phrases with silent wrong answers. Own parser stays.
@@ -73,7 +70,7 @@ Accepted into the build stage already. Elimination is after the MVP.
 - Add gitleaks + OSV-Scanner to CI. Avoid GPL/NC assets (pyarabic, MADAR mirrors, factlogic corpus).
 
 ## Open questions
-Repo is **public** (decided). Still unanswered by the organisers: whether the RegaLabs ASR is acceptable (author emailed, no reply), whether judge input includes voice, demo format. Contributor sidebar may show an old co-author from rewritten history; the author said that is acceptable.
+Repo is **public** (decided) but the license grants nothing to anyone but the author. Still unanswered by the organisers: whether the RegaLabs ASR is acceptable (author emailed, no reply), whether judge input includes voice, demo format. Contributor sidebar may show an old co-author from rewritten history; the author said that is acceptable.
 
 ## Run
-`pnpm install && pnpm typecheck && pnpm test`
+`pnpm install && pnpm typecheck && pnpm test`; app: `pnpm dev` (http://localhost:3000); eval: `pnpm eval -- --split dev --mode tools` (held-out refuses to run: spent).
