@@ -1,0 +1,31 @@
+@import "tailwindcss";
+
+:root {
+  --ink: #14211c;
+  --paper: #f4f1ea;
+  --card: #ffffff;
+  --accent: #0f7a5a;
+  --accent-ink: #ffffff;
+  --warn: #b45309;
+  --bad: #b3261e;
+  --line: #e1dccf;
+  --muted: #5d6b64;
+}
+
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: #d8d3c5;
+  color: var(--ink);
+  font-family: "IBM Plex Sans Arabic", "Noto Sans Arabic", "Segoe UI", Tahoma, system-ui, sans-serif;
+  font-size: 18px;
+  line-height: 1.55;
+}
+button { font: inherit; cursor: pointer; }
+button:disabled { cursor: not-allowed; opacity: 0.55; }
+:focus-visible { outline: 3px solid #1a56db; outline-offset: 2px; }
+.nums { font-variant-numeric: tabular-nums; direction: ltr; unicode-bidi: isolate; display: inline-block; }
+@media (prefers-reduced-motion: no-preference) {
+  .rise { animation: rise 220ms ease-out both; }
+  @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+}

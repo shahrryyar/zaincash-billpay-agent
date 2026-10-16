@@ -11,7 +11,8 @@ export class BudgetExceededError extends Error {}
 
 const isRetryable = (e: unknown) => {
   const s = (e as { status?: number })?.status;
-  return s === 429 || (typeof s === "number" && s >= 500) || (e as Error)?.name === "AbortError";
+  // network-level failures carry no status: the Anthropic SDK names them APIConnectionError / APIConnectionTimeoutError
+  return s === 429 || (typeof s === "number" && s >= 500) || /^(AbortError|APIConnection\w*Error)$/.test((e as Error)?.name ?? "");
 };
 
 export function withRetry(inner: ChatClient, o: { retries?: number; baseMs?: number; sleep?: (ms: number) => Promise<void> } = {}): ChatClient {

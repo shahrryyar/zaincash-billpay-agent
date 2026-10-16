@@ -10,7 +10,12 @@
   "scripts": {
     "test": "pnpm -r --if-present test",
     "typecheck": "pnpm -r --if-present typecheck",
-    "stress": "pnpm --filter @zc/wallet-api stress"
+    "stress": "pnpm --filter @zc/wallet-api stress",
+    "dev": "pnpm --filter @zc/web dev",
+    "build": "pnpm --filter @zc/web build",
+    "eval": "pnpm --filter @zc/eval eval",
+    "cli": "pnpm --filter @zc/orchestrator cli",
+    "smoke": "pnpm --filter @zc/orchestrator smoke"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

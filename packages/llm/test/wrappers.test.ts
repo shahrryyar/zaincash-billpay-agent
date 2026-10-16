@@ -31,6 +31,12 @@ describe("withRetry: exponential backoff on 429/5xx only", () => {
     await expect(withRetry(f, { retries: 2, sleep: noSleep }).complete(REQ)).rejects.toMatchObject({ status: 503 });
     expect(f.n).toBe(3);
   });
+  it("retries a network-level connection error (no HTTP status)", async () => {
+    let n = 0;
+    const flaky: ChatClient = { id: "x", async complete() { n++; if (n < 3) { const e = new Error("Connection error."); e.name = "APIConnectionError"; throw e; } return { content: [], stop: "end", usage: { input: 1, output: 1 } }; } };
+    await withRetry(flaky, { retries: 2, sleep: noSleep }).complete(REQ);
+    expect(n).toBe(3);
+  });
   it("does not retry a 400 (a bug, not a limit)", async () => {
     const f = failing("x", 400);
     await expect(withRetry(f, { sleep: noSleep }).complete(REQ)).rejects.toMatchObject({ status: 400 });
