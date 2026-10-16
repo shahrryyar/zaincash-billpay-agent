@@ -1,0 +1,8 @@
+import { engine, withWallet } from "../../../server/engine";
+export const dynamic = "force-dynamic";
+
+// «جدولها» on a pending card: the same payment, later (asks when).
+export async function POST(req: Request) {
+  const b = (await req.json()) as { session_id?: string; card_id?: string };
+  return Response.json(await withWallet(await engine().orch.scheduleCard(String(b.session_id ?? "web"), String(b.card_id ?? ""))));
+}

@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ConfirmCard } from "./ConfirmCard";
-import type { Bubble, Envelope, Reply, WalletView } from "./types";
+import type { Bubble, Envelope, Reply, ScheduleItem, WalletView } from "./types";
 
 const fmt = (n: number) => n.toLocaleString("en-US");
 const SESSION = typeof crypto !== "undefined" && "randomUUID" in crypto ? "" : "web";
@@ -24,11 +24,30 @@ export function PhoneApp() {
   const [waiting, setWaiting] = useState<"think" | "confirm" | null>(null);
   const [offline, setOffline] = useState(false);
   const [panel, setPanel] = useState(false);
+  const [schedPanel, setSchedPanel] = useState(false);
+  const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
+  const pending = useRef<Set<string>>(new Set());
   const [why, setWhy] = useState(false);
   const n = useRef(0);
   const endRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => { setSid(crypto.randomUUID()); fetch("/api/wallet").then((r) => r.json()).then((d) => { setWallet(d.wallet); setMeta({ model: d.model, mode: d.mode, fault: d.fault }); }).catch(() => setOffline(true)); }, []);
+  // Schedules that were pending and have now run (or failed) are announced in the chat, once.
+  const syncSchedules = useCallback((list: ScheduleItem[]) => {
+    setSchedules(list);
+    const fresh: Bubble[] = [];
+    for (const x of list) {
+      if (x.status === "scheduled") pending.current.add(x.id);
+      else if (pending.current.has(x.id) && x.notice) { pending.current.delete(x.id); fresh.push({ id: ++n.current, from: "agent", kind: x.status === "executed" ? "success" : "error", text: x.notice }); }
+      else pending.current.delete(x.id);
+    }
+    if (fresh.length) setBubbles((b) => [...b, ...fresh]);
+  }, []);
+  const refresh = useCallback(async () => {
+    try { const d = await (await fetch("/api/wallet", { cache: "no-store" })).json(); setWallet(d.wallet); setMeta({ model: d.model, mode: d.mode, fault: d.fault }); syncSchedules(d.schedules ?? []); setOffline(false); }
+    catch { setOffline(true); }
+  }, [syncSchedules]);
+  useEffect(() => { setSid(crypto.randomUUID()); void refresh(); }, [refresh]);
+  useEffect(() => { const t = setInterval(() => { if (document.visibilityState === "visible") void refresh(); }, 4000); return () => clearInterval(t); }, [refresh]);
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }); }, [bubbles, reply?.card?.card_id, busy]);
 
   const apply = useCallback((env: Envelope) => {
@@ -36,11 +55,12 @@ export function PhoneApp() {
     setReply(env.reply);
     setWallet(env.wallet);
     setMeta({ model: env.model, mode: env.mode, fault: env.fault });
+    if (env.schedules) syncSchedules(env.schedules);
     setBubbles((b) => [
       ...b,
       ...env.reply.messages.filter((m) => m.kind !== "card").map((m) => ({ id: ++n.current, from: "agent" as const, kind: m.kind, text: m.text })),
     ]);
-  }, []);
+  }, [syncSchedules]);
 
   // The user's message goes on screen immediately; only then do we wait for the agent (typing indicator).
   const run = useCallback(async (fn: () => Promise<Envelope>, userText?: string, kind: "think" | "confirm" = "think") => {
@@ -53,8 +73,10 @@ export function PhoneApp() {
 
   const send = (t: string) => { const v = t.trim(); if (!v || busy) return; setText(""); void run(() => post("/api/turn", { session_id: sid, text: v }), v); };
   const pick = (id: string, name: string) => { if (!busy) void run(() => post("/api/turn", { session_id: sid, choice: id }), name); };
-  const admin = async (body: object) => { const r = await fetch("/api/admin", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ session_id: sid, ...body }) }); const d = await r.json(); if (d.wallet) setWallet(d.wallet); setMeta((m) => ({ ...m, fault: d.fault ?? null })); return d; };
-  const reset = async () => { await admin({ action: "reset" }); setBubbles([]); setReply(null); setSid(crypto.randomUUID()); };
+  const admin = async (body: object) => { const r = await fetch("/api/admin", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ session_id: sid, ...body }) }); const d = await r.json(); if (d.wallet) setWallet(d.wallet); if (d.schedules) syncSchedules(d.schedules); setMeta((m) => ({ ...m, fault: d.fault ?? null })); return d; };
+  const cancelSchedule = async (id: string) => { const r = await fetch("/api/schedules/cancel", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ id }) }); const d = await r.json(); if (d.schedules) { pending.current.delete(id); syncSchedules(d.schedules); } setBubbles((b) => [...b, { id: ++n.current, from: "agent", kind: d.cancelled ? "info" : "error", text: d.cancelled ? "تمام، لغيت الجدولة. ما صار شي." : "ما گدرت ألغيها، يمكن تنفذت أو انلغت من قبل." }]); };
+  const discussSchedule = () => { setSchedPanel(false); send("اريد أجدول دفعة"); };
+  const reset = async () => { await admin({ action: "reset" }); pending.current.clear(); setBubbles([]); setReply(null); setSid(crypto.randomUUID()); };
 
   const card = reply?.card ?? null;
   const showCandidates = reply && reply.phase === "CLARIFYING" && reply.candidates.length > 0;
@@ -72,9 +94,39 @@ export function PhoneApp() {
               <div className="text-sm opacity-80">رصيدك</div>
               <div className="text-2xl font-bold nums" aria-live="polite">{wallet ? `${fmt(wallet.balance_iqd)} د.ع` : "…"}</div>
             </div>
-            <button onClick={() => setPanel((p) => !p)} aria-expanded={panel} className="text-sm underline underline-offset-4 opacity-90 min-h-11 px-2">لوحة العرض</button>
+            <div className="flex items-center gap-1">
+              <button onClick={() => { setSchedPanel((p) => !p); setPanel(false); }} aria-expanded={schedPanel} className="text-sm rounded-full border border-white/40 px-3 min-h-11">🕒 المجدولة{schedules.filter((x) => x.status === "scheduled").length ? ` (${schedules.filter((x) => x.status === "scheduled").length})` : ""}</button>
+              <button onClick={() => { setPanel((p) => !p); setSchedPanel(false); }} aria-expanded={panel} className="text-sm underline underline-offset-4 opacity-90 min-h-11 px-2">لوحة العرض</button>
+            </div>
           </div>
         </header>
+
+        {schedPanel && (
+          <section aria-label="المجدولة" className="bg-[#eef7f2] border-b border-[var(--line)] px-4 py-3 space-y-2 max-h-[45%] overflow-y-auto">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="font-bold">دفعاتك المجدولة</h2>
+              <button onClick={discussSchedule} disabled={busy} className="rounded-full bg-[var(--accent)] text-white text-sm font-semibold px-3 min-h-11">ناقش جدولة جديدة مع المساعد</button>
+            </div>
+            {schedules.length === 0 && <p className="text-sm text-[var(--muted)]">ماكو دفعات مجدولة. اكتب مثلاً «ادفع المولدة باچر الساعة 9 الصبح».</p>}
+            <ul className="space-y-2">
+              {schedules.map((x) => (
+                <li key={x.id} className="rounded-xl bg-white border border-[var(--line)] p-3">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="font-semibold">{x.kind === "transfer" ? `تحويل لـ${x.counterparty}` : x.counterparty}</span>
+                    <span className="nums font-semibold">{fmt(x.amount_iqd)} د.ع</span>
+                  </div>
+                  <div className="text-sm text-[var(--muted)]">{x.when_text}{x.relative ? ` · ${x.relative}` : ""}</div>
+                  <div className="mt-1 flex items-center justify-between gap-2">
+                    <span className={`text-sm font-semibold ${x.status === "executed" ? "text-[#0b5a42]" : x.status === "failed" ? "text-[var(--bad)]" : x.status === "cancelled" ? "text-[var(--muted)]" : "text-[var(--warn)]"}`}>
+                      {x.status === "scheduled" ? "بالانتظار" : x.status === "executed" ? "✅ تنفذت" : x.status === "failed" ? "⛔ ما تنفذت" : "ملغية"}
+                    </span>
+                    {x.status === "scheduled" && <button onClick={() => cancelSchedule(x.id)} className="text-sm rounded-lg border border-[var(--bad)] text-[var(--bad)] px-3 min-h-11">إلغاء الجدولة</button>}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         {panel && (
           <section aria-label="لوحة العرض" className="bg-[#fff8e6] border-b border-[var(--line)] px-4 py-3 text-base space-y-2">
@@ -83,6 +135,8 @@ export function PhoneApp() {
               <button className="rounded-lg border border-[var(--line)] bg-white px-3 min-h-11" onClick={() => admin({ action: "fault", kind: "timeout" })}>انقطاع بعد التنفيذ</button>
               <button className="rounded-lg border border-[var(--line)] bg-white px-3 min-h-11" onClick={() => admin({ action: "fault", kind: "5xx" })}>خطأ 5xx</button>
               <button className="rounded-lg border border-[var(--line)] bg-white px-3 min-h-11" onClick={() => admin({ action: "fault", kind: "biller_down" })}>المولدة واگفة</button>
+              <button className="rounded-lg border border-[var(--line)] bg-white px-3 min-h-11" onClick={() => admin({ action: "advance", ms: 3_600_000 })}>قدّم الوقت ساعة</button>
+              <button className="rounded-lg border border-[var(--line)] bg-white px-3 min-h-11" onClick={() => admin({ action: "advance", ms: 86_400_000 })}>قدّم الوقت يوم</button>
               <button className="rounded-lg border border-[var(--bad)] text-[var(--bad)] bg-white px-3 min-h-11" onClick={reset}>إعادة ضبط</button>
             </div>
             {meta.fault && <p className="text-[var(--warn)] font-semibold">عطل مفعّل: {meta.fault}</p>}
@@ -135,14 +189,16 @@ export function PhoneApp() {
               onConfirm={() => run(() => post("/api/confirm", { session_id: sid, card_id: card.card_id }), undefined, "confirm")}
               onCancel={() => run(() => post("/api/cancel", { session_id: sid }))}
               onExpire={() => { if (!busy) void run(() => post("/api/tick", { session_id: sid })); }}
+              onSchedule={() => run(() => post("/api/schedule-card", { session_id: sid, card_id: card.card_id }))}
             />
           )}
           {reply?.result && (
             <section className="rise rounded-2xl bg-[#e3f4ec] border-2 border-[#8ccdb3] p-4" aria-label="الإيصال">
-              <h2 className="font-bold text-[#0b5a42]">✅ تمت العملية</h2>
+              <h2 className="font-bold text-[#0b5a42]">{reply.result.scheduled ? "🕒 انجدولت العملية" : "✅ تمت العملية"}</h2>
               <dl className="mt-1 text-base">
                 <div className="flex justify-between"><dt className="text-[var(--muted)]">المبلغ</dt><dd className="nums font-semibold">{fmt(reply.result.amount_iqd)} د.ع</dd></div>
-                <div className="flex justify-between"><dt className="text-[var(--muted)]">رقم العملية</dt><dd className="nums font-semibold">{reply.result.reference}</dd></div>
+                {reply.result.scheduled && <div className="flex justify-between gap-3"><dt className="text-[var(--muted)] shrink-0">الموعد</dt><dd className="font-semibold text-end">{reply.result.scheduled.when_text}</dd></div>}
+                <div className="flex justify-between"><dt className="text-[var(--muted)]">{reply.result.scheduled ? "رقم الجدولة" : "رقم العملية"}</dt><dd className="nums font-semibold">{reply.result.reference}</dd></div>
                 {reply.result.balance_after_iqd !== null && <div className="flex justify-between"><dt className="text-[var(--muted)]">رصيدك هسه</dt><dd className="nums font-semibold">{fmt(reply.result.balance_after_iqd)} د.ع</dd></div>}
               </dl>
             </section>

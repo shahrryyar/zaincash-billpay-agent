@@ -62,7 +62,7 @@ export const COPY = {
   unknown_outcome: { ar: "ما متأكدين إذا انرسلت. لا تعيد الإرسال، راح نتأكد ونبلغك.", en: "Not sure it went through. Don't resend; we'll check." },
   expired: { ar: "انتهى وقت التأكيد، نعيد الطلب؟", en: "Confirmation timed out. Start again?" },
   cancelled: { ar: "تمام، لغيتها. ما صار شي.", en: "OK, cancelled. Nothing happened." },
-  out_of_scope: { ar: "أگدر أساعدك بالتحويل ودفع الفواتير بس. شنو تريد أسوي لك؟", en: "I can only help with transfers and bills. What would you like?" }, // VERIFY-DIALECT
+  out_of_scope: { ar: "أنا مساعد زين كاش: أحوّل فلوس، أدفع فواتير (كهرباء، مولدة، انترنت، ماي)، أگولك رصيدك، وأجدول دفعاتك. شنو تريد؟", en: "I am the ZainCash assistant: I send money, pay bills, tell you your balance and schedule payments. What would you like?" }, // VERIFY-DIALECT
   busy: { ar: "النظام مشغول هسه، جرب بعد شوية. ما صار أي تحويل.", en: "System busy, try again shortly. No transfer happened." },
   usd_unsupported: { ar: "التحويل بالدولار مو متوفر، بس بالدينار.", en: "USD isn't supported, only IQD." },
   press_confirm_button: { ar: "اضغط زر التأكيد حتى أكمل.", en: "Press the confirm button to continue." },

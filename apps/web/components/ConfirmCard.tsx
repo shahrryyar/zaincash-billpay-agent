@@ -5,20 +5,22 @@ import type { Reply } from "./types";
 type Card = NonNullable<Reply["card"]>;
 const fmt = (n: number) => n.toLocaleString("en-US");
 
-/** The hero component (docs/15). Shows exactly what will happen, says nothing has been sent, and has a visible countdown. */
-export function ConfirmCard({ card, busy, onConfirm, onCancel, onExpire }: { card: Card; busy: boolean; onConfirm: () => void; onCancel: () => void; onExpire: () => void }) {
+/** The hero component (docs/15). Shows exactly what will happen (and WHEN, for a schedule), says nothing is sent now, has a visible countdown. */
+export function ConfirmCard({ card, busy, onConfirm, onCancel, onExpire, onSchedule }: { card: Card; busy: boolean; onConfirm: () => void; onCancel: () => void; onExpire: () => void; onSchedule: () => void }) {
   const [left, setLeft] = useState(() => Math.max(0, Math.ceil((card.expires_at - Date.now()) / 1000)));
   useEffect(() => {
-    setLeft(Math.max(0, Math.ceil((card.expires_at - Date.now()) / 1000)));
-    const t = setInterval(() => setLeft(Math.max(0, Math.ceil((card.expires_at - Date.now()) / 1000))), 500);
+    const tick = () => setLeft(Math.max(0, Math.ceil((card.expires_at - Date.now()) / 1000)));
+    tick();
+    const t = setInterval(tick, 500);
     return () => clearInterval(t);
   }, [card.card_id, card.expires_at]);
   useEffect(() => { if (left === 0) onExpire(); }, [left]); // eslint-disable-line react-hooks/exhaustive-deps
   const expired = left === 0;
   const mm = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`;
+  const sched = card.schedule;
 
-  const row = (label: string, value: React.ReactNode) => (
-    <div className="flex items-baseline justify-between gap-3 py-1.5 border-b border-[var(--line)] last:border-0">
+  const row = (label: string, value: React.ReactNode, strong = false) => (
+    <div className={`flex items-baseline justify-between gap-3 py-1.5 border-b border-[var(--line)] last:border-0 ${strong ? "bg-[#eef7f2] -mx-2 px-2 rounded-lg" : ""}`}>
       <dt className="text-[var(--muted)] text-base shrink-0">{label}</dt>
       <dd className="font-semibold text-end">{value}</dd>
     </div>
@@ -31,12 +33,17 @@ export function ConfirmCard({ card, busy, onConfirm, onCancel, onExpire }: { car
         <span className="rounded-full bg-[#fff3d6] text-[var(--warn)] px-3 py-0.5 text-sm font-semibold">{card.nothing_sent}</span>
       </header>
       <dl>
+        {sched && row("الموعد", <>{sched.when_text}<div className="text-sm font-normal text-[var(--muted)]">({sched.relative})</div></>, true)}
         {card.recipient && row("إلى", <>{card.recipient.name} <span className="nums text-[var(--muted)]">{card.recipient.masked}</span></>)}
         {card.biller && row("الفاتورة", <>{card.biller.name} <span className="nums text-[var(--muted)]">{card.biller.account_ref}</span></>)}
         {row("المبلغ", <><span className="nums text-2xl">{card.amount_text}</span><div className="text-sm font-normal text-[var(--muted)]">({card.amount_words})</div></>)}
         {row("الرسوم", <span className="nums">{card.fee_text}</span>)}
-        {row("الرصيد", <span className="nums">{fmt(card.balance_before_iqd)} → {fmt(card.balance_after_iqd)} د.ع</span>)}
+        {sched
+          ? row("رصيدك الحالي", <span className="nums">{fmt(card.balance_before_iqd)} د.ع</span>)
+          : row("الرصيد", <span className="nums">{fmt(card.balance_before_iqd)} → {fmt(card.balance_after_iqd)} د.ع</span>)}
       </dl>
+      {sched && <p className="mt-2 text-sm text-[var(--muted)]">{sched.note}</p>}
+      {sched?.low_balance_warning && <p role="note" className="mt-2 rounded-lg bg-[#fff3d6] px-3 py-2 text-[var(--warn)] font-semibold">{sched.low_balance_warning}</p>}
       {card.first_time_recipient && (
         <p role="note" className="mt-2 rounded-lg bg-[#fff3d6] px-3 py-2 text-[var(--warn)] font-semibold">⚠ أول مرة تدز لهذا الشخص. تأكد من الاسم والرقم.</p>
       )}
@@ -49,6 +56,11 @@ export function ConfirmCard({ card, busy, onConfirm, onCancel, onExpire }: { car
           {card.labels.cancel}
         </button>
       </div>
+      {!sched && (
+        <button disabled={busy || expired} onClick={onSchedule} className="mt-2 w-full min-h-12 rounded-xl border-2 border-dashed border-[var(--accent)] text-[var(--accent)] bg-white font-semibold">
+          🕒 جدولها لوقت ثاني (ناقشها مع المساعد)
+        </button>
+      )}
     </section>
   );
 }
