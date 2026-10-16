@@ -143,6 +143,22 @@ describe("ask, never guess", () => {
     const r2 = await e.orch.turn("s", { text: "اي" });
     expect(r2.card?.recipient?.name).toBe("حسين");
   });
+  it("«لا قصدي حسين»: after a wrong fuzzy guess the user can name the right saved contact", async () => {
+    const reply = { actions: [], status: "clarify_reply", clarify_reply: { choice_text: "حسين" }, confidence: 0.9, language: "ar-iq" };
+    const e = setup({ script: { "دز عشرة آلاف لحسيين": transferIntent("حسيين", 10_000, "عشرة آلاف"), "لا لا قصدي حسين مو حسن": reply } });
+    expect((await e.orch.turn("s", { text: "دز عشرة آلاف لحسيين" })).card).toBeNull();
+    const r = await e.orch.turn("s", { text: "لا لا قصدي حسين مو حسن" });
+    expect(r.phase).toBe("AWAITING_CONFIRM");
+    expect(r.card?.recipient?.name).toBe("حسين");
+    expect(e.txCount()).toBe(SEED_TX);
+  });
+  it("a fuzzy guess is still not resolved by a typed name that matches nobody", async () => {
+    const reply = { actions: [], status: "clarify_reply", clarify_reply: { choice_text: "زيدان" }, confidence: 0.9, language: "ar-iq" };
+    const e = setup({ script: { "دز عشرة آلاف لحسيين": transferIntent("حسيين", 10_000, "عشرة آلاف"), "لا قصدي زيدان": reply } });
+    await e.orch.turn("s", { text: "دز عشرة آلاف لحسيين" });
+    const r = await e.orch.turn("s", { text: "لا قصدي زيدان" });
+    expect(r.card).toBeNull(); expect(e.txCount()).toBe(SEED_TX);
+  });
   it("a bare phone number that is not a saved contact is not paid (asks instead)", async () => {
     const e = setup({ script: { "دز خمسين ألف للرقم 07751234567": transferIntent("07751234567", 50_000, "خمسين ألف", "phone") } });
     const r = await e.orch.turn("s", { text: "دز خمسين ألف للرقم 07751234567" });
@@ -306,6 +322,19 @@ describe("info requests and multiple actions", () => {
     expect(r3.phase).toBe("EXECUTED");
     expect(e.balance()).toBe(200_000 - 37_500 - 10_000);
     expect(e.txCount()).toBe(SEED_TX + 2);
+  });
+  it("two actions, the SECOND has a dropped-ألف amount: the first card keeps its own amount, the second asks later", async () => {
+    const msg = "ارسل لخوي كرار 20 الف ولمرتي 40";
+    const e = setup({ script: { [msg]: twoActions(transferIntent("أخوي كرار", 20_000, "20 الف"), transferIntent("مرتي", 40, "40", "relation")) } });
+    const r1 = await e.orch.turn("s", { text: msg });
+    expect(r1.card).toMatchObject({ kind: "transfer", amount_iqd: 20_000, recipient: { name: "أخوي كرار" } }); // NOT 40,000
+    const r2 = await e.orch.confirm("s", r1.card!.card_id);
+    expect(r2.phase).toBe("CLARIFYING"); // now the wife's amount is asked, with her name
+    expect(text(r2)).toContain("شكد تريد تدز");
+    expect(e.balance()).toBe(200_000 - 20_000);
+    const r3 = await e.orch.turn("s", { text: "اربعين الف" });
+    expect(r3.card).toMatchObject({ amount_iqd: 40_000, recipient: { name: "مرتي" } });
+    expect(e.txCount()).toBe(SEED_TX + 1); // the second is still only a card
   });
   it("cancelling the first does not cancel the second", async () => {
     const msg = "ادفع الكهرباء ودز لعلي كريم عشرة آلاف";

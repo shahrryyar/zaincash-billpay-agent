@@ -140,7 +140,14 @@ export function createOrchestrator(opts: OrchestratorOptions) {
         return [];
       case "ANSWER_INFO": return answerInfo(s, ef.query, tc);
       case "SAY_ERROR": await sayError(s, ef.code, tc); return [];
-      case "APPLY_CLARIFY": return answerClarification(s, ef.choice_text, tc, false) ?? [];
+      case "APPLY_CLARIFY": {
+        // «لا قصدي حسين» after a fuzzy guess (or after «ما لگيت X»): the typed name is resolved against the real contacts.
+        if (s.machine.clarifySlot === "recipient" && (s.fuzzy || s.candidates.length === 0)) {
+          const fresh = await answerUnknownContact(s, ef.choice_text, tc);
+          if (fresh) return fresh;
+        }
+        return answerClarification(s, ef.choice_text, tc, false) ?? [];
+      }
       case "REJECT":
         if (ef.reason === "confirmation_invalid") sayKey(tc, "confirm_invalid");
         else if (ef.reason === "busy") sayKey(tc, "checking");
@@ -310,7 +317,8 @@ export function createOrchestrator(opts: OrchestratorOptions) {
    * Returns null when it did not resolve to a contact, so the normal path (model / re-ask, 2 turns max) continues.
    */
   async function answerUnknownContact(s: Session, text: string, tc: TurnCtx): Promise<MachineEvent[] | null> {
-    if (s.candidates.length > 0 || s.fuzzy) return null;
+    if (s.candidates.length > 0 && !s.fuzzy) return null; // a real candidate list is answered by matchChoice only
+    if (s.fuzzy && (isYes(text) || isNo(text))) return null; // yes/no belong to the «تقصد X؟» question
     const d = ensureDraft(s);
     if (!d || d.action.type !== "transfer") return null;
     const digits = normaliseDigits(text).replace(/[\s\-()]/g, "");
@@ -320,8 +328,8 @@ export function createOrchestrator(opts: OrchestratorOptions) {
       const contacts = toContacts((await wallet.contacts(userId)).json.contacts);
       const r = resolveContact(mention, contacts);
       tc.reply.trace.resolution = { slot: "recipient", status: r.status, candidates: r.candidates?.map((c) => c.id), via: "typed_answer" };
-      if (r.status === "resolved") { d.recipient = r.contact; return [{ type: "RESOLUTION", slot: "recipient", result: "resolved" }]; }
-      if (r.status === "ambiguous") { s.candidates = r.candidates; return [{ type: "RESOLUTION", slot: "recipient", result: "ambiguous", count: r.candidates.length, name: mention.text }]; }
+      if (r.status === "resolved") { d.recipient = r.contact; s.candidates = []; s.fuzzy = null; return [{ type: "RESOLUTION", slot: "recipient", result: "resolved" }]; }
+      if (r.status === "ambiguous") { s.candidates = r.candidates; s.fuzzy = null; return [{ type: "RESOLUTION", slot: "recipient", result: "ambiguous", count: r.candidates.length, name: mention.text }]; }
       return null; // fuzzy-only or nothing: not accepted from a bare typed answer
     } catch (e) {
       if (e instanceof WalletUnreachable) return null;

@@ -111,10 +111,21 @@ function processAction(state: MachineState, cfg: Config): Result {
 function fromIntent(raw: unknown, input: string, cfg: Config): Result {
   const v = validateIntent(raw);
   if (!v.ok) return rephrase("invalid_output");
-  const intent = v.intent;
+  let intent = v.intent;
   if (intent.status === "out_of_scope") return failSafe(initialState(), "out_of_scope", [{ type: "SAY", key: "out_of_scope" }]);
   if (intent.status === "cancel") return out({ ...initialState(), phase: "CANCELLED" }, [{ type: "SAY", key: "cancelled" }]);
   if (intent.status !== "ok") return rephrase("no_pending_context"); // unclear / confirm_reply / clarify_reply with nothing pending
+  // A dropped-«ألف» amount (e.g. «40») in a LATER action must not be asked now: the answer would be applied to the
+  // action that is current (the first one). A transfer gets its amount cleared so it asks for it when its turn comes
+  // («شكد تريد تدز لـ…»); anything else fails closed (rephrase) rather than guessing.
+  const early = crossCheck(intent, input);
+  if (!early.ok) {
+    const late = new Set(early.issues.filter((i) => i.actionIndex > 0 && i.code === "amount_ambiguous").map((i) => i.actionIndex));
+    if (late.size > 0) {
+      if ([...late].some((i) => intent.actions[i]?.type !== "transfer")) return rephrase("amount_ambiguous_later");
+      intent = { ...intent, actions: intent.actions.map((a, i) => (late.has(i) && a.type === "transfer" ? { ...a, amount: null } : a)) };
+    }
+  }
   const [first, ...rest] = intent.actions;
   if (!first) return rephrase("no_actions");
 
