@@ -57,9 +57,22 @@ export type Action = z.infer<typeof Action>;
 
 export type ValidateResult = { ok: true; intent: Intent } | { ok: false; error: string };
 
+// Models often send `"note": null` for an optional field. That is "absent", not wrong. Only these optional keys are
+// cleaned: `recipient: null` and `amount: null` are meaningful (they trigger a question) and are left alone.
+const OPTIONAL_KEYS = new Set(["note", "qualifier", "account_ref", "biller", "clarify_reply"]);
+function dropNullOptionals(v: unknown, key?: string): unknown {
+  if (Array.isArray(v)) return v.map((x) => dropNullOptionals(x));
+  if (v && typeof v === "object") {
+    const o: Record<string, unknown> = {};
+    for (const [k, x] of Object.entries(v)) { if (x === null && OPTIONAL_KEYS.has(k)) continue; o[k] = dropNullOptionals(x, k); }
+    return o;
+  }
+  return v;
+}
+
 /** Zod gate. Invalid output means NEEDS_REPHRASE; it never reaches execution. */
 export function validateIntent(raw: unknown): ValidateResult {
-  const r = Intent.safeParse(raw);
+  const r = Intent.safeParse(dropNullOptionals(raw));
   return r.success ? { ok: true, intent: r.data } : { ok: false, error: r.error.message };
 }
 

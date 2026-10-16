@@ -25,7 +25,7 @@ const key = (s: string): string => normaliseArabic(s).replace(/(^| )عبد (?=\S
 const RELATION_WORDS: Record<string, string> = {
   ام: "ام", امي: "ام", ماما: "ام", والدتي: "ام",
   اب: "اب", ابوي: "اب", بابا: "اب", ابي: "اب", والدي: "اب",
-  اخ: "اخ", اخوي: "اخ", اخي: "اخ",
+  اخ: "اخ", اخوي: "اخ", اخي: "اخ", خوي: "اخ", // «خوي» = short spoken form of أخوي <!-- VERIFY-DIALECT -->
   اخت: "اخت", اختي: "اخت",
   خال: "خال", خالي: "خال",
   عم: "عم", عمي: "عم",
@@ -35,6 +35,8 @@ const RELATION_WORDS: Record<string, string> = {
   بنتي: "بنت", بنت: "بنت",
 };
 const relationOf = (s: string): string | undefined => RELATION_WORDS[key(s)];
+/** True if the text is a relation word (أمي, أخوي, خوي...). Exported so tests can state the resolver's oracle. */
+export const isRelationWord = (s: string): boolean => relationOf(s) !== undefined;
 
 const byNameThenId = (a: Contact, b: Contact) =>
   a.display_name.localeCompare(b.display_name, "ar") || a.id.localeCompare(b.id);
@@ -44,6 +46,8 @@ function applyQualifier(cands: Contact[], qualifier: string | undefined): Contac
   if (!q) return cands;
   const digits = q.match(/\d{2,}/)?.[0];
   if (digits) return cands.filter((c) => c.phone.endsWith(digits));
+  const qrel = relationOf(q); // «خوي كرار»: the qualifier is a relation word -> filter by the contact's relation
+  if (qrel) return cands.filter((c) => c.relation !== undefined && relationOf(c.relation) === qrel);
   const qt = key(q).split(" ").filter(Boolean);
   return cands.filter((c) => {
     const tokens = key(c.display_name).split(" ");
@@ -67,9 +71,18 @@ function matchName(mention: string, contacts: Contact[]): Contact[] {
   const exact = contacts.filter((c) => key(c.display_name) === m || (c.aliases ?? []).some((a) => key(a) === m));
   if (exact.length) return exact;
   // 2. leading-token match: mention tokens are the first tokens of the contact name («علي» ≠ «ابو علي»)
-  return contacts.filter((c) => {
+  const leading = contacts.filter((c) => {
     const ct = key(c.display_name).split(" ");
     return ct.length >= mt.length && mt.every((t, i) => ct[i] === t);
+  });
+  if (leading.length) return leading;
+  // 3. contacts stored with a relation word in front («أخوي كرار», «أختي زهراء»): people say just «كرار».
+  //    Only runs when nothing matched above, and it can only add candidates, so it never hides an ambiguity.
+  return contacts.filter((c) => {
+    const ct = key(c.display_name).split(" ");
+    if (ct.length < 2 || relationOf(ct[0] as string) === undefined) return false;
+    const rest = ct.slice(1);
+    return rest.length >= mt.length && mt.every((t, i) => rest[i] === t);
   });
 }
 

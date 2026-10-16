@@ -115,6 +115,26 @@ describe("ask, never guess", () => {
     expect(text(r3)).toContain("ما انرسل شي");
     expect(e.txCount()).toBe(SEED_TX);
   });
+  it("unknown contact, then the user types the phone number of a saved contact: card, nothing sent yet", async () => {
+    const e = setup({ script: { "دز خمسين ألف لزيدان": transferIntent("زيدان", 50_000, "خمسين ألف") } });
+    await e.orch.turn("s", { text: "دز خمسين ألف لزيدان" });
+    const r = await e.orch.turn("s", { text: "07700000101" });
+    expect(r.phase).toBe("AWAITING_CONFIRM");
+    expect(r.card).toMatchObject({ recipient: { name: "علي كريم", masked: "••••0101" }, amount_iqd: 50_000 });
+    expect(e.txCount()).toBe(SEED_TX);
+    expect(e.balance()).toBe(200_000);
+  });
+  it("unknown contact, then a saved contact's name: card; an ambiguous name asks; an unknown number does not resolve", async () => {
+    const script = { "دز خمسين ألف لزيدان": transferIntent("زيدان", 50_000, "خمسين ألف") };
+    const a = setup({ script }); await a.orch.turn("s", { text: "دز خمسين ألف لزيدان" });
+    expect((await a.orch.turn("s", { text: "علي كريم" })).card?.recipient?.name).toBe("علي كريم");
+    const b = setup({ script }); await b.orch.turn("s", { text: "دز خمسين ألف لزيدان" });
+    const rb = await b.orch.turn("s", { text: "أحمد" });
+    expect(rb.phase).toBe("CLARIFYING"); expect(rb.candidates).toHaveLength(2); expect(rb.card).toBeNull();
+    const c = setup({ script }); await c.orch.turn("s", { text: "دز خمسين ألف لزيدان" });
+    const rc = await c.orch.turn("s", { text: "07800001234" });
+    expect(rc.card).toBeNull(); expect(c.txCount()).toBe(SEED_TX);
+  });
   it("a typo gets «تقصد حسين؟» and only a yes resolves it", async () => {
     const e = setup({ script: { "دز عشرة آلاف لحسيين": transferIntent("حسيين", 10_000, "عشرة آلاف") } });
     const r1 = await e.orch.turn("s", { text: "دز عشرة آلاف لحسيين" });

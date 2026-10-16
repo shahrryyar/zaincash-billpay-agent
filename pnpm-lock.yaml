@@ -46,7 +46,24 @@ importers:
         specifier: ^4.23.15
         version: 4.23.15
 
-  eval: {}
+  eval:
+    dependencies:
+      '@zc/core':
+        specifier: workspace:*
+        version: link:../packages/core
+      '@zc/llm':
+        specifier: workspace:*
+        version: link:../packages/llm
+      '@zc/orchestrator':
+        specifier: workspace:*
+        version: link:../packages/orchestrator
+    devDependencies:
+      '@zc/wallet-api':
+        specifier: workspace:*
+        version: link:../apps/wallet-api
+      tsx:
+        specifier: ^4.23.15
+        version: 4.23.15
 
   packages/core:
     dependencies:

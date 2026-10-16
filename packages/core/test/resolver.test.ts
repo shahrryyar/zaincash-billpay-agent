@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import fc from "fast-check";
-import { resolveContact, type Contact, type Mention } from "../src/resolver";
+import { isRelationWord, resolveContact, type Contact, type Mention } from "../src/resolver";
 
 // Demo contact book with the deliberate traps from docs/11. Phones are fictional (0770000xxxx).
 const C = (id: string, display_name: string, phone: string, relation?: string, aliases?: string[]): Contact => ({ id, display_name, phone, relation, aliases });
@@ -98,7 +98,7 @@ describe("resolveContact: fuzzy never auto-resolves", () => {
       if (r.status === "resolved") {
         const n = (s: string) => s.replace(/[أإآ]/g, "ا").replace(/ة/g, "ه").replace(/ى/g, "ي");
         const key = n(t);
-        return book.some((c) => n(c.display_name).split(" ")[0] === key || n(c.display_name) === key || n(c.display_name).replace(/^ل/, "") === key || n(c.display_name).replace(/ /g, "") === key.replace(/ /g, "") || key.startsWith("ل"));
+        return book.some((c) => n(c.display_name).split(" ")[0] === key || n(c.display_name) === key || n(c.display_name).replace(/^ل/, "") === key || n(c.display_name).replace(/ /g, "") === key.replace(/ /g, "") || key.startsWith("ل") || isRelationWord(key) || book.some((c) => { const ct = n(c.display_name).split(" "); return ct.length > 1 && isRelationWord(ct[0] as string) && ct[1] === key; }));
       }
       return true;
     }));
@@ -118,4 +118,17 @@ describe("resolveContact: phone and previous", () => {
     expect(resolveContact({ kind: "phone", text: "07751234567" }, book)).toEqual({ status: "unknown_number", phone: "07751234567" }));
   it("invalid number is none", () => expect(resolveContact({ kind: "phone", text: "0701234567" }, book).status).toBe("none"));
   it("«previous» is resolved from history elsewhere", () => expect(resolveContact({ kind: "previous", text: "نفس المرة الفاتت" }, book).status).toBe("history"));
+});
+
+describe("resolveContact: contacts stored with a relation word in front", () => {
+  const rb = [
+    { id: "c_karrar", display_name: "أخوي كرار", phone: "07700000701", relation: "اخ" },
+    { id: "c_zahraa", display_name: "أختي زهراء", phone: "07700000702", relation: "اخت" },
+    { id: "c_ali", display_name: "علي كريم", phone: "07700000101" },
+    { id: "c_ali2", display_name: "أخوي علي", phone: "07700000199", relation: "اخ" },
+  ];
+  it("«كرار» finds أخوي كرار", () => expect(resolveContact({ kind: "name", text: "كرار" }, rb)).toMatchObject({ status: "resolved", contact: { id: "c_karrar" } }));
+  it("exact/leading match still wins: «علي» is علي كريم, not أخوي علي", () => expect(resolveContact({ kind: "name", text: "علي" }, rb)).toMatchObject({ status: "resolved", contact: { id: "c_ali" } }));
+  it("relation qualifier filters by relation: «كرار» + «خوي»", () => expect(resolveContact({ kind: "name", text: "كرار", qualifier: "خوي" }, rb)).toMatchObject({ status: "resolved", contact: { id: "c_karrar" } }));
+  it("relation qualifier that fits nobody is still none", () => expect(resolveContact({ kind: "name", text: "كرار", qualifier: "خالي" }, rb).status).toBe("none"));
 });

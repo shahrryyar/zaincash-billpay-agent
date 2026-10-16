@@ -3,7 +3,7 @@
 // its output enters ONLY through the LLM_OUTPUT event, which the machine validates before anything else.
 import { randomUUID } from "node:crypto";
 import {
-  TERMINAL, amountInWords, copyKeyForWalletError, formatIQD, initialState, normaliseArabic, parseAmount, payloadHash, resolveContact, t,
+  TERMINAL, amountInWords, copyKeyForWalletError, formatIQD, initialState, normaliseArabic, normaliseDigits, parseAmount, payloadHash, resolveContact, t,
   transition, type Contact, type CopyKey, type Effect, type MachineEvent, type Payload, type Config,
 } from "@zc/core";
 import type { ToolHost, Understander } from "@zc/llm";
@@ -303,6 +303,32 @@ export function createOrchestrator(opts: OrchestratorOptions) {
 
   // ------------------------------------------------------------------ clarification answers (deterministic, no LLM)
   /** Returns events, or null when the answer is unusable and the caller may fall back to the LLM. */
+  /**
+   * The question was «ما لگيت X، تريد تكتب رقمه؟» (nothing matched, so there is no candidate set to protect).
+   * A typed answer is resolved against the wallet's real contacts exactly like a first request: a full phone number or
+   * a name that matches a saved contact. Still only existing contacts, still ambiguity => ask, and the card + token follow.
+   * Returns null when it did not resolve to a contact, so the normal path (model / re-ask, 2 turns max) continues.
+   */
+  async function answerUnknownContact(s: Session, text: string, tc: TurnCtx): Promise<MachineEvent[] | null> {
+    if (s.candidates.length > 0 || s.fuzzy) return null;
+    const d = ensureDraft(s);
+    if (!d || d.action.type !== "transfer") return null;
+    const digits = normaliseDigits(text).replace(/[\s\-()]/g, "");
+    const mention = /^07[3-9]\d{8}$/.test(digits) ? { kind: "phone" as const, text: digits } : { kind: "name" as const, text: text.trim() };
+    if (!mention.text || mention.text.length > 40) return null;
+    try {
+      const contacts = toContacts((await wallet.contacts(userId)).json.contacts);
+      const r = resolveContact(mention, contacts);
+      tc.reply.trace.resolution = { slot: "recipient", status: r.status, candidates: r.candidates?.map((c) => c.id), via: "typed_answer" };
+      if (r.status === "resolved") { d.recipient = r.contact; return [{ type: "RESOLUTION", slot: "recipient", result: "resolved" }]; }
+      if (r.status === "ambiguous") { s.candidates = r.candidates; return [{ type: "RESOLUTION", slot: "recipient", result: "ambiguous", count: r.candidates.length, name: mention.text }]; }
+      return null; // fuzzy-only or nothing: not accepted from a bare typed answer
+    } catch (e) {
+      if (e instanceof WalletUnreachable) return null;
+      throw e;
+    }
+  }
+
   function answerClarification(s: Session, text: string, tc: TurnCtx, allowFallback: boolean): MachineEvent[] | null {
     const slot = s.machine.clarifySlot;
     const d = ensureDraft(s);
@@ -403,6 +429,8 @@ export function createOrchestrator(opts: OrchestratorOptions) {
           if (isCancel(text)) { await dispatch(s, { type: "CANCEL" }, tc); return finalize(s, tc); }
           if (input.asrConfidence !== undefined && input.asrConfidence < (opts.config?.asrLow ?? 0.5)) { await dispatch(s, { type: "INPUT_RECEIVED", text, asrConfidence: input.asrConfidence }, tc); return finalize(s, tc); }
           await billerNames();
+          const fresh = s.machine.clarifySlot === "recipient" ? await answerUnknownContact(s, text, tc) : null;
+          if (fresh) { for (const e of fresh) await dispatch(s, e, tc); return finalize(s, tc); }
           const events = answerClarification(s, text, tc, true);
           if (events) { for (const e of events) await dispatch(s, e, tc); }
           else {

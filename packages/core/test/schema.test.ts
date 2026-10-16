@@ -98,3 +98,18 @@ describe("crossCheck: deterministic checks after Zod", () => {
     expect(crossCheck(i, "ادفع المولدة")).toEqual({ ok: true });
   });
 });
+
+describe("validateIntent: null optionals are absent, null recipient/amount stay meaningful", () => {
+  const base = { status: "ok", confidence: 0.9, language: "ar-iq" };
+  it("accepts note: null and qualifier: null", () => {
+    const r = validateIntent({ ...base, actions: [{ type: "transfer", recipient: { kind: "name", text: "أحمد", qualifier: null }, amount: { value: 50000, currency: "IQD", source_text: "خمسين ألف" }, note: null }] });
+    expect(r.ok).toBe(true);
+  });
+  it("keeps recipient: null and amount: null", () => {
+    const r = validateIntent({ ...base, actions: [{ type: "transfer", recipient: null, amount: null }] });
+    expect(r.ok && r.intent.actions[0]).toMatchObject({ recipient: null, amount: null });
+  });
+  it("still rejects a null where a value is required", () => {
+    expect(validateIntent({ ...base, actions: [{ type: "transfer", recipient: { kind: "name", text: null }, amount: null }] }).ok).toBe(false);
+  });
+});
