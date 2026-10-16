@@ -3,7 +3,7 @@
 > **From one Iraqi-Arabic sentence to a safe, confirmed transaction.**
 > The model understands. Code moves money.
 
-Solo entry by Shahryar Sabir Muhammed (RegaLabs). Status: **planning docs only** — no code yet. Docs are the source of truth. **Deadlines: design brief 22/10, MVP 08/11** (docs/20).
+Solo entry by Shahryar Sabir Muhammed (RegaLabs). Status: **working end to end** (core, mock wallet, LLM layer, orchestrator, web app, eval harness). Project state: [MEMORY.md](MEMORY.md). **Deadlines: design brief 22/10, MVP 08/11.**
 
 ---
 
@@ -30,11 +30,14 @@ Scope: **P2P transfers + bill payments. Nothing else.**
 
 ```bash
 pnpm install
-pnpm typecheck
-pnpm test
+cp .env.example .env        # add ANTHROPIC_API_KEY (never commit .env)
+pnpm test && pnpm typecheck # 500+ tests, offline, no key needed
+pnpm dev                    # web app on http://localhost:3000 (mock wallet, real model)
+pnpm cli                    # same agent in the terminal (add -- --fake for no key)
+pnpm eval -- --split dev --mode tools   # evaluation harness on the dev set
 ```
 
-Copy `.env.example` to `.env` for keys (never commit `.env`). Project state and decisions: [MEMORY.md](MEMORY.md). Note: `docs/` is kept local, so the links below only work on the author's machine.
+Held-out is frozen (`eval/data/heldout.sha256`) and runs once, only with `--allow-heldout`. Labels are LLM-made, not human-checked: see [eval/data/README.md](eval/data/README.md). Note: `docs/` is kept local, so the links below only work on the author's machine.
 
 ---
 
