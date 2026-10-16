@@ -140,9 +140,18 @@ function parseWords(t: string): AmountParse {
   return finish(total + cur, scaleUsed);
 }
 
+// Arabizi money words (Latin letters, digits for Arabic sounds: 9 = ص, 3 = ع). <!-- VERIFY-DIALECT: spellings -->
+const ARABIZI_WORDS: [RegExp, string][] = [
+  [/(^|\s)(?:no9|nos|nuss|nus|nsf)(?=\s|$)/g, "$1نص"],
+  [/(^|\s)(?:rob3|rub3|rubu3|robo3)(?=\s|$)/g, "$1ربع"],
+  [/(^|\s)(?:melyon|milyon|mlyon|milion|meliyon|melion)(?=\s|$)/g, "$1مليون"],
+  [/(^|\s)(?:mya|miya|meya|miyya)(?=\s|$)/g, "$1ميه"],
+];
+const arabizi = (t: string): string => ARABIZI_WORDS.reduce((a, [re, to]) => a.replace(re, to), t);
+
 /** Parse the exact span the model quoted as the amount. */
 export function parseAmount(raw: string): AmountParse {
-  const t = normaliseArabic(raw).replace(/(\d)[٬،](?=\d)/g, "$1,"); // Arabic thousands separators
+  const t = arabizi(normaliseArabic(raw)).replace(/(\d)[٬،](?=\d)/g, "$1,"); // Arabic thousands separators
   if (!t) return { kind: "none" };
   if (CURRENCY.test(t)) return { kind: "unsupported", reason: "currency" };
   if (/\d٫\d/.test(t)) return { kind: "invalid", reason: "decimal" };

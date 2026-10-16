@@ -561,3 +561,12 @@ describe("what the UI is told, and what it is never told", () => {
     for (const m of r.messages) expect(m.text).toMatch(/[ء-ي]/);
   });
 });
+
+describe("answering «أي فاتورة؟» with any alias of the biller", () => {
+  it.each(["النت", "الواي فاي", "الانترنت"])("«%s» picks the internet bill (not only the first alias)", async (answer) => {
+    const e = setup({ script: { "ادفع اشتراك شي غريب": billIntent("unknown", "شي غريب") } });
+    await e.orch.turn("s", { text: "ادفع اشتراك شي غريب" });
+    const r = await e.orch.turn("s", { text: answer });
+    expect(r.card).toMatchObject({ kind: "bill_pay", biller: { name: "شركة النور للإنترنت (تجريبي)" } });
+  });
+});

@@ -97,3 +97,15 @@ describe("parseAmount: properties", () => {
     );
   });
 });
+
+describe("parseAmount: Arabizi money words", () => {
+  it.each([
+    ["no9 melyon", 500_000], ["nos melyon", 500_000], ["rob3 melyon", 250_000], ["melyon", 1_000_000], ["milyon", 1_000_000],
+    ["25 alf", 25_000], ["50 alf", 50_000], ["25k", 25_000],
+  ])("«%s» is %i", (text, value) => expect(parseAmount(text)).toEqual({ kind: "ok", value }));
+  it("does not disturb Arabic or plain numbers", () => {
+    expect(parseAmount("خمسين الف")).toEqual({ kind: "ok", value: 50_000 });
+    expect(parseAmount("50000")).toEqual({ kind: "ok", value: 50_000 });
+  });
+  it("an Arabizi word that is not money stays unparsed", () => expect(parseAmount("nos")).toMatchObject({ kind: "none" }));
+});

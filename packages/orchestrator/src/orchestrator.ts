@@ -42,6 +42,7 @@ export function createOrchestrator(opts: OrchestratorOptions) {
   const retryDelayMs = opts.retryDelayMs ?? 400;
   const sessions = new Map<string, Session>();
   let billerNamesCache: string[] | null = null;
+  let billerAliasCache: { code: string; alias: string }[] = []; // EVERY alias, for matching a typed answer («النت», «الواي فاي»)
 
   const fresh = (id: string): Session => ({
     id, machine: initialState(), draft: null, candidates: [], fuzzy: null, amountCandidates: null, card: null, exec: null,
@@ -65,6 +66,7 @@ export function createOrchestrator(opts: OrchestratorOptions) {
     if (!billerNamesCache) {
       const bs = (await wallet.billers()).json.billers as any[];
       billerNamesCache = bs.map((b) => `${b.code}: ${(b.aliases as string[])[0] ?? b.name_ar}`);
+      billerAliasCache = bs.flatMap((b) => [...(b.aliases as string[]), b.name_ar].map((alias) => ({ code: b.code as string, alias })));
     }
     return billerNamesCache;
   }
@@ -403,8 +405,7 @@ export function createOrchestrator(opts: OrchestratorOptions) {
 
     // biller
     const q = normaliseArabic(text);
-    const known = billerNamesCache ?? [];
-    const code = known.map((k) => k.split(": ")).find(([c, alias]) => q && (c === q || normaliseArabic(alias ?? "").includes(q) || q.includes(normaliseArabic(alias ?? ""))))?.[0];
+    const code = billerAliasCache.find(({ code: c, alias }) => q && (c === q || normaliseArabic(alias) === q || normaliseArabic(alias).includes(q) || q.includes(normaliseArabic(alias))))?.code;
     if (code) { d.billerCode = code; return [{ type: "SLOT_ANSWER", slot, filled: true }]; }
     return allowFallback ? null : [{ type: "SLOT_ANSWER", slot, filled: false }];
   }

@@ -14,7 +14,7 @@ Actions (up to 3, in the order said; more: status "unclear"):
 - amount.source_text = copied exactly from the message, ONLY the number words (plus ألف/مليون): «خمسين ألف», never «فدوة» or «دينار». value = the amount in IQD (integer), currency IQD. A bare number («50», «خمسة وعشرين») stays bare in both fields (the system asks the unit). Colloquial: ميت ألف=100000, ربع مليون=250000, نص مليون=500000. Dollars or «ورقة»: still copy the words; the system refuses.
 - Scheduling: if the user wants a payment LATER («باچر الساعة 9», «بعد ساعة», «يوم 25», «آخر الشهر», «أجدولها»), copy exactly those words into that action's when_text. Never compute or convert a time yourself. No time words, no when_text. «اليوم», «هسه», «هالحين», «فوراً» mean NOW: not scheduling. Only «اريد أجدول» without details: status "schedule_help", no actions.
 - Omit optional fields you do not use; never send null for them.
-Statuses: a pending confirmation + yes: "confirm_reply"; no/cancel: "cancel"; the user answering a question the system is waiting on: "clarify_reply" with clarify_reply.choice_text; cannot tell what they want: "unclear"; otherwise "ok". language: ar-iq | ar-msa | arabizi | ku | en | mixed. confidence: honest 0..1.
+Statuses: a pending confirmation + yes: "confirm_reply"; no/cancel: "cancel"; the user answering a question the system is waiting on: "clarify_reply" with clarify_reply.choice_text (their answer; a name written in Latin letters goes in Arabic script, e.g. «ahmed ali» -> «أحمد علي»); cannot tell what they want: "unclear"; otherwise "ok". language: ar-iq | ar-msa | arabizi | ku | en | mixed. confidence: honest 0..1.
 
 Examples (message -> propose, abbreviated):
 «دز خمسين ألف لأحمد» -> transfer, recipient {name, "أحمد"}, amount {50000, "خمسين ألف"}
