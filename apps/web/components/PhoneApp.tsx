@@ -21,6 +21,7 @@ export function PhoneApp() {
   const [meta, setMeta] = useState<{ model: string; mode: string; fault: string | null }>({ model: "", mode: "", fault: null });
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
+  const [waiting, setWaiting] = useState<"think" | "confirm" | null>(null);
   const [offline, setOffline] = useState(false);
   const [panel, setPanel] = useState(false);
   const [why, setWhy] = useState(false);
@@ -30,23 +31,24 @@ export function PhoneApp() {
   useEffect(() => { setSid(crypto.randomUUID()); fetch("/api/wallet").then((r) => r.json()).then((d) => { setWallet(d.wallet); setMeta({ model: d.model, mode: d.mode, fault: d.fault }); }).catch(() => setOffline(true)); }, []);
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }); }, [bubbles, reply?.card?.card_id, busy]);
 
-  const apply = useCallback((env: Envelope, userText?: string) => {
+  const apply = useCallback((env: Envelope) => {
     setOffline(false);
     setReply(env.reply);
     setWallet(env.wallet);
     setMeta({ model: env.model, mode: env.mode, fault: env.fault });
     setBubbles((b) => [
       ...b,
-      ...(userText ? [{ id: ++n.current, from: "user" as const, kind: "info" as const, text: userText }] : []),
       ...env.reply.messages.filter((m) => m.kind !== "card").map((m) => ({ id: ++n.current, from: "agent" as const, kind: m.kind, text: m.text })),
     ]);
   }, []);
 
-  const run = useCallback(async (fn: () => Promise<Envelope>, userText?: string) => {
-    setBusy(true);
-    try { apply(await fn(), userText); }
+  // The user's message goes on screen immediately; only then do we wait for the agent (typing indicator).
+  const run = useCallback(async (fn: () => Promise<Envelope>, userText?: string, kind: "think" | "confirm" = "think") => {
+    if (userText) setBubbles((b) => [...b, { id: ++n.current, from: "user", kind: "info", text: userText }]);
+    setBusy(true); setWaiting(kind);
+    try { apply(await fn()); }
     catch { setOffline(true); setBubbles((b) => [...b, { id: ++n.current, from: "agent", kind: "error", text: "النظام مشغول هسه، جرب بعد شوية. ما صار أي تحويل." }]); }
-    finally { setBusy(false); }
+    finally { setBusy(false); setWaiting(null); }
   }, [apply]);
 
   const send = (t: string) => { const v = t.trim(); if (!v || busy) return; setText(""); void run(() => post("/api/turn", { session_id: sid, text: v }), v); };
@@ -130,7 +132,7 @@ export function PhoneApp() {
             <ConfirmCard
               card={card}
               busy={busy}
-              onConfirm={() => run(() => post("/api/confirm", { session_id: sid, card_id: card.card_id }))}
+              onConfirm={() => run(() => post("/api/confirm", { session_id: sid, card_id: card.card_id }), undefined, "confirm")}
               onCancel={() => run(() => post("/api/cancel", { session_id: sid }))}
               onExpire={() => { if (!busy) void run(() => post("/api/tick", { session_id: sid })); }}
             />
@@ -145,7 +147,14 @@ export function PhoneApp() {
               </dl>
             </section>
           )}
-          {busy && <p className="text-[var(--muted)] text-center" role="status">جاي نتأكد…</p>}
+          {busy && waiting === "think" && (
+            <div className="flex justify-end" role="status" aria-label="المساعد يكتب">
+              <div className="rounded-2xl rounded-se-sm bg-white border border-[var(--line)] px-4 py-3 flex gap-1.5" aria-hidden="true">
+                <span className="dot" /><span className="dot" style={{ animationDelay: "150ms" }} /><span className="dot" style={{ animationDelay: "300ms" }} />
+              </div>
+            </div>
+          )}
+          {busy && waiting === "confirm" && <p className="text-[var(--muted)] text-center" role="status">جاي نتأكد…</p>}
           {offline && !busy && <p className="text-center text-[var(--bad)]" role="alert">ماكو اتصال بالنظام.</p>}
           <div ref={endRef} />
         </div>

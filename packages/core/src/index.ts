@@ -7,3 +7,4 @@ export * from "./resolver";
 export * from "./words";
 export * from "./copy";
 export * from "./machine";
+export * from "./when";

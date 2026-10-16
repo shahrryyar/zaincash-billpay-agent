@@ -12,6 +12,8 @@ export type Payload = {
   account_ref?: string;
   amount_iqd: number;
   fee_iqd: number;
+  /** Scheduled payments only: the exact instant (epoch ms) the money may move. Part of the hash, so the user approves THIS time. */
+  run_at?: number;
 };
 
 export type TokenRecord = {

@@ -4,6 +4,7 @@
 import { crossCheck, validateIntent, type Action } from "./schema";
 import { TOKEN_TTL_MS } from "./token";
 import type { CopyKey } from "./copy";
+import { parseWhen, type When, type WhenPrior } from "./when";
 
 export type Phase =
   | "IDLE" | "VALIDATED" | "CLARIFYING" | "RESOLVED" | "AWAITING_CONFIRM" | "EXECUTING" | "UNKNOWN_OUTCOME"
@@ -12,7 +13,7 @@ export type Phase =
 
 export const TERMINAL: ReadonlySet<Phase> = new Set<Phase>(["EXECUTED", "ANSWERED", "FAILED_SAFE", "CANCELLED", "EXPIRED"]);
 
-export type Slot = "recipient" | "amount" | "biller";
+export type Slot = "recipient" | "amount" | "biller" | "time";
 type Vars = Record<string, string | number>;
 
 export type Card = { payloadHash: string; token: string; idempotencyKey: string; expiresAt: number; executeSent: boolean };
@@ -27,13 +28,18 @@ export type MachineState = {
   card: Card | null;
   retries: number;
   reason: string | null;
+  /** Scheduled payments: what parseWhen made of the current action's words, the instant once known, and what a half answer already told us. */
+  when: When | null;
+  schedule: { dueAt: number } | null;
+  whenPrior: WhenPrior | null;
+  queueWhen: (When | null)[];
 };
 
 export type MachineEvent =
   | { type: "INPUT_RECEIVED"; text: string; asrConfidence?: number | undefined }
   | { type: "LLM_OUTPUT"; raw: unknown; input: string }
   | { type: "RESOLUTION"; slot: "recipient" | "biller"; result: "resolved" | "ambiguous" | "fuzzy" | "none"; count?: number; name?: string }
-  | { type: "SLOT_ANSWER"; slot: Slot; filled: boolean }
+  | { type: "SLOT_ANSWER"; slot: Slot; filled: boolean; dueAt?: number; prior?: WhenPrior; why?: "need_time" | "too_soon" | "too_far" | "unparsed" }
   | { type: "PRECHECK"; ok: boolean; code?: string | undefined }
   | { type: "CARD_ISSUED"; payloadHash: string; token: string; idempotencyKey: string }
   | { type: "CONFIRM"; token: string; payloadHash: string }
@@ -68,7 +74,7 @@ export type Result = { state: MachineState; effects: Effect[] };
 const DEFAULTS: Config = { ttlMs: TOKEN_TTL_MS, maxClarify: 2, maxRetries: 3, asrLow: 0.5 };
 
 export function initialState(): MachineState {
-  return { phase: "IDLE", current: null, queue: [], clarifySlot: null, clarifyTurns: {}, lastAsk: null, card: null, retries: 0, reason: null };
+  return { phase: "IDLE", current: null, queue: [], clarifySlot: null, clarifyTurns: {}, lastAsk: null, card: null, retries: 0, reason: null, when: null, schedule: null, whenPrior: null, queueWhen: [] };
 }
 
 // ---- helpers (all pure)
@@ -94,6 +100,16 @@ function ask(state: MachineState, slot: Slot, key: CopyKey, vars: Vars, cfg: Con
 
 const resolveSlot = (a: Action | null): "recipient" | "biller" => (a?.type === "bill_pay" ? "biller" : "recipient");
 
+const whenTextOf = (a: Action | null): string | undefined => (a && a.type !== "info" ? a.when_text : undefined);
+
+/** The question to ask when a scheduled action still has no exact time. */
+function timeQuestion(w: When | null): { key: CopyKey; prior: WhenPrior | null } {
+  if (w?.kind === "need_time") return { key: w.prior.date ? "ask_time" : w.prior.hour !== undefined ? "ask_time" : "ask_time_date", prior: w.prior };
+  if (w?.kind === "too_soon") return { key: "ask_time_soon", prior: null };
+  if (w?.kind === "too_far") return { key: "ask_time_far", prior: null };
+  return { key: "ask_time_date", prior: null };
+}
+
 function processAction(state: MachineState, cfg: Config): Result {
   const a = state.current;
   if (!a) return rephrase("no_action");
@@ -104,16 +120,25 @@ function processAction(state: MachineState, cfg: Config): Result {
   } else if (a.biller === "unknown") {
     return ask(state, "biller", "ask_biller", {}, cfg);
   }
+  // scheduled payment: the instant must be exact before anything is resolved or shown
+  if (whenTextOf(a)) {
+    if (state.schedule === null && state.when?.kind === "ok") state = { ...state, schedule: { dueAt: state.when.dueAt } };
+    if (state.schedule === null) {
+      const q = timeQuestion(state.when);
+      return ask({ ...state, whenPrior: q.prior }, "time", q.key, {}, cfg);
+    }
+  }
   return out({ ...state, phase: "VALIDATED", clarifySlot: null, reason: null }, [{ type: "RESOLVE", slot: resolveSlot(a) }]);
 }
 
 /** A fresh request: Zod gate, deterministic cross-checks, then slot checks. Never executes. */
-function fromIntent(raw: unknown, input: string, cfg: Config): Result {
+function fromIntent(raw: unknown, input: string, cfg: Config, now: number): Result {
   const v = validateIntent(raw);
   if (!v.ok) return rephrase("invalid_output");
   let intent = v.intent;
   if (intent.status === "out_of_scope") return failSafe(initialState(), "out_of_scope", [{ type: "SAY", key: "out_of_scope" }]);
   if (intent.status === "cancel") return out({ ...initialState(), phase: "CANCELLED" }, [{ type: "SAY", key: "cancelled" }]);
+  if (intent.status === "schedule_help") return out({ ...initialState(), phase: "ANSWERED", reason: null }, [{ type: "SAY", key: "schedule_help" }]);
   if (intent.status !== "ok") return rephrase("no_pending_context"); // unclear / confirm_reply / clarify_reply with nothing pending
   // A dropped-«ألف» amount (e.g. «40») in a LATER action must not be asked now: the answer would be applied to the
   // action that is current (the first one). A transfer gets its amount cleared so it asks for it when its turn comes
@@ -129,7 +154,8 @@ function fromIntent(raw: unknown, input: string, cfg: Config): Result {
   const [first, ...rest] = intent.actions;
   if (!first) return rephrase("no_actions");
 
-  const base: MachineState = { ...initialState(), current: first, queue: rest };
+  const whens = intent.actions.map((a) => (whenTextOf(a) ? parseWhen(whenTextOf(a) as string, now) : null));
+  const base: MachineState = { ...initialState(), current: first, queue: rest, when: whens[0] ?? null, queueWhen: whens.slice(1) };
   const many: Effect[] = rest.length > 0 ? [{ type: "SAY", key: "two_actions" }] : [];
   const cc = crossCheck(intent, input);
   if (!cc.ok) {
@@ -160,7 +186,7 @@ function step(state: MachineState, ev: MachineEvent, ctx: Ctx, cfg: Config): Res
 
   if (ev.type === "NEXT_ACTION") {
     const [next, ...rest] = state.queue;
-    if (TERMINAL.has(phase) && next) return processAction({ ...initialState(), current: next, queue: rest }, cfg);
+    if (TERMINAL.has(phase) && next) return processAction({ ...initialState(), current: next, queue: rest, when: state.queueWhen[0] ?? null, queueWhen: state.queueWhen.slice(1) }, cfg);
     return reject(state, "no_next_action");
   }
   if (TERMINAL.has(phase)) return reject(state, "terminal");
@@ -177,7 +203,7 @@ function step(state: MachineState, ev: MachineEvent, ctx: Ctx, cfg: Config): Res
     }
 
     case "LLM_OUTPUT": {
-      if (phase === "IDLE" || phase === "NEEDS_REPHRASE") return fromIntent(ev.raw, ev.input, cfg);
+      if (phase === "IDLE" || phase === "NEEDS_REPHRASE") return fromIntent(ev.raw, ev.input, cfg, ctx.now);
       if (phase !== "CLARIFYING" && phase !== "AWAITING_CONFIRM" && phase !== "VALIDATED") return reject(state, "busy");
       const v = validateIntent(ev.raw);
       if (!v.ok) return out(state, [{ type: "SAY", key: "ask_rephrase" }]); // stay where we are; nothing changes
@@ -190,7 +216,7 @@ function step(state: MachineState, ev: MachineEvent, ctx: Ctx, cfg: Config): Res
       if (status === "clarify_reply")
         return phase === "CLARIFYING" ? out(state, [{ type: "APPLY_CLARIFY", choice_text: v.intent.clarify_reply?.choice_text ?? "" }]) : out(state, [{ type: "SAY", key: "ask_rephrase" }]);
       // a new request replaces the pending one; any live token is revoked
-      const r = fromIntent(ev.raw, ev.input, cfg);
+      const r = fromIntent(ev.raw, ev.input, cfg, ctx.now);
       return withEffects({ state: r.state, effects: [] }, [...revoke(state.card), ...r.effects]);
     }
 
@@ -207,6 +233,12 @@ function step(state: MachineState, ev: MachineEvent, ctx: Ctx, cfg: Config): Res
 
     case "SLOT_ANSWER": {
       if (phase !== "CLARIFYING" || state.clarifySlot !== ev.slot) return reject(state, "answer_not_expected");
+      if (ev.slot === "time") {
+        if (ev.filled && ev.dueAt !== undefined)
+          return out({ ...state, phase: "VALIDATED", clarifySlot: null, schedule: { dueAt: ev.dueAt }, whenPrior: null, reason: null }, [{ type: "RESOLVE", slot: resolveSlot(state.current) }]);
+        const q = timeQuestion(ev.why === "need_time" ? { kind: "need_time", prior: ev.prior ?? {} } : ev.why === "too_soon" ? { kind: "too_soon" } : ev.why === "too_far" ? { kind: "too_far" } : { kind: "unparsed" });
+        return ask({ ...state, whenPrior: ev.prior ?? q.prior }, "time", q.key, {}, cfg);
+      }
       if (ev.filled)
         return out({ ...state, phase: "VALIDATED", clarifySlot: null, reason: null }, [{ type: "RESOLVE", slot: resolveSlot(state.current) }]);
       const again = state.lastAsk;

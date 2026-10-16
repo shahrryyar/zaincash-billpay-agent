@@ -24,6 +24,7 @@ export const TransferAction = z.strictObject({
   recipient: RecipientMention.nullable(), // null -> must clarify
   amount: Money.nullable(), // null -> must clarify
   note: z.string().max(140).optional(),
+  when_text: z.string().min(1).max(80).optional(), // the user's own words about WHEN («باچر الساعة 9»); code computes the instant
 });
 
 export const BILLERS = ["electricity", "generator", "internet", "water", "mobile_topup", "unknown"] as const;
@@ -34,6 +35,7 @@ export const BillPayAction = z.strictObject({
   biller_text: z.string(),
   account_ref: z.string().optional(),
   amount: Money.nullable(), // null -> use the outstanding bill amount from the wallet
+  when_text: z.string().min(1).max(80).optional(),
 });
 
 export const InfoAction = z.strictObject({
@@ -46,7 +48,7 @@ export const Action = z.discriminatedUnion("type", [TransferAction, BillPayActio
 
 export const Intent = z.strictObject({
   actions: z.array(Action).max(3),
-  status: z.enum(["ok", "unclear", "out_of_scope", "cancel", "confirm_reply", "clarify_reply"]),
+  status: z.enum(["ok", "unclear", "out_of_scope", "cancel", "confirm_reply", "clarify_reply", "schedule_help"]),
   clarify_reply: z.strictObject({ choice_text: z.string() }).optional(),
   confidence: z.number().min(0).max(1), // self-estimate: logged, never trusted alone
   language: z.enum(["ar-iq", "ar-msa", "arabizi", "ku", "en", "mixed"]),
@@ -59,7 +61,7 @@ export type ValidateResult = { ok: true; intent: Intent } | { ok: false; error: 
 
 // Models often send `"note": null` for an optional field. That is "absent", not wrong. Only these optional keys are
 // cleaned: `recipient: null` and `amount: null` are meaningful (they trigger a question) and are left alone.
-const OPTIONAL_KEYS = new Set(["note", "qualifier", "account_ref", "biller", "clarify_reply"]);
+const OPTIONAL_KEYS = new Set(["note", "qualifier", "account_ref", "biller", "clarify_reply", "when_text"]);
 function dropNullOptionals(v: unknown, key?: string): unknown {
   if (Array.isArray(v)) return v.map((x) => dropNullOptionals(x));
   if (v && typeof v === "object") {
@@ -83,7 +85,8 @@ export type IssueCode =
   | "currency_unsupported"
   | "amount_invalid"
   | "amount_unit"
-  | "phone_invalid";
+  | "phone_invalid"
+  | "when_not_in_input";
 
 export type Issue = { code: IssueCode; actionIndex: number; candidates?: [number, number] };
 export type CrossCheckResult = { ok: true } | { ok: false; issues: Issue[] };
@@ -103,6 +106,10 @@ export function crossCheck(intent: Intent, inputText: string): CrossCheckResult 
     if (a.type === "transfer" && a.recipient?.kind === "phone") {
       const digits = normaliseDigits(a.recipient.text).replace(/[\s\-()]/g, "");
       if (!PHONE.test(digits)) issues.push({ code: "phone_invalid", actionIndex });
+    }
+    if (a.type !== "info" && a.when_text) {
+      const w = normaliseArabic(a.when_text);
+      if (!w || !input.includes(w)) issues.push({ code: "when_not_in_input", actionIndex });
     }
     if (a.type === "info" || !a.amount) return;
 
