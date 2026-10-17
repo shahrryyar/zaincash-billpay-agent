@@ -44,6 +44,8 @@ export type Reply = {
   result: { reference: string; amount_iqd: number; balance_after_iqd: number | null; scheduled?: { id: string; due_at: number; when_text: string } } | null;
   audit: AuditEntry[];
   trace: Trace;
+  /** Voice only: what the ASR heard, shown back for a «صح» / «لا» tap before anything else happens (docs/09). */
+  readback: { text: string } | null;
 };
 
 export type BillAccount = {
@@ -79,6 +81,8 @@ export type Session = {
   exec: any | null;
   /** The previous exchange as plain text, given to the model as read-only context for pronouns («ادفعها»). */
   recent: string | null;
+  /** A voice transcript waiting for the user's «صح» (mid or unknown ASR confidence). Never reaches the model before that tap. */
+  pendingVoice: { text: string; at: number } | null;
   handles: Map<string, { type: "contact" | "bill"; id: string }>;
   audit: AuditEntry[];
   lock: Promise<unknown>;

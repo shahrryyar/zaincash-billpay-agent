@@ -3,7 +3,7 @@
 // its output enters ONLY through the LLM_OUTPUT event, which the machine validates before anything else.
 import { randomUUID } from "node:crypto";
 import {
-  TERMINAL, amountInWords, copyKeyForWalletError, formatIQD, formatWhenAr, initialState, normaliseArabic, normaliseDigits, parseAmount, parseWhen, relativeAr, payloadHash, resolveContact, t,
+  DEFAULT_ASR_POLICY, TERMINAL, amountInWords, asrDecision, cleanTranscript, type AsrPolicy, copyKeyForWalletError, formatIQD, formatWhenAr, initialState, normaliseArabic, normaliseDigits, parseAmount, parseWhen, relativeAr, payloadHash, resolveContact, t,
   transition, type Contact, type CopyKey, type Effect, type MachineEvent, type Payload, type Config,
 } from "@zc/core";
 import type { ToolHost, Understander } from "@zc/llm";
@@ -22,9 +22,18 @@ export type OrchestratorOptions = {
   sleep?: (ms: number) => Promise<void>;
   retryDelayMs?: number;
   config?: Partial<Config>;
+  /** Voice gate thresholds (docs/09). */
+  asrPolicy?: AsrPolicy;
 };
 
-export type TurnInput = { text?: string; choice?: string; asrConfidence?: number };
+/**
+ * One user turn. `voice: true` marks an ASR transcript: it goes through the voice gate first (repeat / read back /
+ * accept). `readback` is the user's tap on a read-back: "accept" runs the transcript they saw, "reject" drops it.
+ */
+export type TurnInput = { text?: string; choice?: string; asrConfidence?: number; voice?: boolean; readback?: "accept" | "reject" };
+
+/** A read-back older than this is dropped instead of run (same window as a confirmation card). */
+const READBACK_TTL_MS = 120_000;
 
 type TurnCtx = { text: string; asr: number | undefined; reply: Reply; auditFrom: number; suppressAsk: boolean };
 
@@ -46,7 +55,7 @@ export function createOrchestrator(opts: OrchestratorOptions) {
 
   const fresh = (id: string): Session => ({
     id, machine: initialState(), draft: null, candidates: [], fuzzy: null, amountCandidates: null, card: null, exec: null,
-    handles: new Map(), audit: [], lock: Promise.resolve(), recent: null,
+    handles: new Map(), audit: [], lock: Promise.resolve(), recent: null, pendingVoice: null,
   });
   const getSession = (id: string): Session => { let s = sessions.get(id); if (!s) { s = fresh(id); sessions.set(id, s); } return s; };
   const resetRequest = (s: Session) => {
@@ -54,7 +63,7 @@ export function createOrchestrator(opts: OrchestratorOptions) {
   };
   const locked = <T>(s: Session, fn: () => Promise<T>): Promise<T> => { const run = s.lock.then(fn, fn); s.lock = run.catch(() => undefined); return run; };
 
-  const newReply = (s: Session): Reply => ({ session_id: s.id, phase: s.machine.phase, messages: [], card: null, candidates: [], result: null, audit: [], trace: {} });
+  const newReply = (s: Session): Reply => ({ session_id: s.id, phase: s.machine.phase, messages: [], card: null, candidates: [], result: null, audit: [], trace: {}, readback: null });
   const say = (tc: TurnCtx, kind: AgentMessage["kind"], text: string) => tc.reply.messages.push({ kind, text });
   const sayKey = (tc: TurnCtx, key: CopyKey, vars: Record<string, string | number> = {}) =>
     say(tc, STATUS_KEYS.has(key) ? "status" : ERROR_KEYS.has(key) ? "error" : "info", t(key, vars));
@@ -441,6 +450,47 @@ export function createOrchestrator(opts: OrchestratorOptions) {
     if (said) s.recent = `User: «${tc.text || "(tapped a button)"}» / Assistant: «${said}»`.slice(0, 500);
     return reply;
   }
+  /** A typed message, or a voice transcript that passed the voice gate. Runs inside the session lock. */
+  async function handleText(s: Session, tc: TurnCtx, text: string, asr: number | undefined): Promise<Reply> {
+    if (!text) { sayKey(tc, "ask_rephrase"); return finalize(s, tc); }
+
+    if (TERMINAL.has(s.machine.phase) && s.machine.queue.length === 0) resetRequest(s); // a finished request: start a new one
+
+    const phase = s.machine.phase;
+    if (phase === "EXECUTING" || phase === "UNKNOWN_OUTCOME") { sayKey(tc, "checking"); return finalize(s, tc); }
+
+    if (phase === "AWAITING_CONFIRM") {
+      if (wantsSchedule(text)) await dispatch(s, { type: "SCHEDULE_THIS", when: parseWhen(text, now()) }, tc); // «جدولها» (+ maybe a time): same payment, later
+      else if (isCancel(text) || isNo(text)) await dispatch(s, { type: "CANCEL" }, tc);
+      else if (isYes(text)) say(tc, "info", t("press_confirm_button")); // a typed or spoken «yes» never executes
+      else await dispatch(s, { type: "INPUT_RECEIVED", text, asrConfidence: asr }, tc); // an edit: new request replaces the card
+      return finalize(s, tc);
+    }
+
+    if (phase === "CLARIFYING") {
+      if (isCancel(text)) { await dispatch(s, { type: "CANCEL" }, tc); return finalize(s, tc); }
+      if (asr !== undefined && asr < (opts.config?.asrLow ?? 0.5)) { await dispatch(s, { type: "INPUT_RECEIVED", text, asrConfidence: asr }, tc); return finalize(s, tc); }
+      await billerNames();
+      const fresh = s.machine.clarifySlot === "recipient" ? await answerUnknownContact(s, text, tc) : null;
+      if (fresh) { for (const e of fresh) await dispatch(s, e, tc); return finalize(s, tc); }
+      const events = answerClarification(s, text, tc, true);
+      if (events) { for (const e of events) await dispatch(s, e, tc); }
+      else {
+        // not an answer: maybe a new request, so ask the model. If it changed nothing, the user still used up a turn
+        // (at most 2 per slot), otherwise garbage input could keep the question open forever.
+        const slot = s.machine.clarifySlot as "recipient" | "amount" | "biller";
+        const before = s.machine.clarifyTurns[slot] ?? 0;
+        await dispatch(s, { type: "INPUT_RECEIVED", text, asrConfidence: asr }, tc);
+        if (s.machine.phase === "CLARIFYING" && s.machine.clarifySlot === slot && (s.machine.clarifyTurns[slot] ?? 0) === before && !tc.reply.trace.llm_error)
+          await dispatch(s, slot === "recipient" ? { type: "RESOLUTION", slot, result: "none", name: text } : { type: "SLOT_ANSWER", slot, filled: false }, tc);
+      }
+      return finalize(s, tc);
+    }
+
+    await dispatch(s, { type: "INPUT_RECEIVED", text, asrConfidence: asr }, tc);
+    return finalize(s, tc);
+  }
+
   const begin = (s: Session, text = "", asr?: number): TurnCtx => ({ text, asr, reply: newReply(s), auditFrom: s.audit.length, suppressAsk: false });
 
   return {
@@ -448,6 +498,33 @@ export function createOrchestrator(opts: OrchestratorOptions) {
     turn(sessionId: string, input: TurnInput): Promise<Reply> {
       const s = getSession(sessionId);
       return locked(s, async () => {
+        const pending = s.pendingVoice;
+        s.pendingVoice = null; // any new input drops a read-back that was not answered
+
+        // The user's tap on a read-back. «صح» runs exactly the transcript they saw, as if they had typed it.
+        if (input.readback !== undefined) {
+          const tc = begin(s, pending?.text ?? "");
+          if (input.readback === "accept" && pending && now() - pending.at <= READBACK_TTL_MS) return handleText(s, tc, pending.text, undefined);
+          sayKey(tc, "readback_dropped");
+          return finalize(s, tc);
+        }
+
+        if (input.voice && input.choice === undefined) {
+          const heard = cleanTranscript(input.text ?? "");
+          const vc = begin(s, heard, input.asrConfidence);
+          const decision = asrDecision(heard, input.asrConfidence, opts.asrPolicy ?? DEFAULT_ASR_POLICY);
+          if (decision === "repeat") { sayKey(vc, "asr_low"); return finalize(s, vc); } // nothing reaches the model
+          // Mid or unknown confidence: show what we heard and wait for a tap. Cancelling is the safe direction,
+          // so a spoken «الغي» is not read back.
+          if (decision === "readback" && !isCancel(heard)) {
+            s.pendingVoice = { text: heard, at: now() };
+            vc.reply.readback = { text: heard };
+            say(vc, "ask", t("readback_asr", { text: heard }));
+            return finalize(s, vc);
+          }
+          return handleText(s, vc, heard, input.asrConfidence);
+        }
+
         const text = (input.text ?? "").trim();
         const tc = begin(s, text, input.asrConfidence);
 
@@ -459,43 +536,7 @@ export function createOrchestrator(opts: OrchestratorOptions) {
           } else sayKey(tc, "ask_rephrase");
           return finalize(s, tc);
         }
-        if (!text) { sayKey(tc, "ask_rephrase"); return finalize(s, tc); }
-
-        if (TERMINAL.has(s.machine.phase) && s.machine.queue.length === 0) resetRequest(s); // a finished request: start a new one
-
-        const phase = s.machine.phase;
-        if (phase === "EXECUTING" || phase === "UNKNOWN_OUTCOME") { sayKey(tc, "checking"); return finalize(s, tc); }
-
-        if (phase === "AWAITING_CONFIRM") {
-          if (wantsSchedule(text)) await dispatch(s, { type: "SCHEDULE_THIS", when: parseWhen(text, now()) }, tc); // «جدولها» (+ maybe a time): same payment, later
-          else if (isCancel(text) || isNo(text)) await dispatch(s, { type: "CANCEL" }, tc);
-          else if (isYes(text)) say(tc, "info", t("press_confirm_button")); // a typed or spoken «yes» never executes
-          else await dispatch(s, { type: "INPUT_RECEIVED", text, asrConfidence: input.asrConfidence }, tc); // an edit: new request replaces the card
-          return finalize(s, tc);
-        }
-
-        if (phase === "CLARIFYING") {
-          if (isCancel(text)) { await dispatch(s, { type: "CANCEL" }, tc); return finalize(s, tc); }
-          if (input.asrConfidence !== undefined && input.asrConfidence < (opts.config?.asrLow ?? 0.5)) { await dispatch(s, { type: "INPUT_RECEIVED", text, asrConfidence: input.asrConfidence }, tc); return finalize(s, tc); }
-          await billerNames();
-          const fresh = s.machine.clarifySlot === "recipient" ? await answerUnknownContact(s, text, tc) : null;
-          if (fresh) { for (const e of fresh) await dispatch(s, e, tc); return finalize(s, tc); }
-          const events = answerClarification(s, text, tc, true);
-          if (events) { for (const e of events) await dispatch(s, e, tc); }
-          else {
-            // not an answer: maybe a new request, so ask the model. If it changed nothing, the user still used up a turn
-            // (at most 2 per slot), otherwise garbage input could keep the question open forever.
-            const slot = s.machine.clarifySlot as "recipient" | "amount" | "biller";
-            const before = s.machine.clarifyTurns[slot] ?? 0;
-            await dispatch(s, { type: "INPUT_RECEIVED", text, asrConfidence: input.asrConfidence }, tc);
-            if (s.machine.phase === "CLARIFYING" && s.machine.clarifySlot === slot && (s.machine.clarifyTurns[slot] ?? 0) === before && !tc.reply.trace.llm_error)
-              await dispatch(s, slot === "recipient" ? { type: "RESOLUTION", slot, result: "none", name: text } : { type: "SLOT_ANSWER", slot, filled: false }, tc);
-          }
-          return finalize(s, tc);
-        }
-
-        await dispatch(s, { type: "INPUT_RECEIVED", text, asrConfidence: input.asrConfidence }, tc);
-        return finalize(s, tc);
+        return handleText(s, tc, text, input.asrConfidence);
       });
     },
 
