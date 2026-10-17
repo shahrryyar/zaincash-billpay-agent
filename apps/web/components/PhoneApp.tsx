@@ -1,7 +1,10 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { t, type CopyKey } from "@zc/core";
 import { ConfirmCard } from "./ConfirmCard";
-import type { Bubble, Envelope, Reply, ScheduleItem, WalletView } from "./types";
+import { MicButton } from "./MicButton";
+import { simulatorWav } from "./recorder";
+import type { Bubble, Envelope, Reply, ScheduleItem, VoiceEnvelope, VoiceInfo, WalletView } from "./types";
 
 const fmt = (n: number) => n.toLocaleString("en-US");
 const SESSION = typeof crypto !== "undefined" && "randomUUID" in crypto ? "" : "web";
@@ -21,7 +24,10 @@ export function PhoneApp() {
   const [meta, setMeta] = useState<{ model: string; mode: string; fault: string | null }>({ model: "", mode: "", fault: null });
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
-  const [waiting, setWaiting] = useState<"think" | "confirm" | null>(null);
+  const [waiting, setWaiting] = useState<"think" | "confirm" | "voice" | null>(null);
+  const [voice, setVoice] = useState<VoiceInfo | null>(null);
+  const [sim, setSim] = useState<{ text: string; conf: string }>({ text: "دز خمسين ألف لأحمد", conf: "" });
+  const inputRef = useRef<HTMLInputElement>(null);
   const [offline, setOffline] = useState(false);
   const [panel, setPanel] = useState(false);
   const [schedPanel, setSchedPanel] = useState(false);
@@ -43,7 +49,7 @@ export function PhoneApp() {
     if (fresh.length) setBubbles((b) => [...b, ...fresh]);
   }, []);
   const refresh = useCallback(async () => {
-    try { const d = await (await fetch("/api/wallet", { cache: "no-store" })).json(); setWallet(d.wallet); setMeta({ model: d.model, mode: d.mode, fault: d.fault }); syncSchedules(d.schedules ?? []); setOffline(false); }
+    try { const d = await (await fetch("/api/wallet", { cache: "no-store" })).json(); setWallet(d.wallet); setMeta({ model: d.model, mode: d.mode, fault: d.fault }); setVoice(d.voice ?? null); syncSchedules(d.schedules ?? []); setOffline(false); }
     catch { setOffline(true); }
   }, [syncSchedules]);
   useEffect(() => { setSid(crypto.randomUUID()); void refresh(); }, [refresh]);
@@ -55,6 +61,7 @@ export function PhoneApp() {
     setReply(env.reply);
     setWallet(env.wallet);
     setMeta({ model: env.model, mode: env.mode, fault: env.fault });
+    if (env.voice) setVoice(env.voice);
     if (env.schedules) syncSchedules(env.schedules);
     setBubbles((b) => [
       ...b,
@@ -72,6 +79,29 @@ export function PhoneApp() {
   }, [apply]);
 
   const send = (t: string) => { const v = t.trim(); if (!v || busy) return; setText(""); void run(() => post("/api/turn", { session_id: sid, text: v }), v); };
+  const say = (kind: Bubble["kind"], text: string) => setBubbles((b) => [...b, { id: ++n.current, from: "agent", kind, text }]);
+  // Voice: the recording goes to our own server (the ASR key never reaches the browser). What the ASR heard is shown
+  // as the user's bubble; the reply may be a read-back that waits for «صح» before anything else happens.
+  const sendVoice = async (wav: Blob, simulate?: { text: string; conf: string }) => {
+    if (busy) return;
+    setBusy(true); setWaiting("voice");
+    try {
+      const f = new FormData();
+      f.append("session_id", sid);
+      f.append("file", wav, "utterance.wav");
+      if (simulate) { f.append("sim_text", simulate.text); if (simulate.conf) f.append("sim_confidence", simulate.conf); }
+      const r = await fetch("/api/voice", { method: "POST", body: f });
+      const d = await r.json().catch(() => null);
+      if (!r.ok || !d?.reply) { say("error", d?.message || t("asr_unavailable")); return; }
+      const env = d as VoiceEnvelope;
+      if (env.transcript.text.trim()) setBubbles((b) => [...b, { id: ++n.current, from: "user", kind: "info", text: `🎤 ${env.transcript.text}` }]);
+      apply(env);
+    } catch { setOffline(true); say("error", t("asr_unavailable")); }
+    finally { setBusy(false); setWaiting(null); }
+  };
+  const answerReadback = (v: "accept" | "reject") => { if (!busy) void run(() => post("/api/turn", { session_id: sid, readback: v }), t(v === "accept" ? "readback_yes" : "readback_no")); };
+  const editReadback = (heard: string) => { setText(heard); setReply((r) => (r ? { ...r, readback: null } : r)); inputRef.current?.focus(); };
+  const micProblem = (key: CopyKey) => say(key === "mic_hold" ? "info" : "error", t(key));
   const pick = (id: string, name: string) => { if (!busy) void run(() => post("/api/turn", { session_id: sid, choice: id }), name); };
   const admin = async (body: object) => { const r = await fetch("/api/admin", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ session_id: sid, ...body }) }); const d = await r.json(); if (d.wallet) setWallet(d.wallet); if (d.schedules) syncSchedules(d.schedules); setMeta((m) => ({ ...m, fault: d.fault ?? null })); return d; };
   const cancelSchedule = async (id: string) => { const r = await fetch("/api/schedules/cancel", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ id }) }); const d = await r.json(); if (d.schedules) { pending.current.delete(id); syncSchedules(d.schedules); }
@@ -141,6 +171,19 @@ export function PhoneApp() {
               <button className="rounded-lg border border-[var(--bad)] text-[var(--bad)] bg-white px-3 min-h-11" onClick={reset}>إعادة ضبط</button>
             </div>
             {meta.fault && <p className="text-[var(--warn)] font-semibold">عطل مفعّل: {meta.fault}</p>}
+            <p className="text-sm text-[var(--muted)]">الصوت: <span className="nums">{voice ? (voice.enabled ? voice.provider : "off") : "…"}</span></p>
+            {voice?.simulator && (
+              <div className="rounded-lg border border-dashed border-[var(--line)] bg-white p-2 space-y-2">
+                <p className="text-sm text-[var(--muted)]">محاكاة صوت (ASR وهمي، ما يسمع شي): نص + ثقة</p>
+                <input aria-label="نص المحاكاة" value={sim.text} onChange={(e) => setSim((s) => ({ ...s, text: e.target.value }))} className="w-full min-h-11 rounded-lg border border-[var(--line)] px-3" />
+                <div className="flex gap-2">
+                  <select aria-label="الثقة" value={sim.conf} onChange={(e) => setSim((s) => ({ ...s, conf: e.target.value }))} className="min-h-11 rounded-lg border border-[var(--line)] px-2">
+                    <option value="">بدون ثقة</option><option value="0.3">0.3</option><option value="0.6">0.6</option><option value="0.95">0.95</option>
+                  </select>
+                  <button disabled={busy} onClick={() => sendVoice(simulatorWav(), sim)} className="rounded-lg border border-[var(--line)] bg-[#fff8e6] px-3 min-h-11">🎤 أرسل كصوت</button>
+                </div>
+              </div>
+            )}
             <div>
               <h2 className="font-bold mb-1">آخر العمليات</h2>
               {wallet?.transactions.length ? (
@@ -211,6 +254,17 @@ export function PhoneApp() {
               </div>
             </div>
           )}
+          {reply?.readback && (
+            <section className="rise rounded-2xl border-2 border-[var(--accent)] bg-white p-4 space-y-3" aria-label="تأكيد اللي سمعته">
+              <p className="text-lg font-semibold">«{reply.readback.text}»</p>
+              <div className="flex flex-wrap gap-2">
+                <button disabled={busy} onClick={() => answerReadback("accept")} className="rounded-full bg-[var(--accent)] text-white font-bold px-5 min-h-12">{t("readback_yes")}</button>
+                <button disabled={busy} onClick={() => answerReadback("reject")} className="rounded-full border-2 border-[var(--line)] px-5 min-h-12">{t("readback_no")}</button>
+                <button disabled={busy} onClick={() => editReadback(reply.readback!.text)} className="rounded-full border-2 border-[var(--line)] px-5 min-h-12">{t("readback_edit")}</button>
+              </div>
+            </section>
+          )}
+          {busy && waiting === "voice" && <p className="text-[var(--muted)] text-center" role="status">{t("mic_transcribing")}</p>}
           {busy && waiting === "confirm" && <p className="text-[var(--muted)] text-center" role="status">جاي نتأكد…</p>}
           {offline && !busy && <p className="text-center text-[var(--bad)]" role="alert">ماكو اتصال بالنظام.</p>}
           <div ref={endRef} />
@@ -227,7 +281,8 @@ export function PhoneApp() {
 
         <form onSubmit={(e) => { e.preventDefault(); send(text); }} className="flex items-center gap-2 border-t border-[var(--line)] bg-white px-3 py-2.5">
           <label htmlFor="msg" className="sr-only">اكتب طلبك</label>
-          <input id="msg" value={text} onChange={(e) => setText(e.target.value)} autoComplete="off" enterKeyHint="send" placeholder="اكتب طلبك…" className="flex-1 min-w-0 min-h-12 rounded-full border-2 border-[var(--line)] bg-[var(--paper)] px-4 outline-none focus:border-[var(--accent)]" />
+          <input id="msg" ref={inputRef} value={text} onChange={(e) => setText(e.target.value)} autoComplete="off" enterKeyHint="send" placeholder="اكتب طلبك…" className="flex-1 min-w-0 min-h-12 rounded-full border-2 border-[var(--line)] bg-[var(--paper)] px-4 outline-none focus:border-[var(--accent)]" />
+          {voice?.enabled && !text.trim() && <MicButton maxSeconds={voice.max_seconds} disabled={busy} onWav={(w) => void sendVoice(w)} onProblem={micProblem} />}
           <button type="submit" disabled={busy || !text.trim()} className="min-h-12 min-w-20 rounded-full bg-[var(--accent)] text-white font-bold px-5">دز</button>
         </form>
       </div>

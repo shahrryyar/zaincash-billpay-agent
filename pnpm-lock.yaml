@@ -51,6 +51,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@zc/asr':
+        specifier: workspace:*
+        version: link:../../packages/asr
       '@zc/core':
         specifier: workspace:*
         version: link:../../packages/core

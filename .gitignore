@@ -21,6 +21,10 @@ dist/
 # LLM response cache (local)
 .cache/
 
+# Voice recordings (VOICE_CAPTURE_DIR) and voice eval audio stay local: consented speech only, never committed
+eval/voice/captures/
+eval/voice/audio/
+
 # Next.js generated
 apps/web/AGENTS.md
 apps/web/next-env.d.ts

@@ -1,10 +1,11 @@
 // One in-process engine for the demo: mock wallet (SQLite in memory) + orchestrator + the real model.
 // Everything the model can do is inside @zc/orchestrator; the browser only ever sees Reply objects (no token, no key).
 import { existsSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { isAbsolute, join, resolve } from "node:path";
 import { applySeed, createApp, openDb, DEMO_USER } from "@zc/wallet-api";
 import { chatFromEnv, createUnderstander } from "@zc/llm";
-import { formatWhenAr, relativeAr, t } from "@zc/core";
+import { asrPolicyFrom, formatWhenAr, relativeAr, t } from "@zc/core";
+import { asrFromEnv } from "@zc/asr";
 import { appFetch, createOrchestrator, WalletClient, type Reply } from "@zc/orchestrator";
 
 function loadRootEnv(): void {
@@ -50,9 +51,17 @@ function build() {
   const wallet = new WalletClient({ baseUrl: "http://wallet.local", fetch: appFetch(app), timeoutMs: 2500 });
   const mode = (process.env.LLM_MODE ?? "tools") as "tools" | "workflow";
   const { chat, description } = chatFromEnv(process.env, { cacheDir: resolve(process.cwd(), "../../.cache/llm") });
+  // Voice (docs/09): off unless an ASR provider is configured; the text path never depends on it.
+  const asr = asrFromEnv(process.env);
+  const demo = (process.env.DEMO_MODE ?? "1") === "1";
+  const repoRoot = resolve(process.cwd(), "../..");
+  const cap = process.env.VOICE_CAPTURE_DIR?.trim();
+  const voiceCaptureDir = cap ? (isAbsolute(cap) ? cap : join(/* turbopackIgnore: true */ repoRoot, cap)) : undefined;
+  console.log(`[voice] ${asr.description}`);
   const orch = createOrchestrator({
     wallet,
     userId: DEMO_USER,
+    asrPolicy: asrPolicyFrom(process.env),
     understanderFor: ((host: never) => createUnderstander({ chat, mode, host })) as never,
     retryDelayMs: 300,
     now: clock.now,
@@ -92,7 +101,9 @@ function build() {
   timer.unref?.();
 
   return {
-    orch, snapshot, schedules, model: chat.id, mode, description, now: clock.now,
+    orch, snapshot, schedules, model: chat.id, mode, description, now: clock.now, asr, demo, voiceCaptureDir,
+    /** What the browser may know about voice: never the key or the base URL. */
+    voice: () => ({ enabled: asr.transcriber !== null, provider: asr.provider, max_seconds: asr.maxSeconds, simulator: asr.provider === "fake" && demo }),
     async advance(ms: number) { clock.skewMs += Math.max(0, ms); (app as unknown as { runDueSchedules: () => unknown }).runDueSchedules(); },
     fault: () => state.fault,
     async arm(kind: "timeout" | "5xx" | "biller_down" | "none") {
@@ -112,5 +123,5 @@ export const engine = (): Engine => (g.__zcEngine ??= build());
 /** Replies go to the browser together with the fresh wallet snapshot, so the balance on screen is always read from the wallet. */
 export async function withWallet(reply: Reply) {
   const e = engine();
-  return { reply, wallet: await e.snapshot(), schedules: await e.schedules(), fault: e.fault(), model: e.model, mode: e.mode };
+  return { reply, wallet: await e.snapshot(), schedules: await e.schedules(), fault: e.fault(), model: e.model, mode: e.mode, voice: e.voice() };
 }

@@ -12,6 +12,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@zc/asr": "workspace:*",
     "@zc/core": "workspace:*",
     "@zc/llm": "workspace:*",
     "@zc/orchestrator": "workspace:*",
