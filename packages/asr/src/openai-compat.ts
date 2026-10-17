@@ -56,7 +56,7 @@ export function createOpenAICompatTranscriber(o: OpenAICompatOptions): Transcrib
 
   async function once(wav: Uint8Array, key: string, signal?: AbortSignal): Promise<{ status: number; body: unknown }> {
     const form = new FormData();
-    form.append("file", new Blob([wav as BlobPart], { type: "audio/wav" }), "utterance.wav");
+    form.append("file", new Blob([wav.slice()], { type: "audio/wav" }), "utterance.wav");
     if (o.language) form.append("language", o.language);
     if (o.model) form.append("model", o.model);
     if (o.responseFormat) form.append("response_format", o.responseFormat);

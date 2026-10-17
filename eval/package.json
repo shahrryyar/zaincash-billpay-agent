@@ -8,9 +8,11 @@
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json",
-    "eval": "tsx src/run.ts"
+    "eval": "tsx src/run.ts",
+    "eval:voice": "tsx src/voice.ts"
   },
   "dependencies": {
+    "@zc/asr": "workspace:*",
     "@zc/core": "workspace:*",
     "@zc/llm": "workspace:*",
     "@zc/orchestrator": "workspace:*"
