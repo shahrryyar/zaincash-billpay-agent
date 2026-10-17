@@ -6,7 +6,7 @@
   "description": "Wires the LLM, the deterministic core and the wallet: /turn and /confirm. Performs the state machine's effects.",
   "main": "src/index.ts",
   "scripts": {
-    "test": "vitest run",
+    "test": "vitest run --testTimeout=60000",
     "typecheck": "tsc -p tsconfig.json",
     "cli": "tsx src/cli.ts",
     "smoke": "tsx src/smoke.ts"

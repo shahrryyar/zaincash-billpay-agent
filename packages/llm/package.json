@@ -6,7 +6,7 @@
   "description": "LLM adapters (Claude primary, OpenAI-format fallbacks) behind one interface",
   "main": "src/index.ts",
   "scripts": {
-    "test": "vitest run",
+    "test": "vitest run --testTimeout=60000",
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {

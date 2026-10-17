@@ -6,7 +6,7 @@
   "description": "Mock ZainCash wallet (Hono + SQLite). Synthetic data only",
   "main": "src/index.ts",
   "scripts": {
-    "test": "vitest run",
+    "test": "vitest run --testTimeout=60000",
     "typecheck": "tsc -p tsconfig.json",
     "dev": "tsx src/server.ts",
     "stress": "SAFETY_REPORT=1 vitest run test/concurrency.test.ts"

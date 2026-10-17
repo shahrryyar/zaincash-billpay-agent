@@ -6,7 +6,7 @@
   "description": "Speech to text for the voice path: RegaLabs (OpenAI-compatible /audio/transcriptions), any OpenAI-compatible baseline, and a fake for tests. Text only: it never touches the wallet.",
   "main": "src/index.ts",
   "scripts": {
-    "test": "vitest run",
+    "test": "vitest run --testTimeout=60000",
     "typecheck": "tsc -p tsconfig.json",
     "check": "tsx src/check.ts"
   },

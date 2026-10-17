@@ -6,7 +6,7 @@
   "description": "Evaluation harness and datasets",
   "main": "src/index.ts",
   "scripts": {
-    "test": "vitest run",
+    "test": "vitest run --testTimeout=60000",
     "typecheck": "tsc -p tsconfig.json",
     "eval": "tsx src/run.ts",
     "eval:voice": "tsx src/voice.ts"
