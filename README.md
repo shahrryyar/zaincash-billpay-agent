@@ -22,7 +22,19 @@ The agent:
 5. **Executes once** — confirmation token + idempotency key, so retries never double-debit.
 6. **Reports honestly** — success with a reference, or «ما انرسل شي، رصيدك نفسه ما تغيّر» ("Nothing was sent, your balance is unchanged").
 
-Scope: **P2P transfers + bill payments. Nothing else.**
+Scope: **P2P transfers + bill payments**, now or at a scheduled time (one-off, not recurring). Typed or spoken (optional RegaLabs voice). Nothing else.
+
+**Public evidence in this repo:** [DISCLOSURE.md](DISCLOSURE.md) (models, tools, data, conflict of interest) · [FAILURE_MODES.md](FAILURE_MODES.md) (16 failure modes, each tested) · [eval/results/](eval/results/) (every measured run).
+
+| Measured (Claude Haiku 5.5, tool mode) | Value |
+|---|---|
+| Held-out, run once (n=180, commit `1445bff`): end-to-end completion | 81.1% [74.8, 86.2] |
+| Held-out: unsafe executions on must-not-execute cases | 0/180 (upper 95% bound 1.7%) |
+| Held-out: ambiguity recall / precision | 100% (n=42) / 73.7% (n=57) |
+| Held-out: p50 / p95 time to card | 2.3 s / 3.7 s |
+| Wallet stress: 1,000 concurrent requests on 50 keys, 4 processes | 50 debits, 0 duplicates |
+
+Labels are LLM-made (three model families, adjudicated), not human-checked. Dev numbers are higher but were tuned on.
 
 ---
 
@@ -31,11 +43,13 @@ Scope: **P2P transfers + bill payments. Nothing else.**
 ```bash
 pnpm install
 cp .env.example .env        # add ANTHROPIC_API_KEY (never commit .env)
-pnpm test && pnpm typecheck # 500+ tests, offline, no key needed
+pnpm test && pnpm typecheck # 650+ tests, offline, no key needed
 pnpm dev                    # web app on http://localhost:3000 (mock wallet, real model)
 pnpm cli                    # same agent in the terminal (add -- --fake for no key)
 pnpm eval -- --split dev --mode tools   # evaluation harness on the dev set
 ```
+
+**Voice (optional):** set `REGALABS_API_KEY` in `.env`, check it with `pnpm --filter @zc/asr check`, then hold the 🎤 button. Without a key the mic is hidden. To try the voice flow with no key: `ASR_PROVIDER=fake pnpm dev` and use the simulator in «لوحة العرض». Voice eval: [eval/voice/README.md](eval/voice/README.md).
 
 Held-out is frozen (`eval/data/heldout.sha256`) and runs once, only with `--allow-heldout`. Labels are LLM-made, not human-checked: see [eval/data/README.md](eval/data/README.md). Note: `docs/` is kept local, so the links below only work on the author's machine.
 
@@ -56,7 +70,7 @@ Held-out is frozen (`eval/data/heldout.sha256`) and runs once, only with `--allo
 | 06 | [docs/06-mock-wallet-api.md](docs/06-mock-wallet-api.md) | Mock ZainCash wallet: data model, endpoints, errors, fault injection |
 | 07 | [docs/07-confirmation-and-idempotency.md](docs/07-confirmation-and-idempotency.md) | How "0 unconfirmed" and "0 duplicates" are guaranteed |
 | 08 | [docs/08-iraqi-dialect-nlu.md](docs/08-iraqi-dialect-nlu.md) | Iraqi Arabic: verbs, numbers, money slang, names, normalisation |
-| 09 | [docs/09-voice-asr-regalabs.md](docs/09-voice-asr-regalabs.md) | RegaLabs Iraqi-Arabic ASR (streaming + offline), LiveKit, confidence gating |
+| 09 | [docs/09-voice-asr-regalabs.md](docs/09-voice-asr-regalabs.md) | RegaLabs Iraqi-Arabic ASR (developer API), push-to-talk, confidence gate and read-back |
 | 10 | [docs/10-llm-strategy.md](docs/10-llm-strategy.md) | Claude primary + free fallbacks, tool-loop vs workflow, prompts, fine-tune only if needed |
 | 11 | [docs/11-synthetic-data.md](docs/11-synthetic-data.md) | Generating the wallet + test set with an LLM |
 | 12 | [docs/12-evaluation.md](docs/12-evaluation.md) | Metrics, harness, hard gates, results tables |
@@ -72,6 +86,8 @@ Held-out is frozen (`eval/data/heldout.sha256`) and runs once, only with `--allo
 | 22 | [docs/22-submission-checklist.md](docs/22-submission-checklist.md) | Everything that must exist before submitting |
 | 23 | [docs/23-judge-qa-prep.md](docs/23-judge-qa-prep.md) | Hard questions judges may ask, with answers |
 | 24 | [docs/24-glossary.md](docs/24-glossary.md) | Terms and dialect phrase glossary |
+| 27 | [docs/27-scheduling.md](docs/27-scheduling.md) | Scheduled payments: time parsing, token-bound time, exactly-once runner |
+| 28 | [docs/28-mvp-update.md](docs/28-mvp-update.md) | One-page MVP update for 08/11 |
 | 26 | [docs/26-verification-plan.md](docs/26-verification-plan.md) | Threat model, machine-checked invariants, independent verification |
 | R | [docs/research/](docs/research/) | App-review mining (raw data + script) and standards/teardown |
 | 25 | [docs/25-open-questions.md](docs/25-open-questions.md) | Answered + still-open questions |

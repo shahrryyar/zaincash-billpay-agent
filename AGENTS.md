@@ -27,7 +27,7 @@ You are helping a **solo builder** ship the ZainCash Agentic AI Challenge, **Top
 - `packages/core`: Zod schemas, state machine, resolver, normaliser, copy strings. **Pure, no I/O, fully unit-tested.**
 - `packages/llm`: Claude (Haiku/Sonnet 5.5, paid, capped) primary; OpenAI-format fallbacks (Groq, Gemini, OpenRouter, local). Read-only tool loop + `propose` (docs/05).
 - `eval/`: TypeScript harness; Python/FastAPI only if needed (e.g., WER tooling).
-- Voice: RegaLabs Iraqi-Arabic ASR via LiveKit (docs/09). Optional — never block the text path on it.
+- `packages/asr`: speech to text for the optional voice path — RegaLabs Iraqi-Arabic ASR via its OpenAI-compatible developer API (`/v1/audio/transcriptions`, server-side key), plus a fake for tests (docs/09). Voice transcripts enter the same orchestrator turn as text, after the confidence gate / read-back. Never block the text path on it.
 
 Do **not** add LangGraph, vector DBs, multi-agent orchestration, or microservices. A plain state machine is the deliberate choice (judges reward "simple and reliable").
 
