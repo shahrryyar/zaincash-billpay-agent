@@ -110,6 +110,9 @@ importers:
       '@zc/wallet-api':
         specifier: workspace:*
         version: link:../apps/wallet-api
+      fast-check:
+        specifier: ^4.10.2
+        version: 4.10.2
       tsx:
         specifier: ^4.23.15
         version: 4.23.15
