@@ -36,7 +36,7 @@ Do **not** add LangGraph, vector DBs, multi-agent orchestration, or microservice
 - Commit small and often with clear messages — commit history across the build period is a judging gate.
 - Write tests first for `packages/core` invariants.
 - Never fabricate evaluation numbers. Report what the harness measures.
-- Free LLM tiers may train on prompts: **synthetic data only**. Claude key is paid: respect `LLM_DAILY_BUDGET_USD`. Keys in `.env` (gitignored), never committed. Cache LLM responses in dev/eval; backoff on 429.
+- Free LLM tiers may train on prompts: **synthetic data only**. Claude key is paid: respect `LLM_DAILY_TOKEN_CAP` (tokens per process per UTC day; prices are not assumed) and the spend limit on the Anthropic workspace. Keys in `.env` (gitignored), never committed. Cache LLM responses in dev/eval; backoff on 429.
 - **Never tune on held-out.** MVP numbers come from dev; held-out runs once.
 - Keep the never-cut list intact (docs/02). If time is short, cut in this order: TTS → fine-tuning → visual polish → voice.
 - Disclose every model, library, and AI assistant used — append to docs/19 as you go.
