@@ -38,6 +38,8 @@ const relationOf = (s: string): string | undefined => RELATION_WORDS[key(s)];
 /** True if the text is a relation word (أمي, أخوي, خوي...). Exported so tests can state the resolver's oracle. */
 export const isRelationWord = (s: string): boolean => relationOf(s) !== undefined;
 
+const KUNYA_PARTICLES = new Set(["ابو", "ابن", "بنت"]);
+
 const byNameThenId = (a: Contact, b: Contact) =>
   a.display_name.localeCompare(b.display_name, "ar") || a.id.localeCompare(b.id);
 
@@ -70,9 +72,13 @@ function matchName(mention: string, contacts: Contact[]): Contact[] {
   // 1. exact full name or alias
   const exact = contacts.filter((c) => key(c.display_name) === m || (c.aliases ?? []).some((a) => key(a) === m));
   if (exact.length) return exact;
-  // 2. leading-token match: mention tokens are the first tokens of the contact name («علي» ≠ «ابو علي»)
+  // 2. leading-token match: mention tokens are the first tokens of the contact name («علي» ≠ «ابو علي»).
+  //    A mention that ends in a bare kunya particle («ابو», «ابن», «بنت») is an incomplete name: «ابو» alone must
+  //    never resolve to «ابو علي» just because he is the only «ابو» in the book (found by the property test).
+  const incompleteKunya = KUNYA_PARTICLES.has(mt[mt.length - 1] as string);
   const leading = contacts.filter((c) => {
     const ct = key(c.display_name).split(" ");
+    if (incompleteKunya && ct.length > mt.length) return false;
     return ct.length >= mt.length && mt.every((t, i) => ct[i] === t);
   });
   if (leading.length) return leading;

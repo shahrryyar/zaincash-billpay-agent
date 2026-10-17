@@ -96,13 +96,17 @@ describe("resolveContact: fuzzy never auto-resolves", () => {
     fc.assert(fc.property(fc.stringMatching(/^[ء-ي]{2,8}$/), (t) => {
       const r = resolveContact(name(t), book);
       if (r.status === "resolved") {
-        const n = (s: string) => s.replace(/[أإآ]/g, "ا").replace(/ة/g, "ه").replace(/ى/g, "ي");
+        const n = (s: string) => s.replace(/[أإآ]/g, "ا").replace(/ة/g, "ه").replace(/ى/g, "ي").replace(/ؤ/g, "و").replace(/ئ/g, "ي");
         const key = n(t);
         return book.some((c) => n(c.display_name).split(" ")[0] === key || n(c.display_name) === key || n(c.display_name).replace(/^ل/, "") === key || n(c.display_name).replace(/ /g, "") === key.replace(/ /g, "") || key.startsWith("ل") || isRelationWord(key) || book.some((c) => { const ct = n(c.display_name).split(" "); return ct.length > 1 && isRelationWord(ct[0] as string) && ct[1] === key; }));
       }
       return true;
     }));
   });
+  it("a bare kunya particle («ابو», «آبؤ») never resolves to the only «أبو …» contact", () => {
+    for (const t of ["ابو", "أبو", "آبؤ", "لأبو"]) expect(resolveContact(name(t), book).status).not.toBe("resolved");
+  });
+  it("the full kunya still resolves", () => expect(resolveContact(name("أبو علي"), book)).toMatchObject({ status: "resolved", contact: { id: "c_abu_ali" } }));
   it("property: candidate order does not depend on input order", () => {
     fc.assert(fc.property(fc.shuffledSubarray(book, { minLength: book.length }), (shuffled) => {
       const a = resolveContact(name("أحمد"), book), b = resolveContact(name("أحمد"), shuffled);
