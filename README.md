@@ -43,7 +43,7 @@ Labels are LLM-made (three model families, adjudicated), not human-checked. Dev 
 ```bash
 pnpm install
 cp .env.example .env        # add ANTHROPIC_API_KEY (never commit .env)
-pnpm test && pnpm typecheck # 650+ tests, offline, no key needed
+pnpm test && pnpm typecheck # 700+ tests, offline, no key needed
 pnpm dev                    # web app on http://localhost:3000 (mock wallet, real model)
 pnpm cli                    # same agent in the terminal (add -- --fake for no key)
 pnpm eval -- --split dev --mode tools   # evaluation harness on the dev set

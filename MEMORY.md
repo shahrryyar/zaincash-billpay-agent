@@ -33,25 +33,28 @@ Accepted into the build stage already. Elimination is after the MVP.
 - **Fees/limits** come from ZainCash's public Fees & Limits page (read 2026-10-16), in `apps/wallet-api/src/fees.ts` with source and date.
 - **Scheduling** (docs/27): model copies the time words, `packages/core/src/when.ts` computes the instant, the approved instant is part of the confirmation token, wallet runner pays once, re-checks everything at run time.
 - **License:** proprietary, all rights reserved, until the author changes it. Judges/organisers need written permission from the author to run it.
-- **Voice:** RegaLabs ASR via LiveKit is the author's own pre-existing service (disclosed). Blocked on the author giving connection details. Text path never depends on it.
+- **Voice:** RegaLabs ASR (author's own pre-existing service, disclosed) via its OpenAI-compatible **developer HTTP API** (`POST https://api.regalabs.dev/v1/audio/transcriptions`, WAV PCM16, Bearer key, returns `{text}` only, no confidence). **LiveKit dropped** (push-to-talk needs no media server). Built 2026-10-17: `packages/asr`, core voice gate (`asr.ts`), orchestrator read-back (mid/unknown confidence → «سمعتك تگول… صح؟», runs only after «صح»), `/api/voice`, mic button, demo simulator (`ASR_PROVIDER=fake`), WER/CER eval (`eval:voice`). **Blockers (author):** `REGALABS_API_KEY` with paid credit; RegaLabs gateway refuses `acm` (developer-audio.ts SUPPORTED_ASR_LANGUAGES) → add it, or `REGALABS_ASR_LANGUAGE=ar` (disclose). Check with `pnpm --filter @zc/asr check`.
 - **Evidence finding:** 500 App Store reviews: pain is failed/stuck money, support, fees, KYC, fraud, not "too many taps". Lead with safe/honest/recoverable.
 - **No human labels, no interviews.** Test labels are LLM-made (agy, Fable, Haiku, adjudicated). docs/17 has no interviews and must never get invented ones.
 
-## Status (2026-10-16 end of day)
-- Built and pushed (main = origin/main, 67f5e24): core (333 tests), llm (74), wallet-api (102), orchestrator (113), eval (13), web app. CI: typecheck, test, build, gitleaks.
-- **Tested by hand in real Chrome (bsk), not only by tests:** instant message + typing indicator, hero flow with real fee, schedule create/confirm/list/cancel, clock advance + notification, failed scheduled run, «جدولها» button, typed «اجدولها», date-only flow, out-of-scope replies, timeout-after-commit retry, Arabizi follow-up, biller alias.
-- **Dev (Haiku 5.5, tools):** 92.5% e2e (111/120), S1 0/120. **Schedule dev:** 26/26 (dev only). Dev was tuned, so it is optimistic.
-- **HELD-OUT RUN ONCE** (commit 1445bff, hash 13e0fa33…): e2e **81.1%** [74.8, 86.2] n=180; state acc 81.3%; ambiguity recall 100% (n=42), precision 73.7%; **S1 unsafe execution 0/180 (upper 95% bound 1.7%)**; card on must-not-execute 1/100; p50/p95 to card 2.3 s / 3.7 s. **Held-out is spent: never re-run it to chase a number; any change needs a fresh set and must be disclosed.** Analysis: `eval/results/heldout-haiku-tools.md`. Misses: «نفس المبلغ مال اخر مرة» (`previous` not implemented, asks), malformed chatter answered as out_of_scope (safe; label says rephrase), «ورقة/دفتر» asked instead of refused, descriptor words after a name.
-- `.env` is complete except values only the author has: GROQ/GEMINI/OPENROUTER keys+models, LOCAL_BASE_URL/MODEL, LIVEKIT_*, REGALABS_ASR_AGENT.
+## Status (2026-10-17)
+- Pushed to origin/main. Tests: core 350, asr 33, llm 74, wallet-api 102, orchestrator 126, eval 22, web 7 (714). CI: typecheck, test, build, gitleaks, **OSV-Scanner** (vitest 4 / vite 7 after it flagged 9 dev-tool advisories).
+- **Public gate docs committed:** `DISCLOSURE.md`, `FAILURE_MODES.md` (16 FMs), README with measured results (docs/ stays local).
+- Local docs refreshed 2026-10-17: 02/03/05/06/09 (rewritten)/10/11/12 (results table filled)/13/14/15/18/19/20/21/22/23/24/25/26; **docs/28 = MVP one-pager draft**.
+- Resolver fix 2026-10-17 (property test found it): a bare «أبو» no longer resolves to the only «أبو …» contact. **This is after the held-out run: disclosed.**
+- Tested by hand in real Chrome (bsk) on 16/10: hero flow, scheduling, faults, out-of-scope, Arabizi, biller alias. 17/10: voice read-back seen in Chrome via the simulator (the author interrupted the browser session); the «صح» → card → «اي» never confirms → low confidence → non-WAV path verified over HTTP against the running app with the real model.
+- **Dev (Haiku 5.5, tools):** 92.5% e2e (111/120), S1 0/120. Sonnet dev 94.2%, workflow dev 90.0% (overlapping CIs). **Schedule dev:** 26/26. Dev was tuned.
+- **HELD-OUT RUN ONCE** (commit 1445bff, hash 13e0fa33…): e2e **81.1%** [74.8, 86.2] n=180; state 81.3%; ambiguity recall 100% (n=42), precision 73.7%; **S1 0/180 (≤1.7%)**; card on must-not-execute 1/100; p50/p95 2.3/3.7 s. **Spent: never re-run.** Misses: «نفس المبلغ مال اخر مرة» (previous not implemented, asks), malformed chatter → out_of_scope, «ورقة/دفتر» asked not refused, descriptor words after a name.
+- `.env`: voice keys added empty (ASR_PROVIDER, REGALABS_API_KEY, REGALABS_BASE_URL, REGALABS_ASR_LANGUAGE=acm, ASR_*); author fills REGALABS_API_KEY.
 
 ## Next steps
-1. **Voice** (M7): needs RegaLabs/LiveKit details from the author. Text path stays independent.
-2. **One-page MVP update for 08/11** (use the measured numbers above, say held-out was run once, say labels are LLM-only).
-3. docs/19 final (Human vs AI summary), docs/13 failure modes with the held-out misses, docs/23 Q&A refresh.
-4. Demo rehearsal x3 (docs/18) incl. the scheduling segment («قدّم الوقت ساعة» in the demo panel) and a screen recording backup.
-5. Real interviews are the biggest missing score: send the 5-question voice-note kit in docs/17 to 2 real ZainCash users; if impossible, say "hypotheses only".
-6. Possible improvements (need a fresh test set to measure): `previous` («نفس المرة الفاتت»), refuse «ورقة/دفتر», clarification order (unit before recipient), Latin-letter time words.
-7. Add OSV-Scanner to CI. Ask organisers: judge input text or voice, demo format, may judges run a proprietary-licensed repo.
+1. **Voice on** (author): REGALABS_API_KEY + `acm` in the RegaLabs gateway allow-list → `pnpm --filter @zc/asr check` → hold 🎤 in Chrome. Then record 40–60 consented utterances (≥5 speakers) via `VOICE_CAPTURE_DIR=eval/voice/captures`, type references, `pnpm --filter @zc/eval eval:voice`. Never claim a voice number before that.
+2. **MVP one-pager**: docs/28 is the draft; export to PDF and submit 08/11.
+3. docs/19 final Human-vs-AI line; demo rehearsal x3 (docs/18, incl. voice read-back + scheduling) and a screen recording backup.
+4. Real interviews (docs/17 voice-note kit to 2 ZainCash users); if impossible, say "hypotheses only".
+5. Improvements needing a **fresh** test set: `previous`, refuse «ورقة/دفتر», clarification order, Latin-letter time words.
+6. Ask organisers: judge input text or voice, demo format, may judges run a proprietary-licensed repo, is the RegaLabs ASR OK.
+7. Keep committing on more days (history must span the build period).
 
 ## Working rules (from the author)
 - **Commits are authored by the author only: no `Co-Authored-By` trailer, no "Generated with" footer.** Small commits, imperative subject.
