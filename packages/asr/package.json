@@ -1,0 +1,18 @@
+{
+  "name": "@zc/asr",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Speech to text for the voice path: RegaLabs (OpenAI-compatible /audio/transcriptions), any OpenAI-compatible baseline, and a fake for tests. Text only: it never touches the wallet.",
+  "main": "src/index.ts",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json",
+    "check": "tsx src/check.ts"
+  },
+  "devDependencies": {
+    "fast-check": "^4.10.2",
+    "tsx": "^4.23.15"
+  },
+  "license": "UNLICENSED"
+}
