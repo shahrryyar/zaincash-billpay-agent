@@ -4,7 +4,7 @@
 //   held-out: needs --allow-heldout, a matching eval/data/heldout.sha256, and is logged in eval/results/heldout-runs.log
 import { createHash } from "node:crypto";
 import { execSync } from "node:child_process";
-import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { applySeed, createApp, openDb, DEMO_USER, LOW_USER, SEED_NOW } from "@zc/wallet-api";
@@ -41,10 +41,17 @@ let cases: Case[] = dataRaw.split("\n").filter(Boolean).map((l) => JSON.parse(l)
 if (args.get("ids")) { const want = new Set((args.get("ids") as string).split(",")); cases = cases.filter((c) => want.has(c.id)); }
 if (args.get("limit")) cases = cases.slice(0, Number(args.get("limit")));
 
-if (split === "heldout") {
-  const shaFile = resolve(root, "eval/data/heldout.sha256");
+const isHeldout = split.startsWith("heldout"); // heldout (spent, commit 1445bff) and heldout2 (fresh, 2026-10-19)
+if (isHeldout) {
+  const shaFile = resolve(root, `eval/data/${split}.sha256`);
   if (!args.has("allow-heldout")) { console.error("Refusing: held-out is run once. Pass --allow-heldout (and see docs/12)."); process.exit(3); }
-  if (!existsSync(shaFile) || !readFileSync(shaFile, "utf8").startsWith(datasetSha)) { console.error("Refusing: held-out file does not match eval/data/heldout.sha256 (frozen hash)."); process.exit(3); }
+  if (!existsSync(shaFile) || !readFileSync(shaFile, "utf8").startsWith(datasetSha)) { console.error(`Refusing: held-out file does not match eval/data/${split}.sha256 (frozen hash).`); process.exit(3); }
+  // run once: a committed result for this exact dataset means it is spent (the .log file is not committed, the results are)
+  const resultsDir = resolve(root, "eval/results");
+  const spent = existsSync(resultsDir) && readdirSync(resultsDir).filter((f) => f.endsWith(".json")).some((f) => {
+    try { return (JSON.parse(readFileSync(resolve(resultsDir, f), "utf8")) as { meta?: { dataset_sha256?: string } }).meta?.dataset_sha256 === datasetSha; } catch { return false; }
+  });
+  if (spent) { console.error(`Refusing: ${split} was already run once (a result for this dataset is in eval/results/).`); process.exit(3); }
   if (args.has("limit") || args.has("ids")) { console.error("Refusing: no partial held-out runs."); process.exit(3); }
 }
 
@@ -177,7 +184,7 @@ async function main() {
     `## Failures (${failures.length})`, ...failures.map((r) => `- ${r.id} [${r.category}] «${r.text}» → ${r.failure}${r.llm_error ? ` (llm error: ${r.llm_error.slice(0, 120)})` : ""}`), "",
   ].join("\n");
   writeFileSync(resolve(root, `eval/results/${tag}.md`), md);
-  if (split === "heldout") appendFileSync(resolve(root, "eval/results/heldout-runs.log"), `${meta.date} ${tag} ${meta.model} ${mode} sha=${datasetSha} commit=${meta.commit}\n`);
+  if (isHeldout) appendFileSync(resolve(root, "eval/results/heldout-runs.log"), `${meta.date} ${tag} ${meta.model} ${mode} sha=${datasetSha} commit=${meta.commit}\n`);
   console.log(md.split("\n## Failures")[0]);
   console.log(`failures: ${failures.length}  ->  eval/results/${tag}.md`);
   process.exit(0);

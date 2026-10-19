@@ -25,5 +25,32 @@
     },
     "unanimous_full": 157,
     "needs_adjudication": 23
+  },
+  "heldout2": {
+    "labellers": [
+      "fable",
+      "sonnet",
+      "haiku"
+    ],
+    "n": 180,
+    "pairs": {
+      "fable-sonnet": {
+        "state_agree": 0.989,
+        "kappa_state": 0.983,
+        "full_agree": 0.978
+      },
+      "fable-haiku": {
+        "state_agree": 0.983,
+        "kappa_state": 0.975,
+        "full_agree": 0.972
+      },
+      "sonnet-haiku": {
+        "state_agree": 0.994,
+        "kappa_state": 0.992,
+        "full_agree": 0.994
+      }
+    },
+    "unanimous_full": 175,
+    "needs_adjudication": 5
   }
 }

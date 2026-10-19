@@ -2,7 +2,7 @@
 # Reports raw agreement and Cohen's kappa on final_state, and lists every id that needs adjudication.
 #   python3 eval/gen/agree.py [dev|heldout ...]
 import json, sys, itertools, collections, os
-from labelcommon import key as detail_key
+from labelcommon import key as detail_key, load_split
 
 D = os.path.join(os.path.dirname(__file__), "..", "data")
 SPLITS = sys.argv[1:] or ["dev", "heldout"]
@@ -22,8 +22,7 @@ def kappa(a, b):
 
 report = {}
 for sp in SPLITS:
-    sets = {"agy": load(f"{D}/{sp}.jsonl"), "fable": load(f"{D}/independent/fable.{sp}.jsonl"), "haiku": load(f"{D}/independent/haiku.{sp}.jsonl")}
-    sets = {k: v for k, v in sets.items() if v}
+    sets = load_split(sp)
     ids = sorted(set.intersection(*[set(v) for v in sets.values()]))
     rep = {"labellers": list(sets), "n": len(ids), "pairs": {}}
     for x, y in itertools.combinations(sets, 2):
@@ -44,5 +43,6 @@ for sp in SPLITS:
     report[sp] = rep
     with open(f"{D}/adjudication.{sp}.jsonl", "w", encoding="utf-8") as f:
         for r in need: f.write(json.dumps(r, ensure_ascii=False) + "\n")
-json.dump(report, open(f"{D}/agreement.json", "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+old = json.load(open(f"{D}/agreement.json", encoding="utf-8")) if os.path.exists(f"{D}/agreement.json") else {}
+json.dump({**old, **report}, open(f"{D}/agreement.json", "w", encoding="utf-8"), ensure_ascii=False, indent=2)
 print(json.dumps(report, ensure_ascii=False, indent=2))
