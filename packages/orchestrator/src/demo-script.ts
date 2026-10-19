@@ -5,6 +5,7 @@ import { normaliseArabic } from "@zc/core";
 import type { Understander } from "@zc/llm";
 
 const base = { status: "ok", confidence: 0.9, language: "ar-iq" };
+const ku = { ...base, language: "ku" };
 const money = (value: number, source_text: string) => ({ value, currency: "IQD", source_text });
 const transfer = (text: string, amount: ReturnType<typeof money> | null, kind = "name") => ({ type: "transfer", recipient: { kind, text }, amount });
 const bill = (biller: string, biller_text: string, when_text?: string) => ({ type: "bill_pay", biller, biller_text, amount: null, ...(when_text ? { when_text } : {}) });
@@ -26,6 +27,15 @@ export const DEMO_SCRIPT: Record<string, unknown> = {
   "شكد رصيدي": { ...base, actions: [{ type: "info", query: "balance" }] },
   "شنو آخر تحويل": { ...base, actions: [{ type: "info", query: "last_transfer" }] },
   "احجزلي تكت طيارة": { ...base, status: "out_of_scope", actions: [] },
+  // Kurdish (the examples on the Kurdish screen) <!-- VERIFY-DIALECT -->
+  "پەنجا هەزار بنێرە بۆ ئاراس": { ...ku, actions: [transfer("ئاراس", money(50_000, "پەنجا هەزار"))] },
+  "پەنجا هەزار بنێرە بۆ هێمن": { ...ku, actions: [transfer("هێمن", money(50_000, "پەنجا هەزار"))] },
+  "سەد هەزار بنێرە بۆ دایکم": { ...ku, actions: [transfer("دایکم", money(100_000, "سەد هەزار"), "relation")] },
+  "پسوولەی مۆلیدە بدە": { ...ku, actions: [bill("generator", "مۆلیدە")] },
+  "پسوولەی کارەبا بدە": { ...ku, actions: [bill("electricity", "کارەبا")] },
+  "سبەی کاتژمێر ٩ی بەیانی پسوولەی مۆلیدە بدە": { ...ku, actions: [bill("generator", "مۆلیدە", "سبەی کاتژمێر ٩ی بەیانی")] },
+  "باڵانسەکەم چەندە؟": { ...ku, actions: [{ type: "info", query: "balance" }] },
+  "دەمەوێت پارەدانێک خشتە بکەم": { ...ku, status: "schedule_help", actions: [] },
 };
 
 const SCRIPT_BY_KEY = new Map(Object.entries(DEMO_SCRIPT).map(([k, v]) => [normaliseArabic(k), v]));

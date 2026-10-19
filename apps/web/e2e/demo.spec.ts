@@ -98,3 +98,26 @@ test("two judges at once: one payment never shows in the other's wallet", async 
   await b.reload();
   await expect(balance(b)).toHaveText("200,000 د.ع");
 });
+
+test("Kurdish: the picker switches the whole screen; two Arases is a question; the Kurdish card confirms once", async ({ page }) => {
+  await page.getByRole("button", { name: "کوردی" }).click();
+  await expect(page.getByRole("button", { name: "کوردی" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("html")).toHaveAttribute("lang", "ckb");
+  await expect(page.getByText("داواکارییەکەت بە یەک ڕستە بنووسە")).toBeVisible();
+  await expect(page.getByText(/^[\d,]+ دینار$/).first()).toHaveText("200,000 دینار");
+  await page.getByLabel("داواکارییەکەت بنووسە").fill("پەنجا هەزار بنێرە بۆ ئاراس");
+  await page.getByRole("button", { name: "بینێرە", exact: true }).click();
+  await expect(page.getByText("2 کەست هەیە بە ناوی ئاراس، مەبەستت کامیانە؟")).toBeVisible();
+  await page.getByRole("button", { name: /ئاراس کەریم/ }).click();
+  const card = page.getByRole("region", { name: "پشتڕاستکردنەوەی ناردن" });
+  await expect(card).toContainText("50,000 دینار");
+  await expect(card).toContainText("پەنجا هەزار");
+  await expect(card).toContainText("هێشتا هیچ نەنێردراوە");
+  await card.getByRole("button", { name: "پشتڕاستی بکەوە و بینێرە" }).click();
+  await expect(page.getByRole("region", { name: "پسوولەی وەرگرتن" })).toContainText(/ZC-\d{8}/);
+  await expect(page.getByText(/^[\d,]+ دینار$/).first()).toHaveText("149,700 دینار");
+  // back to Arabic: the next reply is Arabic again
+  await page.getByRole("button", { name: "عربي" }).click();
+  await say(page, "شكد رصيدي");
+  await expect(page.getByText("رصيدك 149,700 د.ع.")).toBeVisible();
+});
