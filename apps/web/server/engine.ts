@@ -36,7 +36,7 @@ export type ScheduleView = {
 
 const FAIL_REASON: Record<string, string> = {
   INSUFFICIENT_BALANCE: "الرصيد ما يكفي", LIMIT_EXCEEDED: "تجاوز الحد الشهري", BILLER_UNAVAILABLE: "الخدمة واگفة", BILL_ALREADY_PAID: "الفاتورة مدفوعة من قبل",
-  AMOUNT_CHANGED: "مبلغ الفاتورة تغيّر", SCHEDULE_MISSED: "فات الموعد بأكثر من يوم", AUTHORIZATION_MISMATCH: "التفاصيل ما تطابق اللي أكّدته", CONTACT_NOT_WALLET_USER: "المستلم ما عنده محفظة",
+  AMOUNT_CHANGED: "مبلغ الفاتورة تغيّر", SCHEDULE_MISSED: "فات الموعد بأكثر من يوم", AUTHORIZATION_MISMATCH: "التفاصيل ما تطابق اللي أكّدته", CONTACT_NOT_WALLET_USER: "المستلم ما عنده محفظة", RECIPIENT_WALLET_FULL: "محفظة المستلم وصلت حدها",
 };
 
 function build() {
