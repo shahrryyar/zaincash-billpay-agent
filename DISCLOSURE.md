@@ -20,6 +20,8 @@ Using AI is expected; this file lists every model, tool, library and data source
 | Fallbacks wired, **not used for any reported number** (no keys) | Groq, Gemini, OpenRouter, local (OpenAI-compatible endpoints) | `packages/llm` |
 | Test sentence candidates (300) and primary labels | Gemini 3.8 Flash via the `agy` (Antigravity) CLI | `eval/gen`, `eval/data` |
 | Independent blind labellers | Anthropic Claude Fable and Claude Haiku 5.5 (Claude Code subagents) | `eval/data/independent` |
+| Fresh test set `heldout2` (2026-10-19): 180 candidate sentences | Anthropic Claude Opus (Claude Code subagent) | `eval/gen/heldout2.candidates.jsonl` |
+| `heldout2` labels: three blind labellers | Anthropic Claude Fable, Claude Sonnet 5.5, Claude Haiku 5.5 (Claude Code subagents) | `eval/data/independent/*.heldout2.jsonl` |
 | Speech to text (optional) | RegaLabs ASR, Iraqi Arabic (`acm`), via its developer API | `packages/asr` |
 
 The model only understands. It has read-only tools (search contacts, bills, balance, history, quote) and `propose`
@@ -34,6 +36,8 @@ The model only understands. It has read-only tools (search contacts, bills, bala
 | Zod | validation of every model output and API body |
 | @anthropic-ai/sdk | Claude client |
 | Vitest, Vite, fast-check, tsx | tests, property tests, scripts (dev only) |
+| Playwright (`@playwright/test`) | browser end-to-end tests of the web app (dev only) |
+| Docker (`node:22-bookworm-slim`) | the hosted-demo image |
 | jaro-winkler (MIT) | dev-only oracle for our own Jaro-Winkler implementation |
 | gitleaks, OSV-Scanner | secret and dependency-vulnerability scanning in CI |
 
@@ -47,6 +51,7 @@ voice and dropped: push-to-talk over one HTTPS call is simpler and needs no medi
 | Claude Code (Anthropic) | planning docs, code, tests, review, browser testing of the web app (author's `bsk` CLI) |
 | DeepSeek Harness running Claude (claude-opus-5-5) | voice path, eval WER/CER, CI hardening, docs refresh (2026-10-17) |
 | `agy` (Antigravity CLI, Gemini 3.8 Flash) | generated the 300 test candidates and the primary labels; never ran our system |
+| Claude Code (Anthropic, cloud session, 2026-10-19) | gap review and plan; no-key demo mode; honest unknown-outcome recheck; accuracy fixes from the held-out error analysis; per-session sandboxes, Docker image, Playwright tests; built the `heldout2` set with the subagents listed above |
 
 ## Data
 - **100% synthetic.** Wallet seed written for this project; contacts, numbers and balances are fictional.
@@ -55,8 +60,12 @@ voice and dropped: push-to-talk over one HTTPS call is simpler and needs no medi
 - Held-out (180 rows) frozen before its run: sha256 `13e0fa33f989210fa1e2323c7cfdf020f1b6baae4ec0b78b4a9552aef9faf4a2`.
   It was run **once** (commit `1445bff`). It is spent: no further runs, no tuning on it.
 - Changes after the held-out run (so the held-out number describes commit `1445bff`, not later code):
-  a resolver fix (a bare «أبو» no longer resolves to the only «أبو …» contact) and the voice path. Any new number needs
-  a fresh test set.
+  a resolver fix (a bare «أبو» no longer resolves to the only «أبو …» contact), the voice path, and the 2026-10-19 fixes
+  listed in `FAILURE_MODES.md`. Any new number needs a fresh test set.
+- **`heldout2`** (180 new cases) was generated and labelled by Claude models only (see Models), adjudicated by the same
+  script, and frozen (sha256 `de55b4432582a05936c54971f1234c4329f3a4fbad15efa90bb65540bdd3aca7`) before any change was
+  measured on it. Its labellers share one model family and saw the generator's trap notes, so their agreement overstates
+  label quality. One scheduled card's exact time was computed by hand from the fixed seed clock. Not yet run.
 - No interviews have been done; personas are hypotheses from public App Store reviews.
 - Free LLM tiers may train on prompts; only synthetic data is ever sent to any provider.
 - Voice recordings, when collected, are consented, fictional in content, stored locally and not committed.

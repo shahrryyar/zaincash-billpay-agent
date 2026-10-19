@@ -24,7 +24,7 @@ The agent:
 
 Scope: **P2P transfers + bill payments**, now or at a scheduled time (one-off, not recurring). Typed or spoken (optional RegaLabs voice). Nothing else.
 
-**Public evidence in this repo:** [DISCLOSURE.md](DISCLOSURE.md) (models, tools, data, conflict of interest) · [FAILURE_MODES.md](FAILURE_MODES.md) (16 failure modes, each tested) · [eval/results/](eval/results/) (every measured run).
+**Public evidence in this repo:** [DISCLOSURE.md](DISCLOSURE.md) (models, tools, data, conflict of interest) · [FAILURE_MODES.md](FAILURE_MODES.md) (20 failure modes, each tested) · [eval/results/](eval/results/) (every measured run).
 
 | Measured (Claude Haiku 5.5, tool mode) | Value |
 |---|---|
@@ -36,6 +36,10 @@ Scope: **P2P transfers + bill payments**, now or at a scheduled time (one-off, n
 
 Labels are LLM-made (three model families, adjudicated), not human-checked. Dev numbers are higher but were tuned on.
 
+The held-out number describes commit `1445bff`. Fixes made since (listed in [FAILURE_MODES.md](FAILURE_MODES.md)) are
+**not** measured by it: a fresh frozen set, `heldout2` (180 new cases, [eval/data/README.md](eval/data/README.md)), is
+waiting for its one run. No number is claimed for it until the harness prints one.
+
 ---
 
 ## Quick start
@@ -43,11 +47,30 @@ Labels are LLM-made (three model families, adjudicated), not human-checked. Dev 
 ```bash
 pnpm install
 cp .env.example .env        # add ANTHROPIC_API_KEY (never commit .env)
-pnpm test && pnpm typecheck # 700+ tests, offline, no key needed
+pnpm test && pnpm typecheck # 775 unit tests, offline, no key needed
 pnpm dev                    # web app on http://localhost:3000 (mock wallet, real model)
+LLM_PROVIDER=fake pnpm dev  # same app with no key: scripted demo sentences only
 pnpm cli                    # same agent in the terminal (add -- --fake for no key)
+pnpm smoke -- --fake        # whole pipeline on the demo sentences (15 checks, no key)
+pnpm --filter @zc/web e2e   # 8 browser tests in Chromium (scripted model)
 pnpm eval -- --split dev --mode tools   # evaluation harness on the dev set
 ```
+
+### Run it for judges
+
+- **Hosted URL (Docker).** One image holds the web app and the in-process mock wallet. Every browser tab gets its own
+  sandbox (own seeded wallet, clock and fault switches, dropped after 30 idle minutes), so judges trying it at the same
+  time never see each other's balance and the demo panel only affects the caller.
+  ```bash
+  docker build -t zc-billpay .
+  docker run -p 3000:3000 -e ANTHROPIC_API_KEY=... zc-billpay    # put the key in the host's secret store, not the image
+  docker run -p 3000:3000 -e LLM_PROVIDER=fake zc-billpay        # no key: scripted sentences only
+  ```
+  Health check: `GET /api/health`. Limits per session: `TURNS_PER_10_MIN` (default 60), plus `LLM_DAILY_TOKEN_CAP` per
+  process; `SANDBOX_MAX` (200) and `SANDBOX_IDLE_MIN` (30). Any Docker host works (Fly.io, Render, a VPS); deploying
+  needs the author's account.
+- **Laptop backup.** `pnpm install && pnpm dev` with the key in `.env`, or `docker run` as above. If the network or the
+  model is down, `LLM_PROVIDER=fake` still shows the full flow on the demo sentences.
 
 **Voice (optional):** set `REGALABS_API_KEY` in `.env`, check it with `pnpm --filter @zc/asr check`, then hold the 🎤 button. Without a key the mic is hidden. To try the voice flow with no key: `ASR_PROVIDER=fake pnpm dev` and use the simulator in «لوحة العرض». Voice eval: [eval/voice/README.md](eval/voice/README.md).
 

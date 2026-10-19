@@ -37,6 +37,16 @@ Accepted into the build stage already. Elimination is after the MVP.
 - **Evidence finding:** 500 App Store reviews: pain is failed/stuck money, support, fees, KYC, fraud, not "too many taps". Lead with safe/honest/recoverable.
 - **No human labels, no interviews.** Test labels are LLM-made (agy, Fable, Haiku, adjudicated). docs/17 has no interviews and must never get invented ones.
 
+## Status (2026-10-19)
+- **Work on `main` only, no PRs, commits authored by the author only.** Claude's GitHub App had no write access on 19/10, so that day's commits are local until access is fixed (`git push` returns 403).
+- Tests: core 389, asr 33, llm 78, wallet-api 104, orchestrator 137, eval 22, web 12 (**775**) + **8 Playwright browser tests** (`pnpm --filter @zc/web e2e`) + `pnpm smoke -- --fake` 15/15. CI adds smoke, e2e and a Docker image job.
+- **No-key mode:** `LLM_PROVIDER=fake` (scripted demo sentences) for web/CLI/smoke; with no provider at all the app loads and answers «busy».
+- **Hosted demo:** one sandbox per browser session (`apps/web/server/sandboxes.ts`: own wallet/clock/faults, 30 min idle, cap 200, `TURNS_PER_10_MIN`). `Dockerfile` (standalone Next, non-root, `/api/health`). Built and run locally; **deploying needs the author's host account**.
+- **Honesty fixes:** a lost Confirm answer says «ما متأكدين» with a safe «تحقق» (re-posts the same card) and polls `/api/recheck`; UNKNOWN_OUTCOME keeps its key and RECHECK looks it up (never re-sends); amount_changed states the new amount; unknown phone number says it is not saved (never creates a contact); last_transfer skips bills; recipient wallet capacity enforced; countdown follows the server clock.
+- **Accuracy fixes** from the held-out error analysis (see FAILURE_MODES "Addressed after that run"). Not measured yet.
+- **`heldout2`**: fresh 180-case set, Claude-only generator + 3 blind Claude labellers, frozen sha256 `de55b443…`. **Run it once** with the key: `pnpm eval -- --split heldout2 --mode tools --allow-heldout`. Then fix «بعد الظهر» (read as 12:00; deliberately NOT fixed before the run).
+- Low-balance seed user `u_low` now has the full contact book and a generator bill.
+
 ## Status (2026-10-17)
 - Pushed to origin/main. Tests: core 350, asr 33, llm 74, wallet-api 102, orchestrator 126, eval 22, web 7 (714). CI: typecheck, test, build, gitleaks, **OSV-Scanner** (vitest 4 / vite 7 after it flagged 9 dev-tool advisories).
 - **Public gate docs committed:** `DISCLOSURE.md`, `FAILURE_MODES.md` (16 FMs), README with measured results (docs/ stays local).
@@ -48,6 +58,7 @@ Accepted into the build stage already. Elimination is after the MVP.
 - `.env`: voice keys added empty (ASR_PROVIDER, REGALABS_API_KEY, REGALABS_BASE_URL, REGALABS_ASR_LANGUAGE=acm, ASR_*); author fills REGALABS_API_KEY.
 
 ## Next steps
+0. **Author:** reconnect GitHub for Claude (https://claude.ai/connect-github) so the local commits can be pushed; put `ANTHROPIC_API_KEY` in the session env (dev eval + the one `heldout2` run); pick a Docker host and deploy (README "Run it for judges").
 1. **Voice on** (author): REGALABS_API_KEY + `acm` in the RegaLabs gateway allow-list → `pnpm --filter @zc/asr check` → hold 🎤 in Chrome. Then record 40–60 consented utterances (≥5 speakers) via `VOICE_CAPTURE_DIR=eval/voice/captures`, type references, `pnpm --filter @zc/eval eval:voice`. Never claim a voice number before that.
 2. **MVP one-pager**: docs/28 is the draft; export to PDF and submit 08/11.
 3. docs/19 final Human-vs-AI line; demo rehearsal x3 (docs/18, incl. voice read-back + scheduling) and a screen recording backup.
