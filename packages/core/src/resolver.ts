@@ -43,14 +43,40 @@ const KUNYA_PARTICLES = new Set(["ابو", "ابن", "بنت"]);
 const byNameThenId = (a: Contact, b: Contact) =>
   a.display_name.localeCompare(b.display_name, "ar") || a.id.localeCompare(b.id);
 
+// Words people add after a name that only DESCRIBE the person («زينب أختي», «محسن جيراننا», «حسين صاحبي»). They never
+// pick a contact; dropping them only removes a filter, and every result still comes from the name's own matches.
+// <!-- VERIFY-DIALECT -->
+const DESCRIPTORS = new Set(
+  ["جيراننا", "جيرانا", "جيرانه", "جيرانهم", "جارنا", "جارتنا", "جاري", "جارتي", "صاحبي", "صاحبتي", "صديقي", "صديقتي", "رفيقي", "رفيقتي",
+    "حبيبي", "حبيبتي", "الغالي", "الغاليه", "عيني", "ثواب", "حجي", "حجيه", "الحجي", "الحجيه", "مالتي", "مالي", "مال", "يمعود"].map((w) => normaliseArabic(w)),
+);
+
+/** The qualifier without descriptor words and kinship phrases («ابن عمتي», «بنت خالي»), which name no contact. */
+function cleanQualifier(qualifier: string | undefined): string {
+  const tokens = qualifier ? key(qualifier).split(" ").filter(Boolean) : [];
+  const keep: string[] = [];
+  for (let i = 0; i < tokens.length; i++) {
+    const tok = tokens[i] as string;
+    if ((tok === "ابن" || tok === "بنت" || tok === "مرت") && /^(عم|خال|اخ|اخت)/.test(tokens[i + 1] ?? "")) { i++; continue; }
+    if (DESCRIPTORS.has(tok)) continue;
+    keep.push(tok);
+  }
+  return keep.join(" ");
+}
+
+/** Narrows the candidates. An empty result means "the qualifier fits nobody": the caller asks, it never resolves. */
 function applyQualifier(cands: Contact[], qualifier: string | undefined): Contact[] {
-  const q = qualifier ? normaliseArabic(qualifier) : "";
+  const q = cleanQualifier(qualifier);
   if (!q) return cands;
   const digits = q.match(/\d{2,}/)?.[0];
   if (digits) return cands.filter((c) => c.phone.endsWith(digits));
-  const qrel = relationOf(q); // «خوي كرار»: the qualifier is a relation word -> filter by the contact's relation
-  if (qrel) return cands.filter((c) => c.relation !== undefined && relationOf(c.relation) === qrel);
-  const qt = key(q).split(" ").filter(Boolean);
+  const qrel = relationOf(q); // «خوي كرار»: the qualifier is a relation word -> use the contacts' stored relation
+  if (qrel) {
+    const same = cands.filter((c) => c.relation !== undefined && relationOf(c.relation) === qrel);
+    if (same.length) return same;
+    return cands.filter((c) => c.relation === undefined); // «زينب أختي»: no stored relation does not contradict it
+  }
+  const qt = q.split(" ");
   return cands.filter((c) => {
     const tokens = key(c.display_name).split(" ");
     return qt.every((t) => tokens.includes(t));
@@ -58,8 +84,14 @@ function applyQualifier(cands: Contact[], qualifier: string | undefined): Contac
 }
 
 function finish(cands: Contact[], qualifier: string | undefined, fuzzy = false): Resolution {
-  const filtered = applyQualifier(cands, qualifier).sort(byNameThenId).slice(0, MAX_CANDIDATES);
-  if (filtered.length === 0) return { status: "none" };
+  const sorted = [...cands].sort(byNameThenId);
+  const filtered = applyQualifier(sorted, qualifier).slice(0, MAX_CANDIDATES);
+  if (filtered.length === 0) {
+    // the extra words fit none of the name's matches: ask among those matches, never pick one
+    if (sorted.length === 0) return { status: "none" };
+    if (sorted.length === 1 || fuzzy) return { status: "fuzzy", candidates: sorted.slice(0, MAX_CANDIDATES) };
+    return { status: "ambiguous", candidates: sorted.slice(0, MAX_CANDIDATES) };
+  }
   if (fuzzy) return { status: "fuzzy", candidates: filtered };
   if (filtered.length === 1) return { status: "resolved", contact: filtered[0] as Contact };
   return { status: "ambiguous", candidates: filtered };

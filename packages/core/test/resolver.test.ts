@@ -38,8 +38,11 @@ describe("resolveContact: exact and ambiguity (ask, never guess)", () => {
     expect(resolveContact(name("أحمد", "علي"), book)).toMatchObject({ status: "resolved", contact: { id: "c_ahmed_ali" } }));
   it("qualifier by phone ending narrows to one", () =>
     expect(resolveContact(name("أحمد", "ينتهي 4471"), book)).toMatchObject({ status: "resolved", contact: { id: "c_ahmed_ali" } }));
-  it("qualifier that matches nobody is none (cannot introduce a new recipient)", () =>
-    expect(resolveContact(name("أحمد", "سعيد"), book).status).toBe("none"));
+  it("a qualifier that matches nobody does not resolve: it asks among the name's own matches (never a new recipient)", () => {
+    const r = resolveContact(name("أحمد", "سعيد"), book);
+    expect(r.status).toBe("ambiguous");
+    expect(ids(r)).toEqual(["c_ahmed_ali", "c_ahmed_moh"]);
+  });
   it("strips the ل prefix: لأحمد", () => expect(resolveContact(name("لأحمد"), book).status).toBe("ambiguous"));
   it("does not strip ل when the contact really starts with it (ليلى)", () =>
     expect(resolveContact(name("ليلى"), book)).toMatchObject({ status: "resolved", contact: { id: "c_layla" } }));
@@ -134,7 +137,11 @@ describe("resolveContact: contacts stored with a relation word in front", () => 
   it("«كرار» finds أخوي كرار", () => expect(resolveContact({ kind: "name", text: "كرار" }, rb)).toMatchObject({ status: "resolved", contact: { id: "c_karrar" } }));
   it("exact/leading match still wins: «علي» is علي كريم, not أخوي علي", () => expect(resolveContact({ kind: "name", text: "علي" }, rb)).toMatchObject({ status: "resolved", contact: { id: "c_ali" } }));
   it("relation qualifier filters by relation: «كرار» + «خوي»", () => expect(resolveContact({ kind: "name", text: "كرار", qualifier: "خوي" }, rb)).toMatchObject({ status: "resolved", contact: { id: "c_karrar" } }));
-  it("relation qualifier that fits nobody is still none", () => expect(resolveContact({ kind: "name", text: "كرار", qualifier: "خالي" }, rb).status).toBe("none"));
+  it("a relation qualifier that contradicts the stored relation does not resolve: «تقصد أخوي كرار؟»", () => {
+    const r = resolveContact({ kind: "name", text: "كرار", qualifier: "خالي" }, rb);
+    expect(r.status).toBe("fuzzy");
+    expect(ids(r)).toEqual(["c_karrar"]);
+  });
 });
 
 describe("resolveContact: the model may tag a full name as a relation", () => {
@@ -142,4 +149,36 @@ describe("resolveContact: the model may tag a full name as a relation", () => {
   it("«أخوي كرار» tagged relation still finds the contact by name", () => expect(resolveContact({ kind: "relation", text: "أخوي كرار" }, rb)).toMatchObject({ status: "resolved", contact: { id: "c_karrar" } }));
   it("a bare relation word is still looked up by relation", () => expect(resolveContact({ kind: "relation", text: "أمي" }, rb)).toMatchObject({ status: "resolved", contact: { id: "c_mama" } }));
   it("a relation nobody has is still none", () => expect(resolveContact({ kind: "relation", text: "خالي" }, rb).status).toBe("none"));
+});
+
+describe("resolveContact: words after a name that only describe the person (held-out C-0034, C-0113, C-0114, C-0117)", () => {
+  it.each([
+    ["زينب", "أختي", "c_zainab"], // no stored relation: a relation word does not contradict it
+    ["محسن", "جيراننا", "c_muhsin"],
+    ["مرتضى", "ابن عمتي", "c_murtada"],
+    ["أم حسين", "ثواب", "c_umhusain"],
+    ["حسين", "صاحبي", "c_husain"],
+    ["أحمد", "علي الغالي", "c_ahmed_ali"], // descriptors dropped, the real second name still narrows
+  ])("«%s» + «%s» resolves to %s", (text, qualifier, id) => {
+    expect(resolveContact(name(text, qualifier), book)).toMatchObject({ status: "resolved", contact: { id } });
+  });
+  it("a descriptor never turns an ambiguous name into a choice: «أحمد» + «صاحبي» still asks", () =>
+    expect(resolveContact(name("أحمد", "صاحبي"), book).status).toBe("ambiguous"));
+  it("a relation qualifier prefers the contact stored with that relation", () => {
+    const rb = [
+      { id: "c_ali", display_name: "علي كريم", phone: "07700000101" },
+      { id: "c_ali_bro", display_name: "علي حسن", phone: "07700000199", relation: "اخ" },
+    ];
+    expect(resolveContact({ kind: "name", text: "علي", qualifier: "اخوي" }, rb)).toMatchObject({ status: "resolved", contact: { id: "c_ali_bro" } });
+  });
+  it("property: a qualifier only ever narrows or asks; it never resolves to someone the bare name could not reach", () => {
+    const words = ["أختي", "جيراننا", "سعيد", "الغالي", "علي", "4471", "خالي", "ابن عمي", "ثواب", "محمد"];
+    fc.assert(fc.property(fc.constantFrom(...book.map((c) => c.display_name.split(" ")[0] as string)), fc.constantFrom(...words), (first, q) => {
+      const bare = resolveContact(name(first), book);
+      const reach = new Set(bare.status === "resolved" ? [bare.contact.id] : (bare.candidates ?? []).map((c) => c.id));
+      const r = resolveContact(name(first, q), book);
+      if (r.status === "resolved") expect(reach.has(r.contact.id)).toBe(true);
+      for (const c of r.candidates ?? []) expect(reach.has(c.id)).toBe(true);
+    }));
+  });
 });
