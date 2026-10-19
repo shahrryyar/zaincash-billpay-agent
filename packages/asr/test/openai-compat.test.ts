@@ -19,6 +19,12 @@ const mk = (f: typeof fetch, extra = {}) =>
   createOpenAICompatTranscriber({ baseUrl: "https://api.regalabs.dev/v1/", apiKey: "rega_live_test", provider: "regalabs", language: "acm", fetch: f, sleep: async () => {}, ...extra });
 
 describe("OpenAI-compatible transcriber (RegaLabs developer API shape)", () => {
+  it("no language configured: sends none (RegaLabs detects it) and returns a Kurdish transcript as is", async () => {
+    const { f, calls } = fakeFetch([json(200, { text: "پەنجا هەزار بنێرە بۆ ئاراس" })]);
+    const t = await createOpenAICompatTranscriber({ baseUrl: "https://api.regalabs.dev/v1", apiKey: "k", provider: "regalabs", fetch: f, sleep: async () => {} }).transcribe(wav);
+    expect(calls[0]?.form.has("language")).toBe(false);
+    expect(t).toMatchObject({ text: "پەنجا هەزار بنێرە بۆ ئاراس", provider: "regalabs:auto" });
+  });
   it("posts multipart WAV + language with the bearer key and an idempotency key", async () => {
     const { f, calls } = fakeFetch([json(200, { text: "دز خمسين ألف لأحمد" })]);
     const t = await mk(f).transcribe(wav, { requestId: "req-1" });

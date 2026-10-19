@@ -138,6 +138,18 @@ describe("a Kurdish session (language picker = ku)", () => {
     expect(text(r)).toContain("هەمان بڕی دوایین ناردن بۆ ماما");
   });
 
+  it("voice in a Kurdish session: the auto-detected Kurdish transcript is read back in Kurdish, nothing runs before «ڕاستە»", async () => {
+    const say = "پەنجا هەزار بنێرە بۆ هێمن";
+    const e = kurdishSetup({ [say]: kuTransfer("هێمن", 50_000, "پەنجا هەزار") });
+    const r1 = await e.orch.turn("k", { text: say, voice: true, lang: "ku" }); // the RegaLabs API gives text only: read back
+    expect(r1.readback).toEqual({ text: say });
+    expect(text(r1)).toContain("گوێم لێبوو وتت: «پەنجا هەزار بنێرە بۆ هێمن» — ڕاستە؟");
+    expect(e.seen).toHaveLength(0); // the model has not seen it yet
+    const r2 = await e.orch.turn("k", { readback: "accept" });
+    expect(r2.card?.amount_words).toBe("پەنجا هەزار");
+    expect(e.txCount()).toBe(SEED_TX);
+  });
+
   it("switching back to Arabic: the same session answers in Arabic again", async () => {
     const e = kurdishSetup({ "شكد رصيدي": ku({ actions: [{ type: "info", query: "balance" }] }) });
     expect(text(await e.orch.turn("k", { text: "شكد رصيدي", lang: "ku" }))).toContain("باڵانسەکەت 200,000 دینارە");

@@ -52,7 +52,7 @@ export function createOpenAICompatTranscriber(o: OpenAICompatOptions): Transcrib
   const url = `${o.baseUrl.replace(/\/+$/, "")}/audio/transcriptions`;
   const timeoutMs = o.timeoutMs ?? 15_000;
   const retries = o.retries ?? 1;
-  const id = `${o.provider}:${o.model ?? o.language ?? "default"}`;
+  const id = `${o.provider}:${o.model ?? o.language ?? "auto"}`; // no language sent: the provider detects it
 
   async function once(wav: Uint8Array, key: string, signal?: AbortSignal): Promise<{ status: number; body: unknown }> {
     const form = new FormData();

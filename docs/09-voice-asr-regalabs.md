@@ -14,7 +14,13 @@ RegaLabs exposes an OpenAI-compatible developer API (RegaLabs repo: `server/gate
 LiveKit was the original plan. For push-to-talk it adds a media server, room tokens and an agent dispatch for no gain:
 one HTTPS call per utterance is simpler, testable and keeps the key on our server. Judges reward simple and reliable.
 
-## ⚠ One blocker on the RegaLabs side
+## Language: auto-detected (2026-10-19)
+The RegaLabs API detects the spoken language itself, so the app sends **no** `language` field by default
+(`REGALABS_ASR_LANGUAGE=auto`). One setting serves the Iraqi-Arabic and the Kurdish (Sorani) screen; the transcript goes
+through the same read-back and the same parsers (Kurdish words are read by `packages/core/src/kurdish.ts`). The old
+`acm` blocker below only applies when a language is forced.
+
+## ⚠ (Only when a language is forced) One blocker on the RegaLabs side
 The developer endpoint only accepts `SUPPORTED_ASR_LANGUAGES = ckb, ku, en, tr, ar, es, zh` (developer-audio.ts line 89).
 Iraqi Arabic is `acm` in RegaLabs' own catalogue (`server/shared/rega-languages.json`, asrCode `acm_Arab`) and the
 recognizer supports it, but the gateway refuses it with 400 `unsupported_language`. Fix: add `'acm'` to that set.

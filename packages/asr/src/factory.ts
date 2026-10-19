@@ -3,8 +3,12 @@ import { createOpenAICompatTranscriber } from "./openai-compat";
 import type { Transcriber } from "./types";
 
 export const REGALABS_DEFAULT_BASE_URL = "https://api.regalabs.dev/v1";
-/** Iraqi Arabic in RegaLabs' language catalogue (server/shared/rega-languages.json: "acm", asrCode acm_Arab). */
-export const REGALABS_DEFAULT_LANGUAGE = "acm";
+/**
+ * RegaLabs detects the spoken language itself, so by default no `language` is sent ("auto"): one setting serves the
+ * Iraqi-Arabic and the Kurdish (Sorani) screen. Set REGALABS_ASR_LANGUAGE (e.g. "ckb", "ar") to force one.
+ */
+export const REGALABS_DEFAULT_LANGUAGE = "auto";
+const forced = (v: string | undefined): string | undefined => { const x = v?.trim(); return x && x.toLowerCase() !== "auto" ? x : undefined; };
 
 export type AsrConfig = {
   transcriber: Transcriber | null;
@@ -33,10 +37,11 @@ export function asrFromEnv(env: Env, deps: { fetch?: typeof fetch } = {}): AsrCo
 
   if (requested === "regalabs") {
     if (!env.REGALABS_API_KEY) return { transcriber: null, provider: "off", description: "regalabs selected but REGALABS_API_KEY is empty: voice off", language: null, maxSeconds };
-    const language = env.REGALABS_ASR_LANGUAGE?.trim() || REGALABS_DEFAULT_LANGUAGE;
+    const language = forced(env.REGALABS_ASR_LANGUAGE);
     const baseUrl = env.REGALABS_BASE_URL?.trim() || REGALABS_DEFAULT_BASE_URL;
-    const transcriber = createOpenAICompatTranscriber({ baseUrl, apiKey: env.REGALABS_API_KEY, provider: "regalabs", language, timeoutMs, ...fetchOpt });
-    return { transcriber, provider: "regalabs", description: `RegaLabs ASR (${language}) at ${new URL(baseUrl).host}`, language, maxSeconds };
+    const transcriber = createOpenAICompatTranscriber({ baseUrl, apiKey: env.REGALABS_API_KEY, provider: "regalabs", ...(language ? { language } : {}), timeoutMs, ...fetchOpt });
+    const shown = language ?? REGALABS_DEFAULT_LANGUAGE;
+    return { transcriber, provider: "regalabs", description: `RegaLabs ASR (${shown === "auto" ? "language auto-detected" : shown}) at ${new URL(baseUrl).host}`, language: shown, maxSeconds };
   }
   if (requested === "openai-compat") {
     if (!env.ASR_BASE_URL || !env.ASR_API_KEY) return { transcriber: null, provider: "off", description: "openai-compat selected but ASR_BASE_URL/ASR_API_KEY missing: voice off", language: null, maxSeconds };

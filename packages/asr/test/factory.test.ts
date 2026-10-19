@@ -7,11 +7,13 @@ describe("asrFromEnv", () => {
     expect(c.provider).toBe("off");
     expect(c.transcriber).toBeNull();
   });
-  it("regalabs by default when a key is present, Iraqi Arabic (acm), public base URL", () => {
+  it("regalabs by default when a key is present, language auto-detected (Arabic and Kurdish screens), public base URL", () => {
     const c = asrFromEnv({ REGALABS_API_KEY: "rega_live_x" });
     expect(c.provider).toBe("regalabs");
-    expect(c.language).toBe("acm");
-    expect(c.transcriber?.id).toBe("regalabs:acm");
+    expect(c.language).toBe("auto");
+    expect(c.transcriber?.id).toBe("regalabs:auto");
+    expect(c.description).toContain("auto-detected");
+    expect(asrFromEnv({ REGALABS_API_KEY: "k", REGALABS_ASR_LANGUAGE: "auto" }).transcriber?.id).toBe("regalabs:auto");
     expect(c.description).toContain("api.regalabs.dev");
     expect(c.description).not.toContain("rega_live_x");
   });
