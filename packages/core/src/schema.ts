@@ -2,6 +2,7 @@
 import { z } from "zod";
 import { normaliseArabic, normaliseDigits } from "./normalise";
 import { mentionsForeignCurrency, parseAmount } from "./amount";
+import { hasKurdishLetters, isPreviousAmountKu, kurdishNameKey } from "./kurdish";
 
 /** Mock cap. ZainCash's own wallet balance cap is 10M IQD/month (docs/research/02). */
 export const MAX_AMOUNT_IQD = 10_000_000;
@@ -90,7 +91,8 @@ export type IssueCode =
   | "amount_unit"
   | "phone_invalid"
   | "when_not_in_input"
-  | "amount_ref_invalid";
+  | "amount_ref_invalid"
+  | "recipient_not_in_input";
 
 export type Issue = { code: IssueCode; actionIndex: number; candidates?: [number, number] };
 export type CrossCheckResult = { ok: true } | { ok: false; issues: Issue[] };
@@ -106,12 +108,19 @@ const PREVIOUS = /نفس (?:المبلغ|الشي|المبلغ اللي)|مثل 
  */
 export function crossCheck(intent: Intent, inputText: string): CrossCheckResult {
   const input = normaliseArabic(inputText);
+  const kurdishInput = hasKurdishLetters(inputText);
   const issues: Issue[] = [];
 
   intent.actions.forEach((a, actionIndex) => {
     if (a.type === "transfer" && a.recipient?.kind === "phone") {
       const digits = normaliseDigits(a.recipient.text).replace(/[\s\-()]/g, "");
       if (!PHONE.test(digits)) issues.push({ code: "phone_invalid", actionIndex });
+    }
+    // A Kurdish message: the person must be someone the user actually wrote («ئەحمەد» covers «أحمد»), never a name the
+    // model brought in. (Arabic-script Iraqi messages keep the old rule: Arabizi names are rewritten in Arabic letters.)
+    if (a.type === "transfer" && kurdishInput && a.recipient && (a.recipient.kind === "name" || a.recipient.kind === "relation")) {
+      const who = kurdishNameKey(a.recipient.text);
+      if (!who || !kurdishNameKey(inputText).includes(who)) issues.push({ code: "recipient_not_in_input", actionIndex });
     }
     if (a.type !== "info" && a.when_text) {
       const w = normaliseArabic(a.when_text);
@@ -123,7 +132,7 @@ export function crossCheck(intent: Intent, inputText: string): CrossCheckResult 
     }
     if (a.type === "transfer" && !a.amount && a.amount_ref) {
       const span = normaliseArabic(a.amount_ref.source_text);
-      if (!span || !input.includes(span) || !PREVIOUS.test(span)) issues.push({ code: "amount_ref_invalid", actionIndex });
+      if (!span || !input.includes(span) || !(PREVIOUS.test(span) || isPreviousAmountKu(a.amount_ref.source_text))) issues.push({ code: "amount_ref_invalid", actionIndex });
       return;
     }
     if (a.type === "info" || !a.amount) return;

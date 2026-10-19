@@ -1,6 +1,7 @@
 // Deterministic Iraqi-dialect money parser (docs/08). Pure.
 // The LLM extracts `source_text`; this re-derives the value. Disagreement means ask, never guess.
 import { normaliseArabic } from "./normalise";
+import { mentionsForeignCurrencyKu, parseAmountKu } from "./kurdish";
 
 export type AmountParse =
   | { kind: "ok"; value: number }
@@ -152,10 +153,15 @@ const arabizi = (t: string): string => ARABIZI_WORDS.reduce((a, [re, to]) => a.r
 // Whole-message check: dollars and their street names («ورقة» = $100, «دفتر» = $10,000). Used for transfers even when the
 // model left the amount empty, because it cannot write a dollar amount as IQD. <!-- VERIFY-DIALECT -->
 const FOREIGN = /\$|دولار|\busd\b|(?:^|\s|ل)(?:ورقه|ورقتين|اوراق|دفتر|دفترين|دفاتر)(?=\s|$|[.,،!؟?])/;
-export const mentionsForeignCurrency = (text: string): boolean => FOREIGN.test(normaliseArabic(text));
+export const mentionsForeignCurrency = (text: string): boolean => FOREIGN.test(normaliseArabic(text)) || mentionsForeignCurrencyKu(text);
 
-/** Parse the exact span the model quoted as the amount. */
+/** Parse the exact span the model quoted as the amount: Iraqi Arabic first, then Kurdish (Sorani) words. */
 export function parseAmount(raw: string): AmountParse {
+  const ar = parseAmountAr(raw);
+  return ar.kind === "none" ? parseAmountKu(raw) : ar;
+}
+
+function parseAmountAr(raw: string): AmountParse {
   const t = arabizi(normaliseArabic(raw)).replace(/(\d)[٬،](?=\d)/g, "$1,"); // Arabic thousands separators
   if (!t) return { kind: "none" };
   if (CURRENCY.test(t)) return { kind: "unsupported", reason: "currency" };

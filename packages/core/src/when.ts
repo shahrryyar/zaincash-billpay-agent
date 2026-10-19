@@ -4,6 +4,7 @@
 // this parser does not understand is a question to the user, never a guess.
 // Time zone: Iraq is UTC+3 all year (no daylight saving since 2008). <!-- VERIFY-DIALECT: time words -->
 import { normaliseArabic } from "./normalise";
+import { kurdishTimeToArabic, looksKurdishTime } from "./kurdish";
 
 export const BAGHDAD_OFFSET_MS = 3 * 3_600_000;
 export const MIN_LEAD_MS = 2 * 60_000; // a schedule must be at least 2 minutes ahead
@@ -156,7 +157,7 @@ function check(dueAt: number, now: number): When {
  * `prior` carries what an earlier incomplete answer already gave.
  */
 export function parseWhen(text: string, now: number, prior: WhenPrior = {}, opts: { bareHour?: boolean } = {}): When {
-  const s = prep(text);
+  const s = prep(looksKurdishTime(text) ? kurdishTimeToArabic(text) : text); // Kurdish words are read by the same rules
   if (!s) return { kind: "unparsed" };
   const t = local(now);
   const today: DateParts = { y: t.y, m: t.m, d: t.d };
