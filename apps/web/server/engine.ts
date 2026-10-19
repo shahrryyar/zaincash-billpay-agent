@@ -6,7 +6,7 @@ import { applySeed, createApp, openDb, DEMO_USER } from "@zc/wallet-api";
 import { chatFromEnv, createUnderstander } from "@zc/llm";
 import { asrPolicyFrom, formatWhenAr, relativeAr, t } from "@zc/core";
 import { asrFromEnv } from "@zc/asr";
-import { appFetch, createOrchestrator, WalletClient, type Reply } from "@zc/orchestrator";
+import { appFetch, createOrchestrator, createScriptedUnderstander, WalletClient, type Reply } from "@zc/orchestrator";
 
 function loadRootEnv(): void {
   let dir = process.cwd();
@@ -50,7 +50,20 @@ function build() {
   const app = createApp({ db, demoMode: true, adminSecret, now: clock.now });
   const wallet = new WalletClient({ baseUrl: "http://wallet.local", fetch: appFetch(app), timeoutMs: 2500 });
   const mode = (process.env.LLM_MODE ?? "tools") as "tools" | "workflow";
-  const { chat, description } = chatFromEnv(process.env, { cacheDir: resolve(process.cwd(), "../../.cache/llm") });
+  // LLM_PROVIDER=fake: scripted demo sentences, no key, no network. No provider configured: the app still loads and every
+  // turn answers an honest «النظام مشغول» (the understander throws, the orchestrator fails closed); nothing is ever sent.
+  const llm = ((): { understanderFor: (host: never) => ReturnType<typeof createUnderstander>; id: string; description: string[] } => {
+    if ((process.env.LLM_PROVIDER ?? "").trim() === "fake")
+      return { understanderFor: () => createScriptedUnderstander(), id: "fake (scripted demo sentences)", description: ["fake: scripted demo sentences only (LLM_PROVIDER=fake)"] };
+    try {
+      const { chat, description } = chatFromEnv(process.env, { cacheDir: resolve(process.cwd(), "../../.cache/llm") });
+      return { understanderFor: (host: never) => createUnderstander({ chat, mode, host }), id: chat.id, description };
+    } catch (e) {
+      const why = (e as Error).message;
+      console.error(`[llm] ${why}`);
+      return { understanderFor: () => ({ understand: async () => { throw new Error(why); } }), id: "none (no LLM configured)", description: [why] };
+    }
+  })();
   // Voice (docs/09): off unless an ASR provider is configured; the text path never depends on it.
   const asr = asrFromEnv(process.env);
   const demo = (process.env.DEMO_MODE ?? "1") === "1";
@@ -62,7 +75,7 @@ function build() {
     wallet,
     userId: DEMO_USER,
     asrPolicy: asrPolicyFrom(process.env),
-    understanderFor: ((host: never) => createUnderstander({ chat, mode, host })) as never,
+    understanderFor: llm.understanderFor as never,
     retryDelayMs: 300,
     now: clock.now,
   });
@@ -101,7 +114,7 @@ function build() {
   timer.unref?.();
 
   return {
-    orch, snapshot, schedules, model: chat.id, mode, description, now: clock.now, asr, demo, voiceCaptureDir,
+    orch, snapshot, schedules, model: llm.id, mode, description: llm.description, now: clock.now, asr, demo, voiceCaptureDir,
     /** What the browser may know about voice: never the key or the base URL. */
     voice: () => ({ enabled: asr.transcriber !== null, provider: asr.provider, max_seconds: asr.maxSeconds, simulator: asr.provider === "fake" && demo }),
     async advance(ms: number) { clock.skewMs += Math.max(0, ms); (app as unknown as { runDueSchedules: () => unknown }).runDueSchedules(); },
