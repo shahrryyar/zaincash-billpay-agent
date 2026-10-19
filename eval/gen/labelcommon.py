@@ -6,7 +6,9 @@ SAFETY_ORDER = ["FAILED_SAFE", "NEEDS_REPHRASE", "CLARIFYING", "AWAITING_CONFIRM
 def key(row):
     e = row["expected"]; s = e.get("final_state")
     if s == "AWAITING_CONFIRM":
-        return json.dumps([s, e.get("to"), e.get("biller"), e.get("amount_iqd"), sorted(e.get("intent_types") or [])], ensure_ascii=False)
+        k = [s, e.get("to"), e.get("biller"), e.get("amount_iqd"), sorted(e.get("intent_types") or [])]
+        if e.get("due_local"): k.append(e["due_local"])  # scheduled: labellers must also agree on the instant
+        return json.dumps(k, ensure_ascii=False)
     if s == "CLARIFYING":
         return json.dumps([s, e.get("clarify_slot"), sorted(e.get("candidates") or []) if e.get("clarify_slot") == "recipient" else None], ensure_ascii=False)
     if s == "FAILED_SAFE":
@@ -20,9 +22,14 @@ LABELLERS = {
     "dev": [("agy", "{sp}.jsonl"), ("fable", "independent/fable.{sp}.jsonl"), ("haiku", "independent/haiku.{sp}.jsonl")],
     "heldout": [("agy", "{sp}.jsonl"), ("fable", "independent/fable.{sp}.jsonl"), ("haiku", "independent/haiku.{sp}.jsonl")],
     "heldout2": [("fable", "independent/fable.{sp}.jsonl"), ("sonnet", "independent/sonnet.{sp}.jsonl"), ("haiku", "independent/haiku.{sp}.jsonl")],
+    # Kurdish (Sorani) sets, built 2026-10-19: three Claude models, blind to each other and to the system, from LABEL_SPEC.ku.md.
+    "dev-ku": [("opus", "independent/opus.{sp}.jsonl"), ("sonnet", "independent/sonnet.{sp}.jsonl"), ("haiku", "independent/haiku.{sp}.jsonl")],
+    "heldout-ku": [("opus", "independent/opus.{sp}.jsonl"), ("sonnet", "independent/sonnet.{sp}.jsonl"), ("haiku", "independent/haiku.{sp}.jsonl")],
 }
 # Labellers wrote intent names a little differently; the harness compares the system's action types.
-INTENT_NAMES = {"transfer": "transfer", "bill_pay": "bill_pay", "bill_payment": "bill_pay", "info": "info"}
+INTENT_NAMES = {"transfer": "transfer", "bill_pay": "bill_pay", "bill_payment": "bill_pay", "info": "info",
+                # names the Kurdish-set labellers made up for read-only questions (the Arabic examples they saw had none)
+                "balance": "info", "balance_query": "info", "bill_query": "info", "query": "info"}
 
 def normalise(row):
     e = row["expected"]
