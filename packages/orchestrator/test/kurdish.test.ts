@@ -57,6 +57,19 @@ describe("a Kurdish session (language picker = ku)", () => {
     expect((await e.orch.turn("b", { text: "سەد هەزار بنێرە بۆ دایکم", lang: "ku" })).card?.recipient?.name).toBe("ماما");
   });
 
+  it("a look-alike is only proposed («مەبەستت محسن؟»); «بەڵێ موحسین» accepts it, «نا» does not", async () => {
+    const say = "پازدە هەزار بنێرە بۆ موحسین";
+    for (const [answer, phase] of [["بەڵێ موحسین", "AWAITING_CONFIRM"], ["بەڵێ", "AWAITING_CONFIRM"], ["نا", "CLARIFYING"]] as const) {
+      const e = kurdishSetup({ [say]: kuTransfer("موحسین", 15_000, "پازدە هەزار") });
+      const r1 = await e.orch.turn("k", { text: say, lang: "ku" });
+      expect(text(r1)).toContain("مەبەستت محسن؟");
+      expect(r1.card).toBeNull();
+      const r2 = await e.orch.turn("k", { text: answer });
+      expect(r2.phase, answer).toBe(phase);
+      if (phase === "AWAITING_CONFIRM") expect(r2.card?.recipient?.name).toBe("محسن");
+    }
+  });
+
   it("a name the user never wrote is rejected (the model may not bring in a person); nothing moves", async () => {
     const say = "پەنجا هەزار بنێرە بۆ هێمن";
     const e = kurdishSetup({ [say]: kuTransfer("شیلان", 50_000, "پەنجا هەزار") });

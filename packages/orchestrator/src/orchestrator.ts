@@ -453,6 +453,14 @@ export function createOrchestrator(opts: OrchestratorOptions) {
     }
   }
 
+  /** «بەڵێ موحسین» / «اي حسين» to «تقصد X؟»: a yes word, then words that point at X itself (never at anyone else). */
+  function yesWithName(text: string, proposed: Contact, lang: Lang): boolean {
+    const [first, ...rest] = text.trim().split(/\s+/);
+    if (!first || rest.length === 0 || !isYes(first.replace(/[،,.!]/g, ""))) return false;
+    const r = resolveContact({ kind: "name", text: rest.join(" ") }, [proposed], { lang });
+    return (r.status === "resolved" || r.status === "fuzzy") && (r.status === "resolved" ? r.contact.id : r.candidates[0]?.id) === proposed.id;
+  }
+
   function answerClarification(s: Session, text: string, tc: TurnCtx, allowFallback: boolean): MachineEvent[] | null {
     const slot = s.machine.clarifySlot;
     const d = ensureDraft(s);
@@ -461,7 +469,7 @@ export function createOrchestrator(opts: OrchestratorOptions) {
 
     if (slot === "recipient") {
       if (s.fuzzy) {
-        if (isYes(text)) { d.recipient = s.fuzzy; s.fuzzy = null; s.candidates = []; return [{ type: "RESOLUTION", slot, result: "resolved" }]; }
+        if (isYes(text) || yesWithName(text, s.fuzzy, tc.lang)) { d.recipient = s.fuzzy; s.fuzzy = null; s.candidates = []; return [{ type: "RESOLUTION", slot, result: "resolved" }]; }
         if (isNo(text)) { s.fuzzy = null; s.candidates = []; return [{ type: "RESOLUTION", slot, result: "none", name: rawName }]; }
       }
       const m = matchChoice(text, s.candidates, tc.lang);

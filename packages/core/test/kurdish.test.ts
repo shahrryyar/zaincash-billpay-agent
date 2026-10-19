@@ -109,6 +109,7 @@ describe("Kurdish time words -> the same instant rules as Arabic", () => {
     ["ئەمڕۆ کاتژمێر ٩ی شەو", at(2026, 10, 15, 21)],
     ["کاتژمێر ٩ و نیوی ئێوارە", at(2026, 10, 15, 21, 30)],
     ["سبهي كاتژمير ٩ي بهياني", at(2026, 10, 16, 9)], // Arabic keyboard
+    ["ڕۆژی ٢٥ی ئەم مانگە کاتژمێر دەی بەیانی", at(2026, 10, 25, 10)], // number word with izafe
   ])("%s", (t, ms) => expect(parseWhen(t, NOW)).toEqual(ok(ms)));
 
   it("an incomplete time is a question, never a guess", () => {
@@ -162,7 +163,7 @@ describe("Kurdish people, answers and phrases", () => {
 const C = (id: string, display_name: string, phone: string, relation?: string): Contact => ({ id, display_name, phone, ...(relation ? { relation } : {}) });
 const BOOK: Contact[] = [
   C("c_ahmed_ali", "أحمد علي", "07700004471"), C("c_ahmed_moh", "أحمد محمد", "07700009023"), C("c_ali_karim", "علي كريم", "07700000101"),
-  C("c_hasan", "حسن", "07700000301"), C("c_husain", "حسين", "07700000302"), C("c_zainab", "زينب", "07700000401"), C("c_zaina", "زينة", "07700000402"),
+  C("c_hasan", "حسن", "07700000301"), C("c_husain", "حسين", "07700000302"), C("c_muhsin", "محسن", "07700000303"), C("c_zainab", "زينب", "07700000401"), C("c_zaina", "زينة", "07700000402"),
   C("c_mustafa", "مصطفى", "07700000501"), C("c_mama", "ماما", "07700000601", "ام"), C("c_karrar", "أخوي كرار", "07700000701", "اخ"),
   C("c_aras_omar", "ئاراس عومەر", "07700002001"), C("c_aras_karim", "ئاراس کەریم", "07700002002"), C("c_hemn", "هێمن", "07700002003"),
   C("c_rebaz", "ڕێباز", "07700002006"), C("c_rebwar", "ڕێبوار", "07700002007"),
@@ -193,6 +194,10 @@ describe("resolveContact for Kurdish mentions (ask, never guess)", () => {
     expect(["fuzzy", "ambiguous", "none"]).toContain(x.status);
     expect(r("حوسێن").status).not.toBe("resolved");
     expect(r("شێرزاد").status).toBe("none");
+    expect(r("موحسین")).toMatchObject({ status: "fuzzy", candidates: [{ id: "c_muhsin" }] }); // vowels written out
+    expect(r("زەینا")).toMatchObject({ status: "ambiguous" }); // close to زينب and زينة: ask which
+    expect((r("زەینا").candidates ?? []).map((c) => c.id).sort()).toEqual(["c_zaina", "c_zainab"]);
+    expect(r("ئاراس", "name", "كريم")).toMatchObject({ status: "resolved", contact: { id: "c_aras_karim" } }); // Arabic-keyboard surname
   });
   it("an Arabic session is unchanged: no Kurdish fallback for Arabic text", () => {
     expect(resolveContact({ kind: "name", text: "مستفى" }, BOOK).status).not.toBe("resolved");

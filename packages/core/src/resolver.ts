@@ -177,8 +177,18 @@ function resolveKurdish(text: string, qualifier: string | undefined, all: Contac
   const near = nearMisses(m, all, kurdishNameKey);
   if (near.length > 1) return { status: "ambiguous", candidates: [...near].sort(byNameThenId).slice(0, MAX_CANDIDATES) };
   if (near.length === 1) return { status: "fuzzy", candidates: near };
-  return finish(fuzzyCandidates(variants[0] as string, all, kurdishNameKey), qualifier, true, kurdishNameKey);
+  // Kurdish writes the vowels Arabic leaves out («موحسین» = محسن): the consonant skeleton of the first name PROPOSES people
+  const sk = skeleton(m.split(" ")[0] as string);
+  const bySkeleton = sk.length >= 3 ? all.filter((c) => skeleton(firstName(c, kurdishNameKey)) === sk) : [];
+  if (bySkeleton.length === 1) return { status: "fuzzy", candidates: bySkeleton };
+  if (bySkeleton.length > 1) return { status: "ambiguous", candidates: [...bySkeleton].sort(byNameThenId).slice(0, MAX_CANDIDATES) };
+  const r = finish(fuzzyCandidates(variants[0] as string, all, kurdishNameKey), qualifier, true, kurdishNameKey);
+  // several look-alikes («زەینا»: زينب and زينة): show them all and ask which, never propose just the first
+  return r.status === "fuzzy" && r.candidates.length > 1 ? { status: "ambiguous", candidates: r.candidates } : r;
 }
+
+/** «موحسین» -> «محسن»: the first letter, then the consonants (و ي ا are vowels in Kurdish spelling). */
+const skeleton = (w: string): string => (w ? (w[0] as string) + w.slice(1).replace(/[ويا]/g, "") : "");
 
 export function resolveContact(mention: Mention, contacts: readonly Contact[], opts: ResolveOptions = {}): Resolution {
   const all = [...contacts];
@@ -206,8 +216,14 @@ export function resolveContact(mention: Mention, contacts: readonly Contact[], o
   // «لأحمد»: drop the preposition ل only if the literal form matched nobody
   const k = key(text);
   if (cands.length === 0 && k.startsWith("ل") && k.length > 2) cands = matchName(k.slice(1), all);
-  if (cands.length) return finish(cands, mention.qualifier);
-  if (opts.lang === "ku" || hasKurdishLetters(text)) { const ku = resolveKurdish(text, mention.qualifier, all); if (ku) return ku; }
+  const kurdish = opts.lang === "ku" || hasKurdishLetters(text);
+  if (cands.length) {
+    const res = finish(cands, mention.qualifier);
+    // «ئاراس» + «كريم» typed on an Arabic keyboard: the surname only meets «ئاراس کەریم» under the Kurdish key
+    if (kurdish && mention.qualifier && res.status !== "resolved") { const ku = finish(cands, mention.qualifier, false, kurdishNameKey); if (ku.status === "resolved") return ku; }
+    return res;
+  }
+  if (kurdish) { const ku = resolveKurdish(text, mention.qualifier, all); if (ku) return ku; }
 
   // nothing exact: a nickname or «known first name + unknown rest» proposes those people (several -> "which one?")
   for (const m of k.startsWith("ل") && k.length > 2 ? [k, k.slice(1)] : [k]) {

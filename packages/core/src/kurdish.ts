@@ -218,7 +218,7 @@ export function kurdishTimeToArabic(text: string): string {
   t = t.replace(/(\d+)(?:ی|ێ|هم|همین|مین)(?= |$)/g, "$1"); // «٩ی», «٢٥هم»
   for (const [re, to] of TIME_PHRASES) t = t.replace(re, to);
   // number words last, so «دوو شەممە» and «دوو سبەی» were already read as days
-  return t.split(" ").map((w) => KU_NUM_FOR_TIME.get(w) ?? w).join(" ");
+  return t.split(" ").map((w) => KU_NUM_FOR_TIME.get(w) ?? (w.endsWith("ی") ? KU_NUM_FOR_TIME.get(w.slice(0, -1)) : undefined) ?? w).join(" "); // «دەی» = 10
 }
 
 const WEEKDAY_KU = ["یەکشەممە", "دووشەممە", "سێشەممە", "چوارشەممە", "پێنجشەممە", "هەینی", "شەممە"];
