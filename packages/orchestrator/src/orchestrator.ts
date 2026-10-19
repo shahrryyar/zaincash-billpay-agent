@@ -3,8 +3,9 @@
 // its output enters ONLY through the LLM_OUTPUT event, which the machine validates before anything else.
 import { randomUUID } from "node:crypto";
 import {
-  DEFAULT_ASR_POLICY, TERMINAL, amountInWords, asrDecision, cleanTranscript, type AsrPolicy, copyKeyForWalletError, formatIQD, formatWhenAr, initialState, normaliseArabic, normaliseDigits, parseAmount, parseWhen, relativeAr, payloadHash, resolveContact, t,
-  transition, type Contact, type CopyKey, type Effect, type MachineEvent, type Payload, type Config,
+  DEFAULT_ASR_POLICY, KU_BILLER_ALIASES, KU_BILLER_NAMES, TERMINAL, amountInWords, amountInWordsKu, asrDecision, cleanTranscript, type AsrPolicy, copyKeyForWalletError, formatIQD, formatWhenAr, formatWhenKu, initialState, isLang,
+  normaliseArabic, normaliseDigits, normaliseKurdish, parseAmount, parseWhen, relativeAr, relativeKu, payloadHash, resolveContact, t, transition, wantsScheduleKu,
+  type Contact, type CopyKey, type Effect, type Lang, type MachineEvent, type Payload, type Config,
 } from "@zc/core";
 import type { ToolHost, Understander } from "@zc/llm";
 import { isCancel, isNo, isYes, matchChoice } from "./clarify";
@@ -30,12 +31,12 @@ export type OrchestratorOptions = {
  * One user turn. `voice: true` marks an ASR transcript: it goes through the voice gate first (repeat / read back /
  * accept). `readback` is the user's tap on a read-back: "accept" runs the transcript they saw, "reject" drops it.
  */
-export type TurnInput = { text?: string; choice?: string; asrConfidence?: number; voice?: boolean; readback?: "accept" | "reject" };
+export type TurnInput = { text?: string; choice?: string; asrConfidence?: number; voice?: boolean; readback?: "accept" | "reject"; lang?: Lang };
 
 /** A read-back older than this is dropped instead of run (same window as a confirmation card). */
 const READBACK_TTL_MS = 120_000;
 
-type TurnCtx = { text: string; asr: number | undefined; reply: Reply; auditFrom: number; suppressAsk: boolean };
+type TurnCtx = { text: string; asr: number | undefined; reply: Reply; auditFrom: number; suppressAsk: boolean; lang: Lang };
 
 const mask = (phone: string) => `••••${phone.slice(-4)}`;
 const num = (n: number) => n.toLocaleString("en-US");
@@ -52,10 +53,11 @@ export function createOrchestrator(opts: OrchestratorOptions) {
   const sessions = new Map<string, Session>();
   let billerNamesCache: string[] | null = null;
   let billerAliasCache: { code: string; alias: string }[] = []; // EVERY alias, for matching a typed answer («النت», «الواي فاي»)
+  let billerCodeByName = new Map<string, string>(); // a bill's Arabic name (as the wallet returns it) -> its code, for Kurdish screens
 
   const fresh = (id: string): Session => ({
     id, machine: initialState(), draft: null, candidates: [], fuzzy: null, amountCandidates: null, card: null, exec: null,
-    handles: new Map(), audit: [], lock: Promise.resolve(), recent: null, pendingVoice: null,
+    handles: new Map(), audit: [], lock: Promise.resolve(), recent: null, pendingVoice: null, lang: "ar",
   });
   const getSession = (id: string): Session => { let s = sessions.get(id); if (!s) { s = fresh(id); sessions.set(id, s); } return s; };
   const resetRequest = (s: Session) => {
@@ -66,7 +68,7 @@ export function createOrchestrator(opts: OrchestratorOptions) {
   const newReply = (s: Session): Reply => ({ session_id: s.id, phase: s.machine.phase, messages: [], card: null, candidates: [], result: null, audit: [], trace: {}, readback: null });
   const say = (tc: TurnCtx, kind: AgentMessage["kind"], text: string) => tc.reply.messages.push({ kind, text });
   const sayKey = (tc: TurnCtx, key: CopyKey, vars: Record<string, string | number> = {}) =>
-    say(tc, STATUS_KEYS.has(key) ? "status" : ERROR_KEYS.has(key) ? "error" : "info", t(key, vars));
+    say(tc, STATUS_KEYS.has(key) ? "status" : ERROR_KEYS.has(key) ? "error" : "info", tr(tc, key, vars));
 
   const candidateView = (c: Contact): CandidateView => ({ id: c.id, name: c.display_name, masked: mask(c.phone), relation: c.relation ?? null });
   const toContacts = (rows: any[]): Contact[] => rows.map((c) => ({ id: c.id, display_name: c.display_name, phone: c.phone, relation: c.relation ?? undefined }));
@@ -76,9 +78,35 @@ export function createOrchestrator(opts: OrchestratorOptions) {
       const bs = (await wallet.billers()).json.billers as any[];
       billerNamesCache = bs.map((b) => `${b.code}: ${[...(b.aliases as string[]), b.name_ar].join(" / ")}`); // every alias: «الأمبيرات» is the generator
       billerAliasCache = bs.flatMap((b) => [...(b.aliases as string[]), b.name_ar].map((alias) => ({ code: b.code as string, alias })));
+      billerCodeByName = new Map(bs.map((b) => [b.name_ar as string, b.code as string]));
     }
     return billerNamesCache;
   }
+  /** What the model is told about billers: in a Kurdish session, also the Kurdish words for each. */
+  const billerContext = async (lang: Lang): Promise<string[]> => {
+    const names = await billerNames();
+    if (lang !== "ku") return names;
+    return names.map((line) => { const code = line.split(":")[0] as string; return KU_BILLER_ALIASES[code] ? `${line} / ${KU_BILLER_ALIASES[code].join(" / ")}` : line; });
+  };
+  /** Aliases to match the user's own words against: Kurdish ones only in a Kurdish session (never changes Arabic matching). */
+  const aliasesFor = (lang: Lang) => lang === "ku" ? [...billerAliasCache, ...Object.entries(KU_BILLER_ALIASES).flatMap(([code, al]) => al.map((alias) => ({ code, alias })))] : billerAliasCache;
+  const aliasHit = (said: string, alias: string, lang: Lang): boolean => {
+    const a = normaliseArabic(alias), q = normaliseArabic(said);
+    if (q && (a === q || a.includes(q) || q.includes(a))) return true;
+    if (lang !== "ku") return false;
+    const ka = normaliseKurdish(alias), kq = normaliseKurdish(said); // Kurdish typed on an Arabic keyboard
+    return !!kq && (ka === kq || ka.includes(kq) || kq.includes(ka));
+  };
+  /** The bill's name on screen. */
+  const billerLabel = (lang: Lang, nameAr: string, code?: string): string => {
+    if (lang !== "ku") return nameAr;
+    const c = code ?? billerCodeByName.get(nameAr);
+    return (c && KU_BILLER_NAMES[c]) || nameAr;
+  };
+  const tr = (tc: TurnCtx, key: CopyKey, vars: Record<string, string | number> = {}) => t(key, vars, tc.lang);
+  const whenText = (lang: Lang, ms: number) => (lang === "ku" ? formatWhenKu(ms) : formatWhenAr(ms));
+  const relText = (lang: Lang, ms: number) => (lang === "ku" ? relativeKu(ms, now()) : relativeAr(ms, now()));
+  const money = (lang: Lang, n: number) => (lang === "ku" ? `${n.toLocaleString("en-US")} دینار` : formatIQD(n));
   const balanceOf = async (): Promise<number> => { try { return (await wallet.user(userId)).json.balance_iqd as number; } catch { return 0; } };
 
   function ensureDraft(s: Session): Draft | null {
@@ -109,7 +137,7 @@ export function createOrchestrator(opts: OrchestratorOptions) {
         s.handles.clear();
         const u = opts.understanderFor(createToolHost({ wallet, userId, session: s }));
         try {
-          const res = await u.understand({ text: tc.text, context: { billers: await billerNames(), awaiting: awaitingText(s), recent: s.recent ?? undefined } });
+          const res = await u.understand({ text: tc.text, context: { billers: await billerContext(tc.lang), awaiting: awaitingText(s), recent: s.recent ?? undefined, lang: tc.lang } });
           tc.reply.trace = { ...tc.reply.trace, intent: res.raw, model: res.model, mode: res.mode, tool_calls: res.toolCalls, usage: res.usage };
           return [{ type: "LLM_OUTPUT", raw: res.raw, input: tc.text }];
         } catch (e) {
@@ -129,7 +157,7 @@ export function createOrchestrator(opts: OrchestratorOptions) {
         }
         if (ef.slot === "recipient") tc.reply.candidates = (s.fuzzy ? [s.fuzzy] : s.candidates).map(candidateView);
         if (tc.suppressAsk) { tc.suppressAsk = false; return []; }
-        say(tc, "ask", t(ef.key, ef.vars));
+        say(tc, "ask", tr(tc, ef.key, ef.vars));
         return [];
       }
       case "RESOLVE": return resolve(s, ef.slot, tc);
@@ -180,7 +208,7 @@ export function createOrchestrator(opts: OrchestratorOptions) {
       if (slot === "recipient" && d.action.type === "transfer" && d.action.recipient) {
         const contacts = toContacts((await wallet.contacts(userId)).json.contacts);
         const m = d.action.recipient;
-        const r = resolveContact({ kind: m.kind, text: m.text, ...(m.qualifier ? { qualifier: m.qualifier } : {}) }, contacts);
+        const r = resolveContact({ kind: m.kind, text: m.text, ...(m.qualifier ? { qualifier: m.qualifier } : {}) }, contacts, { lang: tc.lang });
         tc.reply.trace.resolution = { slot, status: r.status, candidates: r.candidates?.map((c) => c.id) };
         s.candidates = []; s.fuzzy = null;
         if (r.status === "resolved") { d.recipient = r.contact; return withPreviousAmount(d, tc); }
@@ -199,8 +227,8 @@ export function createOrchestrator(opts: OrchestratorOptions) {
         if (!d.billerCode && d.action.biller_text) {
           // the user's own words for the bill must not name a DIFFERENT biller than the model picked (C-0056: «الامبيرات» read as electricity)
           await billerNames();
-          const said = normaliseArabic(d.action.biller_text);
-          const named = new Set(billerAliasCache.filter(({ alias }) => said && (said.includes(normaliseArabic(alias)) || normaliseArabic(alias).includes(said))).map((x) => x.code));
+          const said = d.action.biller_text;
+          const named = new Set(aliasesFor(tc.lang).filter(({ alias }) => normaliseArabic(said) && aliasHit(said, alias, tc.lang)).map((x) => x.code));
           if (named.size > 0 && !named.has(code)) return [{ type: "RESOLUTION", slot, result: "ambiguous" }];
         }
         const accounts = (await wallet.billAccounts(userId)).json.bill_accounts as BillAccount[];
@@ -227,7 +255,7 @@ export function createOrchestrator(opts: OrchestratorOptions) {
     tc.reply.trace.previous_amount = last ? { reference: last.reference, amount_iqd: last.amount_iqd } : null;
     if (!last) return [{ ...resolved, needAmount: true, name: who.display_name }];
     d.amountIqd = last.amount_iqd as number;
-    say(tc, "info", t("amount_from_history", { name: who.display_name, amount: num(last.amount_iqd) }));
+    say(tc, "info", tr(tc, "amount_from_history", { name: who.display_name, amount: num(last.amount_iqd) }));
     return [resolved];
   }
 
@@ -287,17 +315,17 @@ export function createOrchestrator(opts: OrchestratorOptions) {
       const idempotencyKey = newId();
       const view: CardView = {
         card_id: cardId, kind: payload.kind,
-        title: t(due !== null ? (isTransfer ? "card_title_schedule_transfer" : "card_title_schedule_bill") : isTransfer ? "card_title_transfer" : "card_title_bill"),
+        title: tr(tc, due !== null ? (isTransfer ? "card_title_schedule_transfer" : "card_title_schedule_bill") : isTransfer ? "card_title_transfer" : "card_title_bill"),
         recipient: isTransfer ? { name: (d.recipient as Contact).display_name, masked: mask((d.recipient as Contact).phone) } : null,
-        biller: isTransfer ? null : { name: (d.account as BillAccount).biller_name_ar, account_ref: (d.account as BillAccount).account_ref },
-        amount_iqd: q.amount_iqd, amount_text: formatIQD(q.amount_iqd),
-        amount_words: q.amount_iqd % 250 === 0 ? amountInWords(q.amount_iqd) : "",
-        fee_iqd: q.fee_iqd, fee_text: formatIQD(q.fee_iqd), total_iqd: q.total_iqd,
+        biller: isTransfer ? null : { name: billerLabel(tc.lang, (d.account as BillAccount).biller_name_ar, (d.account as BillAccount).biller_code), account_ref: (d.account as BillAccount).account_ref },
+        amount_iqd: q.amount_iqd, amount_text: money(tc.lang, q.amount_iqd),
+        amount_words: q.amount_iqd % 250 === 0 ? (tc.lang === "ku" ? amountInWordsKu(q.amount_iqd) : amountInWords(q.amount_iqd)) : "",
+        fee_iqd: q.fee_iqd, fee_text: money(tc.lang, q.fee_iqd), total_iqd: q.total_iqd,
         balance_before_iqd: q.balance_after_iqd + q.total_iqd, balance_after_iqd: q.balance_after_iqd,
         first_time_recipient: firstTime, expires_at: issued.json.expires_at, ttl_seconds: 120,
-        nothing_sent: t(due !== null ? "card_nothing_sent_scheduled" : "card_nothing_sent"),
-        labels: { confirm: t(due !== null ? "confirm_button_schedule" : isTransfer ? "confirm_button_transfer" : "confirm_button_bill"), cancel: t("cancel_button") },
-        schedule: due === null ? null : { due_at: due, when_text: formatWhenAr(due), relative: relativeAr(due, now()), note: t("schedule_note"), low_balance_warning: d.lowBalance ? t("schedule_low_balance") : null },
+        nothing_sent: tr(tc, due !== null ? "card_nothing_sent_scheduled" : "card_nothing_sent"),
+        labels: { confirm: tr(tc, due !== null ? "confirm_button_schedule" : isTransfer ? "confirm_button_transfer" : "confirm_button_bill"), cancel: tr(tc, "cancel_button") },
+        schedule: due === null ? null : { due_at: due, when_text: whenText(tc.lang, due), relative: relText(tc.lang, due), note: tr(tc, "schedule_note"), low_balance_warning: d.lowBalance ? tr(tc, "schedule_low_balance") : null },
       };
       const execBody: Record<string, unknown> = isTransfer
         ? { session_id: s.id, from: userId, to_contact: (d.recipient as Contact).id, amount_iqd: q.amount_iqd }
@@ -305,8 +333,8 @@ export function createOrchestrator(opts: OrchestratorOptions) {
       if (due !== null) Object.assign(execBody, { kind: payload.kind, run_at: due });
       s.card = { cardId, token: issued.json.token, payloadHash: issued.json.payload_hash, idempotencyKey, kind: payload.kind, payload, execBody, view, scheduled: due === null ? null : { dueAt: due } } satisfies CardInfo;
       d.firstTime = firstTime;
-      say(tc, "card", t("confirm_prompt"));
-      if (firstTime) say(tc, "info", t("first_time_recipient"));
+      say(tc, "card", tr(tc, "confirm_prompt"));
+      if (firstTime) say(tc, "info", tr(tc, "first_time_recipient"));
       return [{ type: "CARD_ISSUED", payloadHash: issued.json.payload_hash, token: issued.json.token, idempotencyKey }];
     } catch { return [{ type: "PRECHECK", ok: false, code: "SERVICE_UNAVAILABLE" }]; }
   }
@@ -330,23 +358,24 @@ export function createOrchestrator(opts: OrchestratorOptions) {
   async function answerInfo(s: Session, query: string, tc: TurnCtx): Promise<MachineEvent[]> {
     const a = s.machine.current;
     try {
-      if (query === "balance") say(tc, "info", t("info_balance", { balance: num(await balanceOf()) }));
+      if (query === "balance") say(tc, "info", tr(tc, "info_balance", { balance: num(await balanceOf()) }));
       else if (query === "bill_amount" && a?.type === "info") {
         const q = normaliseArabic(a.biller ?? "");
         const accounts = (await wallet.billAccounts(userId)).json.bill_accounts as BillAccount[];
         if (!q) { // «شكد فواتيري؟»: every outstanding bill, from the wallet
           const unpaid = accounts.filter((x) => x.bill?.status === "unpaid");
-          for (const x of unpaid) say(tc, "info", t("info_bill", { biller: x.biller_name_ar, amount: num((x.bill as { amount_iqd: number }).amount_iqd) }));
-          if (unpaid.length === 0) say(tc, "info", t("info_bills_none"));
+          for (const x of unpaid) say(tc, "info", tr(tc, "info_bill", { biller: billerLabel(tc.lang, x.biller_name_ar, x.biller_code), amount: num((x.bill as { amount_iqd: number }).amount_iqd) }));
+          if (unpaid.length === 0) say(tc, "info", tr(tc, "info_bills_none"));
           return [];
         }
         const billers = (await wallet.billers()).json.billers as any[];
-        const hit = accounts.find((x) => x.biller_code === q || billers.find((b) => b.id === x.biller_id)?.aliases.some((al: string) => q && (normaliseArabic(al).includes(q) || q.includes(normaliseArabic(al)))));
-        if (hit && hit.bill && hit.bill.status === "unpaid") say(tc, "info", t("info_bill", { biller: hit.biller_name_ar, amount: num(hit.bill.amount_iqd) }));
-        else say(tc, "info", t("info_bill_none", { biller: a.biller ?? hit?.biller_name_ar ?? "" }));
+        const kuWords = (code: string) => (tc.lang === "ku" ? KU_BILLER_ALIASES[code] ?? [] : []);
+        const hit = accounts.find((x) => x.biller_code === q || [...(billers.find((b) => b.id === x.biller_id)?.aliases ?? []), ...kuWords(x.biller_code)].some((al: string) => aliasHit(a.biller ?? "", al, tc.lang)));
+        if (hit && hit.bill && hit.bill.status === "unpaid") say(tc, "info", tr(tc, "info_bill", { biller: billerLabel(tc.lang, hit.biller_name_ar, hit.biller_code), amount: num(hit.bill.amount_iqd) }));
+        else say(tc, "info", tr(tc, "info_bill_none", { biller: a.biller ?? (hit ? billerLabel(tc.lang, hit.biller_name_ar, hit.biller_code) : "") }));
       } else if (query === "last_transfer") {
         const tx = ((await wallet.transactions(userId, { limit: 20 })).json.transactions as any[]).find((x) => x.kind === "transfer"); // a bill payment is not a «تحويل»
-        say(tc, "info", tx ? t("info_last_transfer", { amount: num(tx.amount_iqd), name: tx.counterparty.name }) : t("info_last_transfer_none"));
+        say(tc, "info", tx ? tr(tc, "info_last_transfer", { amount: num(tx.amount_iqd), name: tx.counterparty.name }) : tr(tc, "info_last_transfer_none"));
       }
     } catch { sayKey(tc, "busy"); }
     return [];
@@ -365,11 +394,11 @@ export function createOrchestrator(opts: OrchestratorOptions) {
       bill: num(bill),
       balance: num(await balanceOf()),
       amount: num(d?.quote?.amount_iqd ?? d?.amountIqd ?? 0),
-      biller: d?.account?.biller_name_ar ?? "",
+      biller: d?.account ? billerLabel(tc.lang, d.account.biller_name_ar, d.account.biller_code) : "",
       name,
       ref: (s.card?.idempotencyKey ?? newId()).slice(0, 8),
     };
-    say(tc, "error", t(key, vars));
+    say(tc, "error", tr(tc, key, vars));
     if (key !== "failed_safe" && key !== "busy" && key !== "insufficient") return; // those already say "nothing was sent"
   }
 
@@ -379,10 +408,10 @@ export function createOrchestrator(opts: OrchestratorOptions) {
     if (!e) return;
     if (e.scheduled) {
       const sc = e.scheduled;
-      const when = `${formatWhenAr(sc.run_at)} (${relativeAr(sc.run_at, now())})`;
+      const when = `${whenText(tc.lang, sc.run_at)} (${relText(tc.lang, sc.run_at)})`;
       say(tc, "success", sc.kind === "transfer"
-        ? t("scheduled_ok_transfer", { amount: num(sc.amount_iqd), name: sc.counterparty, when, ref: sc.reference })
-        : t("scheduled_ok_bill", { biller: sc.counterparty, amount: num(sc.amount_iqd), when, ref: sc.reference }));
+        ? tr(tc, "scheduled_ok_transfer", { amount: num(sc.amount_iqd), name: sc.counterparty, when, ref: sc.reference })
+        : tr(tc, "scheduled_ok_bill", { biller: billerLabel(tc.lang, sc.counterparty), amount: num(sc.amount_iqd), when, ref: sc.reference }));
       tc.reply.result = { reference: sc.reference, amount_iqd: sc.amount_iqd, balance_after_iqd: null, scheduled: { id: sc.id, due_at: sc.run_at, when_text: when } };
       return;
     }
@@ -390,8 +419,8 @@ export function createOrchestrator(opts: OrchestratorOptions) {
     const balance = e.balance_after_iqd ?? (await balanceOf());
     const isTransfer = tx.kind === "transfer";
     say(tc, "success", isTransfer
-      ? t("success_transfer", { amount: num(tx.amount_iqd), name: tx.counterparty?.name ?? d?.recipient?.display_name ?? "", ref: tx.reference, balance: num(balance) })
-      : t("success_bill", { biller: tx.counterparty?.name ?? d?.account?.biller_name_ar ?? "", amount: num(tx.amount_iqd), ref: tx.reference }));
+      ? tr(tc, "success_transfer", { amount: num(tx.amount_iqd), name: tx.counterparty?.name ?? d?.recipient?.display_name ?? "", ref: tx.reference, balance: num(balance) })
+      : tr(tc, "success_bill", { biller: billerLabel(tc.lang, tx.counterparty?.name ?? d?.account?.biller_name_ar ?? "", d?.account?.biller_code), amount: num(tx.amount_iqd), ref: tx.reference }));
     tc.reply.result = { reference: tx.reference, amount_iqd: tx.amount_iqd, balance_after_iqd: balance };
   }
 
@@ -413,7 +442,7 @@ export function createOrchestrator(opts: OrchestratorOptions) {
     if (!mention.text || mention.text.length > 40) return null;
     try {
       const contacts = toContacts((await wallet.contacts(userId)).json.contacts);
-      const r = resolveContact(mention, contacts);
+      const r = resolveContact(mention, contacts, { lang: tc.lang });
       tc.reply.trace.resolution = { slot: "recipient", status: r.status, candidates: r.candidates?.map((c) => c.id), via: "typed_answer" };
       if (r.status === "resolved") { d.recipient = r.contact; s.candidates = []; s.fuzzy = null; return withPreviousAmount(d, tc); }
       if (r.status === "ambiguous") { s.candidates = r.candidates; s.fuzzy = null; return [{ type: "RESOLUTION", slot: "recipient", result: "ambiguous", count: r.candidates.length, name: mention.text }]; }
@@ -435,7 +464,7 @@ export function createOrchestrator(opts: OrchestratorOptions) {
         if (isYes(text)) { d.recipient = s.fuzzy; s.fuzzy = null; s.candidates = []; return [{ type: "RESOLUTION", slot, result: "resolved" }]; }
         if (isNo(text)) { s.fuzzy = null; s.candidates = []; return [{ type: "RESOLUTION", slot, result: "none", name: rawName }]; }
       }
-      const m = matchChoice(text, s.candidates);
+      const m = matchChoice(text, s.candidates, tc.lang);
       if (m.status === "resolved") { d.recipient = m.contact; s.candidates = []; s.fuzzy = null; return [{ type: "RESOLUTION", slot, result: "resolved" }]; }
       if (m.status === "ambiguous") { s.candidates = m.candidates; return [{ type: "RESOLUTION", slot, result: "ambiguous", count: m.candidates.length, name: rawName }]; }
       return allowFallback ? null : [{ type: "RESOLUTION", slot, result: "none", name: text }];
@@ -444,13 +473,13 @@ export function createOrchestrator(opts: OrchestratorOptions) {
     if (slot === "amount") {
       if (s.amountCandidates) {
         if (isYes(text)) { d.amountIqd = s.amountCandidates[1]; s.amountCandidates = null; return [{ type: "SLOT_ANSWER", slot, filled: true }]; }
-        if (isNo(text)) { s.amountCandidates = null; say(tc, "ask", t("ask_amount", { name: rawName })); tc.suppressAsk = true; return [{ type: "SLOT_ANSWER", slot, filled: false }]; }
+        if (isNo(text)) { s.amountCandidates = null; say(tc, "ask", tr(tc, "ask_amount", { name: rawName })); tc.suppressAsk = true; return [{ type: "SLOT_ANSWER", slot, filled: false }]; }
       }
       const p = parseAmount(text);
       if (p.kind === "ok" && p.value % 250 === 0) { d.amountIqd = p.value; s.amountCandidates = null; return [{ type: "SLOT_ANSWER", slot, filled: true }]; }
       if (p.kind === "ambiguous") {
         s.amountCandidates = p.candidates;
-        say(tc, "ask", t("ask_amount_thousands", { value: p.candidates[0] }));
+        say(tc, "ask", tr(tc, "ask_amount_thousands", { value: p.candidates[0] }));
         tc.suppressAsk = true;
         return [{ type: "SLOT_ANSWER", slot, filled: false }];
       }
@@ -466,7 +495,7 @@ export function createOrchestrator(opts: OrchestratorOptions) {
 
     // biller
     const q = normaliseArabic(text);
-    const code = billerAliasCache.find(({ code: c, alias }) => q && (c === q || normaliseArabic(alias) === q || normaliseArabic(alias).includes(q) || q.includes(normaliseArabic(alias))))?.code;
+    const code = aliasesFor(tc.lang).find(({ code: c, alias }) => q && (c === q || aliasHit(text, alias, tc.lang)))?.code;
     if (code) {
       d.billerCode = code;
       // an amount said for a bill we could not pay («قسط المدرسة 150 الف») does not belong to the bill picked now: the card shows the wallet's amount
@@ -479,7 +508,7 @@ export function createOrchestrator(opts: OrchestratorOptions) {
   /** «اجدولها», «جدولها باچر الساعة 9»: scheduling the pending card, not a new request. */
   const wantsSchedule = (text: string): boolean => {
     const c = normaliseArabic(text);
-    return /^(?:و|ف)?(?:ا)?جدول\S*(?: |$)/.test(c) && !/دفع|فاتور|تحويل|حول|دز|ارسل|ابعث/.test(c);
+    return (/^(?:و|ف)?(?:ا)?جدول\S*(?: |$)/.test(c) && !/دفع|فاتور|تحويل|حول|دز|ارسل|ابعث/.test(c)) || wantsScheduleKu(text);
   };
 
   // ------------------------------------------------------------------ the loop
@@ -522,7 +551,7 @@ export function createOrchestrator(opts: OrchestratorOptions) {
     if (phase === "AWAITING_CONFIRM") {
       if (wantsSchedule(text)) await dispatch(s, { type: "SCHEDULE_THIS", when: parseWhen(text, now()) }, tc); // «جدولها» (+ maybe a time): same payment, later
       else if (isCancel(text) || isNo(text)) await dispatch(s, { type: "CANCEL" }, tc);
-      else if (isYes(text)) say(tc, "info", t("press_confirm_button")); // a typed or spoken «yes» never executes
+      else if (isYes(text)) say(tc, "info", tr(tc, "press_confirm_button")); // a typed or spoken «yes» never executes
       else await dispatch(s, { type: "INPUT_RECEIVED", text, asrConfidence: asr }, tc); // an edit: new request replaces the card
       return finalize(s, tc);
     }
@@ -552,13 +581,14 @@ export function createOrchestrator(opts: OrchestratorOptions) {
     return finalize(s, tc);
   }
 
-  const begin = (s: Session, text = "", asr?: number): TurnCtx => ({ text, asr, reply: newReply(s), auditFrom: s.audit.length, suppressAsk: false });
+  const begin = (s: Session, text = "", asr?: number): TurnCtx => ({ text, asr, reply: newReply(s), auditFrom: s.audit.length, suppressAsk: false, lang: s.lang });
 
   return {
     /** One user message (typed, transcribed) or a tap on a candidate card. */
     turn(sessionId: string, input: TurnInput): Promise<Reply> {
       const s = getSession(sessionId);
       return locked(s, async () => {
+        if (isLang(input.lang)) s.lang = input.lang; // the language picker: replies, card and model hints follow it
         const pending = s.pendingVoice;
         s.pendingVoice = null; // any new input drops a read-back that was not answered
 
@@ -580,7 +610,7 @@ export function createOrchestrator(opts: OrchestratorOptions) {
           if (decision === "readback" && !isCancel(heard)) {
             s.pendingVoice = { text: heard, at: now() };
             vc.reply.readback = { text: heard };
-            say(vc, "ask", t("readback_asr", { text: heard }));
+            say(vc, "ask", tr(vc, "readback_asr", { text: heard }));
             return finalize(s, vc);
           }
           return handleText(s, vc, heard, input.asrConfidence);
@@ -663,6 +693,9 @@ export function createOrchestrator(opts: OrchestratorOptions) {
     },
 
     reset(sessionId: string): void { sessions.delete(sessionId); },
+    /** The language picker (top bar). Replies, the card and the model's hints follow it from the next call on. */
+    setLang(sessionId: string, lang: unknown): void { if (isLang(lang)) getSession(sessionId).lang = lang; },
+    langOf(sessionId: string): Lang { return getSession(sessionId).lang; },
     /** For tests and the judge-facing "Why?" panel. */
     inspect(sessionId: string): Session { return getSession(sessionId); },
   };

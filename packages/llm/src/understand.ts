@@ -1,10 +1,11 @@
 // The agent loop (docs/03): read-only lookups, then `propose`. Provider-agnostic: works with any ChatClient.
 // Output is the RAW intent. It is untrusted until Zod + cross-checks + resolver pass downstream.
 import { argSchemas, FINAL_TOOL, READ_TOOLS, toolsFor, type ReadToolName, type ToolHost } from "./tools";
-import { buildSystemParts, type PromptMode } from "./prompt";
+import { buildSystemParts, type PromptLang, type PromptMode } from "./prompt";
+import { retrieveKurdish } from "./kurdish";
 import { addUsage, type Block, type ChatClient, type Msg, type Usage } from "./types";
 
-export type UnderstandInput = { text: string; context: { billers: string[]; awaiting?: string | undefined; recent?: string | undefined } };
+export type UnderstandInput = { text: string; context: { billers: string[]; awaiting?: string | undefined; recent?: string | undefined; lang?: PromptLang | undefined } };
 export type ToolTrace = { name: string; args: unknown; ok: boolean };
 export type UnderstandResult = { raw: unknown; toolCalls: ToolTrace[]; usage: Usage; model: string; mode: PromptMode; turns: number };
 
@@ -43,7 +44,8 @@ export function createUnderstander(opts: UnderstanderOptions): Understander {
 
   return {
     async understand(input) {
-      const { prefix, system } = buildSystemParts(mode, input.context);
+      const retrieved = input.context.lang === "ku" ? retrieveKurdish(input.text) : undefined;
+      const { prefix, system } = buildSystemParts(mode, { ...input.context, ...(retrieved ? { retrieved } : {}) });
       const tools = toolsFor(mode);
       const messages: Msg[] = [{ role: "user", content: [{ type: "text", text: input.text }] }];
       const trace: ToolTrace[] = [];

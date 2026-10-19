@@ -24,7 +24,7 @@ for (const l of existsSync(resolve(root, ".env")) ? readFileSync(resolve(root, "
 if (args.get("model")) process.env.LLM_MODEL = args.get("model") as string;
 
 type Followup = { text: string; expected: Expected };
-type Case = { id: string; text: string; category: string; seed_profile?: string; expected: Expected; followups?: Followup[] };
+type Case = { id: string; text: string; category: string; seed_profile?: string; expected: Expected; followups?: Followup[]; lang?: "ar" | "ku" };
 type Stage = { text: string; observed: Observed; stateOk: boolean; fullOk: boolean; why: string | null; ms: number; intent?: unknown; issues?: string[]; reply?: string; audit?: string[] };
 type CaseResult = {
   id: string; category: string; text: string; stages: Stage[]; intentOk: boolean | null; confirmed: boolean; executed: boolean;
@@ -84,7 +84,7 @@ async function runCase(c: Case): Promise<CaseResult> {
   let tokens = 0, lookups = 0; const usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }; let llmErr: string | null = null, intentOk: boolean | null = null;
   const send = async (text: string, exp: Expected, first: boolean): Promise<Reply> => {
     const t0 = Date.now();
-    const r = await orch.turn(sid, { text });
+    const r = await orch.turn(sid, { text, ...(c.lang ? { lang: c.lang } : {}) }); // Kurdish rows run with the language picker on «کوردی»
     const ms = Date.now() - t0;
     const obs = observe(r), sc = scoreStage(exp, obs);
     stages.push({ text, observed: obs, stateOk: sc.stateOk, fullOk: sc.fullOk, why: sc.why, ms, intent: r.trace.intent, issues: r.trace.issues, audit: r.audit.map((a) => `${a.event}->${a.to}${a.reason ? `(${a.reason})` : ""}`), reply: r.messages.map((m) => m.text).join(" | ").slice(0, 300) });
@@ -173,7 +173,7 @@ async function main() {
   const failures = results.filter((r) => !r.e2e);
   const md = [
     `# Eval ${tag}`, "", `model \`${meta.model}\` · mode \`${mode}\` · split \`${split}\` · n=${n} · commit \`${meta.commit}\`${meta.dirty ? " (dirty)" : ""} · dataset sha256 \`${datasetSha.slice(0, 16)}…\``, "",
-    "Labels: three LLM labellers (agy, fable, haiku), adjudicated; no human labeller (docs/19).", "",
+    `Labels: ${split.endsWith("-ku") ? "three Claude labellers (opus, sonnet, haiku)" : split === "heldout2" ? "three Claude labellers (fable, sonnet, haiku)" : "three LLM labellers (agy, fable, haiku)"}, adjudicated; no human labeller (docs/19).`, "",
     "| Metric | Value (Wilson 95% CI) |", "|---|---|",
     `| State accuracy, first turn | ${fmtRate(metrics.state_accuracy_first_turn)} |`, `| All slots correct, first turn | ${fmtRate(metrics.all_slots_correct_first_turn)} |`,
     `| Intent accuracy | ${fmtRate(metrics.intent_accuracy)} |`, `| Ambiguity recall | ${fmtRate(metrics.ambiguity_recall)} |`, `| Ambiguity precision | ${fmtRate(metrics.ambiguity_precision)} |`,

@@ -6,3 +6,4 @@ export * from "./anthropic";
 export * from "./openai";
 export * from "./wrappers";
 export * from "./factory";
+export * from "./kurdish";

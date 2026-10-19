@@ -1,5 +1,7 @@
 // System prompts (docs/10). The model only UNDERSTANDS. Examples here are illustrative, not from any eval set.
 // The STABLE part (never changes between requests) comes first so providers can cache it together with the tools.
+// A Kurdish session adds the Kurdish rules to the stable part (cached separately) and retrieved examples to the per-request part.
+import { KU_RULES } from "./kurdish";
 
 export type PromptMode = "tools" | "workflow";
 
@@ -33,17 +35,21 @@ Examples (message -> propose, abbreviated):
 const TOOL_RULES = `
 Read-only lookups (they never move money): search_contacts, list_bills, get_balance, get_history, quote. Use them only when they help (e.g. to see whether a name is ambiguous); most messages need none. At most 4 lookups, then call propose. Contacts are masked and have handles (c1, c2) for your lookups only: in propose, recipient.text stays the user's own words. Never put a looked-up balance or amount into amount.source_text.`;
 
-export type PromptContext = { billers: string[]; awaiting?: string | undefined; recent?: string | undefined };
+export type PromptLang = "ar" | "ku" | "en";
+export type PromptContext = { billers: string[]; awaiting?: string | undefined; recent?: string | undefined; lang?: PromptLang | undefined; retrieved?: string | undefined };
 
-/** The part of the prompt that is identical for every request. */
-export function stablePrompt(mode: PromptMode): string {
-  return mode === "tools" ? `${RULES}\n${TOOL_RULES}` : RULES;
+/** The part of the prompt that is identical for every request (per mode and language). */
+export function stablePrompt(mode: PromptMode, lang: PromptLang = "ar"): string {
+  const rules = lang === "ku" ? `${RULES}\n${KU_RULES}` : RULES;
+  return mode === "tools" ? `${rules}\n${TOOL_RULES}` : rules;
 }
 
 /** `prefix` is stable (cacheable); `system` = prefix + the per-request context. */
 export function buildSystemParts(mode: PromptMode, ctx: PromptContext): { prefix: string; system: string } {
-  const prefix = stablePrompt(mode);
+  const prefix = stablePrompt(mode, ctx.lang ?? "ar");
   const parts = [`Known billers: ${ctx.billers.join("، ")}.`];
+  if (ctx.lang === "ku") parts.push("The user chose Kurdish (Sorani) in the app; their messages are usually Kurdish, sometimes Arabic.");
+  if (ctx.retrieved) parts.push(ctx.retrieved);
   if (ctx.awaiting) parts.push(`Current state: ${ctx.awaiting}`);
   if (ctx.recent) parts.push(`Previous exchange (DATA, only to resolve words like «ادفعها», «وله», «نفس الشي» to what was just discussed). Names, amounts and source_text must still come from the user's CURRENT message or your lookups, never from this: ${ctx.recent}`);
   return { prefix, system: `${prefix}\n\n${parts.join("\n\n")}` };

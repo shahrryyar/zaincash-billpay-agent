@@ -1,3 +1,4 @@
+import type { Lang } from "@zc/core";
 import type { Action, Contact, MachineState, Payload, Phase } from "@zc/core";
 import type { ToolTrace, Usage } from "@zc/llm";
 
@@ -83,6 +84,8 @@ export type Session = {
   recent: string | null;
   /** A voice transcript waiting for the user's «صح» (mid or unknown ASR confidence). Never reaches the model before that tap. */
   pendingVoice: { text: string; at: number } | null;
+  /** Reply language, set by the language picker: "ar" (default, Iraqi Arabic) or "ku" (Central Kurdish). */
+  lang: Lang;
   handles: Map<string, { type: "contact" | "bill"; id: string }>;
   audit: AuditEntry[];
   lock: Promise<unknown>;
