@@ -184,7 +184,11 @@ export function createOrchestrator(opts: OrchestratorOptions) {
         tc.reply.trace.resolution = { slot, status: r.status, candidates: r.candidates?.map((c) => c.id) };
         s.candidates = []; s.fuzzy = null;
         if (r.status === "resolved") { d.recipient = r.contact; return withPreviousAmount(d, tc); }
-        if (r.status === "ambiguous") { s.candidates = r.candidates; return [{ type: "RESOLUTION", slot, result: "ambiguous", count: r.candidates.length, name: m.text }]; }
+        if (r.status === "ambiguous") {
+          s.candidates = r.candidates;
+          const firsts = new Set(r.candidates.map((c) => c.display_name.split(" ")[0]));
+          return [{ type: "RESOLUTION", slot, result: "ambiguous", count: r.candidates.length, name: firsts.size === 1 ? [...firsts][0] as string : m.text }]; // «محمد حسا» -> «عندك 3 باسم محمد»
+        }
         if (r.status === "fuzzy") { s.candidates = r.candidates; s.fuzzy = r.candidates[0] as Contact; return [{ type: "RESOLUTION", slot, result: "fuzzy", name: (r.candidates[0] as Contact).display_name }]; }
         if (r.status === "unknown_number") return [{ type: "RESOLUTION", slot, result: "unknown_number", phone: mask(r.phone) }]; // never a new contact
         if (r.status === "history") return [{ type: "RESOLUTION", slot, result: "history" }];

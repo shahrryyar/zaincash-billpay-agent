@@ -124,6 +124,29 @@ function matchName(mention: string, contacts: Contact[]): Contact[] {
   });
 }
 
+// Diminutives seen in the (spent) held-out set. They only PROPOSE the people they can stand for; the user always picks.
+// <!-- VERIFY-DIALECT -->
+const NICKNAMES: Record<string, string[]> = {
+  حسوني: ["حسن", "حسين"], حسون: ["حسن", "حسين"],
+  زنوبه: ["زينب"], زنوب: ["زينب"],
+};
+const NICK = new Map(Object.entries(NICKNAMES).map(([k, v]) => [key(k), v.map(key)]));
+
+/** First name of a contact, ignoring a leading relation word on a relation contact («أخوي كرار» -> «كرار»; «أم حسين» stays «ام»). */
+const firstName = (c: Contact): string => {
+  const ct = key(c.display_name).split(" ");
+  return (ct.length > 1 && c.relation !== undefined && relationOf(ct[0] as string) !== undefined ? ct[1] : ct[0]) as string;
+};
+
+/** Candidates to PROPOSE when nothing matched exactly: a nickname, or a known first name with an unknown rest. */
+function nearMisses(m: string, contacts: Contact[]): Contact[] {
+  const nick = NICK.get(m);
+  if (nick) return contacts.filter((c) => nick.includes(firstName(c)));
+  const mt = m.split(" ");
+  if (mt.length >= 2 && !KUNYA_PARTICLES.has(mt[0] as string)) return contacts.filter((c) => firstName(c) === mt[0]);
+  return [];
+}
+
 function fuzzyCandidates(mention: string, contacts: Contact[]): Contact[] {
   const m = key(mention);
   return contacts.filter((c) => {
@@ -161,5 +184,11 @@ export function resolveContact(mention: Mention, contacts: readonly Contact[]): 
   if (cands.length === 0 && k.startsWith("ل") && k.length > 2) cands = matchName(k.slice(1), all);
   if (cands.length) return finish(cands, mention.qualifier);
 
+  // nothing exact: a nickname or «known first name + unknown rest» proposes those people (several -> "which one?")
+  for (const m of k.startsWith("ل") && k.length > 2 ? [k, k.slice(1)] : [k]) {
+    const near = nearMisses(m, all);
+    if (near.length > 1) return { status: "ambiguous", candidates: [...near].sort(byNameThenId).slice(0, MAX_CANDIDATES) };
+    if (near.length === 1) return { status: "fuzzy", candidates: near };
+  }
   return finish(fuzzyCandidates(k.startsWith("ل") && k.length > 2 ? k.slice(1) : k, all), mention.qualifier, true);
 }

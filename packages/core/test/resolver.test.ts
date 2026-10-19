@@ -182,3 +182,26 @@ describe("resolveContact: words after a name that only describe the person (held
     }));
   });
 });
+
+describe("resolveContact: near misses only ever propose (held-out C-0109, C-0124, C-0125)", () => {
+  const moh = [...book, C("c_moh_jasim", "محمد جاسم", "07700000111"), C("c_moh_salih", "محمد صالح", "07700000112"), C("c_moh_ridha", "محمد رضا", "07700000113")];
+  it("a known first name with an unknown second part offers everyone with that first name", () => {
+    const r = resolveContact(name("محمد حسا"), moh);
+    expect(r.status).toBe("ambiguous");
+    expect(ids(r)).toEqual(["c_moh_jasim", "c_moh_ridha", "c_moh_salih"]);
+  });
+  it("…and with only one such person it still asks («تقصد أحمد علي؟»), never resolves", () => {
+    const r = resolveContact(name("ليلى حسن"), book);
+    expect(r.status).toBe("fuzzy");
+    expect(ids(r)).toEqual(["c_layla"]);
+  });
+  it.each([
+    ["حسوني", ["c_hasan", "c_husain"]],
+    ["لحسوني", ["c_hasan", "c_husain"]],
+    ["زنوبة", ["c_zainab"]],
+  ])("nickname «%s» proposes %j and never resolves on its own", (nick, want) => {
+    const r = resolveContact(name(nick), book);
+    expect(["ambiguous", "fuzzy"]).toContain(r.status);
+    expect(ids(r)).toEqual(want);
+  });
+});
