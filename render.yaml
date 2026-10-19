@@ -1,0 +1,36 @@
+# Render Blueprint for the hosted demo (render.com → New → Blueprint → pick this repo). Not deployed yet.
+# Free plan: the service sleeps when idle, so open the URL a minute before presenting. Keys are entered in Render's
+# dashboard (sync: false), never in this file.
+services:
+  - type: web
+    name: zc-billpay-agent
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    autoDeploy: false
+    envVars:
+      - key: LLM_PROVIDER        # groq | gemini | anthropic | fake (fake = scripted demo sentences, no key)
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODEL          # the exact model id from console.groq.com
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL        # the exact Gemini 3 model id from aistudio.google.com
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: LLM_FALLBACKS       # e.g. "gemini" when Groq is primary; free limits can run out mid-demo
+        value: gemini
+      - key: LLM_DAILY_TOKEN_CAP
+        value: "2000000"
+      - key: TURNS_PER_10_MIN    # per browser session
+        value: "60"
+      - key: SANDBOX_MAX         # one in-memory wallet per browser session; the free plan has 512 MB
+        value: "60"
+      - key: DEMO_MODE
+        value: "1"
+      - key: LLM_CACHE
+        value: "0"
