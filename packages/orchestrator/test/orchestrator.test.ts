@@ -221,6 +221,21 @@ describe("bills", () => {
     const r2 = await e.orch.turn("s", { text: "الانترنت" });
     expect(r2.card).toMatchObject({ kind: "bill_pay", amount_iqd: 35_000 });
   });
+  it("an amount said for an unknown bill is dropped when the user picks a real one: the card shows the wallet's amount", async () => {
+    const e = setup({ script: { "ادفع قسط المدرسة 150 الف": billIntent("unknown", "قسط المدرسة", { value: 150_000, source: "150 الف" }) } });
+    expect((await e.orch.turn("s", { text: "ادفع قسط المدرسة 150 الف" })).phase).toBe("CLARIFYING");
+    const r = await e.orch.turn("s", { text: "المولدة" });
+    expect(r.card).toMatchObject({ kind: "bill_pay", amount_iqd: 60_000 });
+  });
+  it("a valid phone number that is not a saved contact: says so, offers nothing to send, creates no contact", async () => {
+    const e = setup({ script: { "دز عشرين الف لـ07801234567": transferIntent("07801234567", 20_000, "عشرين الف", "phone") } });
+    const r = await e.orch.turn("s", { text: "دز عشرين الف لـ07801234567" });
+    expect(r.phase).toBe("CLARIFYING");
+    expect(text(r)).toContain("مو محفوظ بجهات اتصالك");
+    expect(text(r)).toContain("••••4567");
+    expect(r.card).toBeNull();
+    expect((e.db.prepare("SELECT COUNT(*) c FROM contacts WHERE phone='07801234567'").get() as { c: number }).c).toBe(0);
+  });
 });
 
 describe("fail closed", () => {
@@ -308,6 +323,18 @@ describe("info requests and multiple actions", () => {
   it("last transfer", async () => {
     const e = setup({ script: { "شكد دزيت اخر مرة": infoIntent("last_transfer") } });
     expect(text(await e.orch.turn("s", { text: "شكد دزيت اخر مرة" }))).toContain("آخر تحويل: 25,000 د.ع لعلي كريم");
+  });
+  it("last transfer skips a newer bill payment (a bill is not a «تحويل»)", async () => {
+    const e = setup({ script: { "ادفع الكهرباء": billIntent("electricity", "الكهرباء"), "شكد دزيت اخر مرة": infoIntent("last_transfer") } });
+    const card = (await e.orch.turn("s", { text: "ادفع الكهرباء" })).card!;
+    await e.orch.confirm("s", card.card_id);
+    expect(text(await e.orch.turn("s", { text: "شكد دزيت اخر مرة" }))).toContain("آخر تحويل: 25,000 د.ع لعلي كريم");
+  });
+  it("bill amount with no biller named lists every outstanding bill from the wallet", async () => {
+    const e = setup({ script: { "شكد فواتيري": infoIntent("bill_amount") } });
+    const out = text(await e.orch.turn("s", { text: "شكد فواتيري" }));
+    for (const amount of ["37,500", "60,000", "35,000"]) expect(out).toContain(amount);
+    expect(out).not.toContain("12,000"); // water is already paid
   });
   it("two actions: each gets its own card, confirmed separately", async () => {
     const msg = "ادفع الكهرباء ودز لعلي كريم عشرة آلاف";
@@ -514,7 +541,7 @@ describe("retries and unknown outcomes (invariant 2: no duplicate debit)", () =>
     e.db.prepare("UPDATE bills SET amount_iqd = 45000 WHERE account_id='ba_elec'").run();
     const done = await e.orch.confirm("s", r.card!.card_id);
     expect(done.phase).toBe("FAILED_SAFE");
-    expect(text(done)).toContain("تغيّر");
+    expect(text(done)).toContain("هسه 45,000 د.ع، مو 37,500 د.ع"); // says the new amount, never charges it
     expect(e.balance()).toBe(200_000);
   });
 });

@@ -186,7 +186,9 @@ export function createOrchestrator(opts: OrchestratorOptions) {
         if (r.status === "resolved") { d.recipient = r.contact; return [{ type: "RESOLUTION", slot, result: "resolved" }]; }
         if (r.status === "ambiguous") { s.candidates = r.candidates; return [{ type: "RESOLUTION", slot, result: "ambiguous", count: r.candidates.length, name: m.text }]; }
         if (r.status === "fuzzy") { s.candidates = r.candidates; s.fuzzy = r.candidates[0] as Contact; return [{ type: "RESOLUTION", slot, result: "fuzzy", name: (r.candidates[0] as Contact).display_name }]; }
-        return [{ type: "RESOLUTION", slot, result: "none", name: m.text }]; // unknown contact, a bare phone number or «نفس المرة»: ask, never guess
+        if (r.status === "unknown_number") return [{ type: "RESOLUTION", slot, result: "unknown_number", phone: mask(r.phone) }]; // never a new contact
+        if (r.status === "history") return [{ type: "RESOLUTION", slot, result: "history" }];
+        return [{ type: "RESOLUTION", slot, result: "none", name: m.text }]; // unknown contact: ask, never guess
       }
       if (slot === "biller" && d.action.type === "bill_pay") {
         const code = d.billerCode ?? d.action.biller;
@@ -294,12 +296,18 @@ export function createOrchestrator(opts: OrchestratorOptions) {
       else if (query === "bill_amount" && a?.type === "info") {
         const q = normaliseArabic(a.biller ?? "");
         const accounts = (await wallet.billAccounts(userId)).json.bill_accounts as BillAccount[];
+        if (!q) { // «شكد فواتيري؟»: every outstanding bill, from the wallet
+          const unpaid = accounts.filter((x) => x.bill?.status === "unpaid");
+          for (const x of unpaid) say(tc, "info", t("info_bill", { biller: x.biller_name_ar, amount: num((x.bill as { amount_iqd: number }).amount_iqd) }));
+          if (unpaid.length === 0) say(tc, "info", t("info_bills_none"));
+          return [];
+        }
         const billers = (await wallet.billers()).json.billers as any[];
         const hit = accounts.find((x) => x.biller_code === q || billers.find((b) => b.id === x.biller_id)?.aliases.some((al: string) => q && (normaliseArabic(al).includes(q) || q.includes(normaliseArabic(al)))));
         if (hit && hit.bill && hit.bill.status === "unpaid") say(tc, "info", t("info_bill", { biller: hit.biller_name_ar, amount: num(hit.bill.amount_iqd) }));
         else say(tc, "info", t("info_bill_none", { biller: a.biller ?? hit?.biller_name_ar ?? "" }));
       } else if (query === "last_transfer") {
-        const tx = ((await wallet.transactions(userId, { limit: 1 })).json.transactions as any[])[0];
+        const tx = ((await wallet.transactions(userId, { limit: 20 })).json.transactions as any[]).find((x) => x.kind === "transfer"); // a bill payment is not a «تحويل»
         say(tc, "info", tx ? t("info_last_transfer", { amount: num(tx.amount_iqd), name: tx.counterparty.name }) : t("info_last_transfer_none"));
       }
     } catch { sayKey(tc, "busy"); }
@@ -310,7 +318,13 @@ export function createOrchestrator(opts: OrchestratorOptions) {
     const key: CopyKey = code === "SERVICE_UNAVAILABLE" ? "busy" : copyKeyForWalletError(code);
     const d = s.draft;
     const name = d?.recipient?.display_name ?? (d?.action.type === "transfer" ? d.action.recipient?.text : undefined) ?? "";
+    let bill = 0;
+    if (code === "AMOUNT_CHANGED" && d?.account) {
+      // the wallet's CURRENT amount for this bill (it may have changed since the card was made)
+      try { bill = ((await wallet.billAccounts(userId)).json.bill_accounts as BillAccount[]).find((x) => x.id === d.account?.id)?.bill?.amount_iqd ?? 0; } catch { /* stays 0 */ }
+    }
     const vars = {
+      bill: num(bill),
       balance: num(await balanceOf()),
       amount: num(d?.quote?.amount_iqd ?? d?.amountIqd ?? 0),
       biller: d?.account?.biller_name_ar ?? "",
@@ -415,7 +429,12 @@ export function createOrchestrator(opts: OrchestratorOptions) {
     // biller
     const q = normaliseArabic(text);
     const code = billerAliasCache.find(({ code: c, alias }) => q && (c === q || normaliseArabic(alias) === q || normaliseArabic(alias).includes(q) || q.includes(normaliseArabic(alias))))?.code;
-    if (code) { d.billerCode = code; return [{ type: "SLOT_ANSWER", slot, filled: true }]; }
+    if (code) {
+      d.billerCode = code;
+      // an amount said for a bill we could not pay («قسط المدرسة 150 الف») does not belong to the bill picked now: the card shows the wallet's amount
+      if (d.action.type === "bill_pay" && d.action.biller === "unknown") d.amountIqd = null;
+      return [{ type: "SLOT_ANSWER", slot, filled: true }];
+    }
     return allowFallback ? null : [{ type: "SLOT_ANSWER", slot, filled: false }];
   }
 
