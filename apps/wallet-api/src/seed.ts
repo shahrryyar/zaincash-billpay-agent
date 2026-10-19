@@ -38,6 +38,16 @@ const CONTACTS: C[] = [
   ["c_abdullah", "عبدالله", "07700000801"],
   ["c_layla", "ليلى", "07700000901"],
   ["c_um_husain", "أم حسين", "07700001001"],
+  // Kurdish (Sorani) names, as a Sulaymaniyah user saves them (2026-10-19): two Arases, similar ڕێباز / ڕێبوار. No relation
+  // contacts here on purpose: «براکەم» must keep meaning the one stored brother.
+  ["c_aras_omar", "ئاراس عومەر", "07700002001"],
+  ["c_aras_karim", "ئاراس کەریم", "07700002002"],
+  ["c_hemn", "هێمن", "07700002003"],
+  ["c_shilan", "شیلان", "07700002004"],
+  ["c_karwan", "کاروان", "07700002005"],
+  ["c_rebaz", "ڕێباز", "07700002006"],
+  ["c_rebwar", "ڕێبوار", "07700002007"],
+  ["c_dlshad", "دڵشاد", "07700002008"],
 ];
 export const NON_WALLET_CONTACT: C = ["c_nonwallet", "جاري أبو فيصل", "07700001201"];
 

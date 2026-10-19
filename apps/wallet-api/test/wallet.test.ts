@@ -16,7 +16,7 @@ describe("read endpoints", () => {
   it("unknown user is 404", async () => expect((await makeWallet().call("GET", "/users/nope")).status).toBe(404));
   it("GET /users/:id/contacts returns masked numbers and the full list", async () => {
     const r = await makeWallet().call("GET", `/users/${DEMO_USER}/contacts`);
-    expect(r.json.contacts).toHaveLength(25);
+    expect(r.json.contacts).toHaveLength(33);
     const a = r.json.contacts.find((c: any) => c.id === ahmed);
     expect(a).toMatchObject({ display_name: "أحمد علي", phone_masked: "••••4471", wallet_user: true });
     expect(r.json.contacts.find((c: any) => c.id === "c_nonwallet").wallet_user).toBe(false);
