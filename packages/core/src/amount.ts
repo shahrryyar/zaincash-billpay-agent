@@ -50,7 +50,7 @@ add(UNIT, ["تسعين"], 90);
 const HUNDRED_WORDS = ["مية", "ميت", "مئة", "مائة"]; // all normalise to ميه / ميت / مايه
 const HUNDRED_ONE = new Set(HUNDRED_WORDS.map(n));
 add(HUNDRED, ["ميتين", "مئتين", "مائتين"], 200);
-for (const [prefix, v] of [["ثلاث", 3], ["تلاث", 3], ["اربع", 4], ["خمس", 5], ["ست", 6], ["سبع", 7], ["ثمن", 8], ["تمن", 8], ["ثمان", 8], ["تسع", 9]] as const)
+for (const [prefix, v] of [["ثلاث", 3], ["تلاث", 3], ["ثلث", 3], ["تلث", 3], ["اربع", 4], ["خمس", 5], ["ست", 6], ["سبع", 7], ["ثمن", 8], ["تمن", 8], ["ثمان", 8], ["تسع", 9]] as const)
   for (const suffix of HUNDRED_WORDS) HUNDRED.set(n(prefix + suffix), v * 100);
 
 const THOUSAND = new Set(["الف", "الاف", "آلاف"].map(n));
@@ -143,11 +143,16 @@ function parseWords(t: string): AmountParse {
 // Arabizi money words (Latin letters, digits for Arabic sounds: 9 = ص, 3 = ع). <!-- VERIFY-DIALECT: spellings -->
 const ARABIZI_WORDS: [RegExp, string][] = [
   [/(^|\s)(?:no9|nos|nuss|nus|nsf)(?=\s|$)/g, "$1نص"],
-  [/(^|\s)(?:rob3|rub3|rubu3|robo3)(?=\s|$)/g, "$1ربع"],
+  [/(^|\s)(?:rob3|rub3|rubu3|robo3|roba3|ruba3|rba3|rbu3|rub3a)(?=\s|$)/g, "$1ربع"],
   [/(^|\s)(?:melyon|milyon|mlyon|milion|meliyon|melion)(?=\s|$)/g, "$1مليون"],
   [/(^|\s)(?:mya|miya|meya|miyya)(?=\s|$)/g, "$1ميه"],
 ];
 const arabizi = (t: string): string => ARABIZI_WORDS.reduce((a, [re, to]) => a.replace(re, to), t);
+
+// Whole-message check: dollars and their street names («ورقة» = $100, «دفتر» = $10,000). Used for transfers even when the
+// model left the amount empty, because it cannot write a dollar amount as IQD. <!-- VERIFY-DIALECT -->
+const FOREIGN = /\$|دولار|\busd\b|(?:^|\s|ل)(?:ورقه|ورقتين|اوراق|دفتر|دفترين|دفاتر)(?=\s|$|[.,،!؟?])/;
+export const mentionsForeignCurrency = (text: string): boolean => FOREIGN.test(normaliseArabic(text));
 
 /** Parse the exact span the model quoted as the amount. */
 export function parseAmount(raw: string): AmountParse {

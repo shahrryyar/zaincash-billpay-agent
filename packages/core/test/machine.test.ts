@@ -74,6 +74,11 @@ describe("invalid / unsafe model output never reaches execution", () => {
     expect(r.state.phase).toBe("FAILED_SAFE");
     expect(r.effects).toContainEqual({ type: "SAY", key: "usd_unsupported" });
   });
+  it("«cancel» with nothing pending is not a cancellation: ask to rephrase (held-out C-0202, C-0208)", () => {
+    const r = run([[{ type: "LLM_OUTPUT", raw: intent([], { status: "cancel" }), input: "لا لا وگف شنو هذا" }]]);
+    expect(r.state.phase).toBe("NEEDS_REPHRASE");
+    expect(r.effects).toContainEqual({ type: "SAY", key: "ask_rephrase" });
+  });
   it("out_of_scope -> FAILED_SAFE (polite refusal)", () => {
     const r = run([[{ type: "LLM_OUTPUT", raw: intent([], { status: "out_of_scope" }), input: "احجزلي تكت" }]]);
     expect(r.state.phase).toBe("FAILED_SAFE");

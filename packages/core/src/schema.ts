@@ -1,7 +1,7 @@
 // The LLM <-> code contract (docs/05). Provider structured output is NOT trusted: always re-validate here.
 import { z } from "zod";
 import { normaliseArabic, normaliseDigits } from "./normalise";
-import { parseAmount } from "./amount";
+import { mentionsForeignCurrency, parseAmount } from "./amount";
 
 /** Mock cap. ZainCash's own wallet balance cap is 10M IQD/month (docs/research/02). */
 export const MAX_AMOUNT_IQD = 10_000_000;
@@ -110,6 +110,10 @@ export function crossCheck(intent: Intent, inputText: string): CrossCheckResult 
     if (a.type !== "info" && a.when_text) {
       const w = normaliseArabic(a.when_text);
       if (!w || !input.includes(w)) issues.push({ code: "when_not_in_input", actionIndex });
+    }
+    if (a.type === "transfer" && mentionsForeignCurrency(inputText)) {
+      issues.push({ code: "currency_unsupported", actionIndex }); // «حول ورقة لأحمد»: refuse even with no amount
+      return;
     }
     if (a.type === "info" || !a.amount) return;
 

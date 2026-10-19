@@ -144,7 +144,7 @@ function fromIntent(raw: unknown, input: string, cfg: Config, now: number): Resu
   if (!v.ok) return rephrase("invalid_output");
   let intent = v.intent;
   if (intent.status === "out_of_scope") return failSafe(initialState(), "out_of_scope", [{ type: "SAY", key: "out_of_scope" }]);
-  if (intent.status === "cancel") return out({ ...initialState(), phase: "CANCELLED" }, [{ type: "SAY", key: "cancelled" }]);
+  if (intent.status === "cancel") return rephrase("nothing_to_cancel"); // nothing is pending: «لا لا وگف» is not a request
   if (intent.status === "schedule_help") return out({ ...initialState(), phase: "ANSWERED", reason: null }, [{ type: "SAY", key: "schedule_help" }]);
   if (intent.status !== "ok") return rephrase("no_pending_context"); // unclear / confirm_reply / clarify_reply with nothing pending
   // A dropped-«ألف» amount (e.g. «40») in a LATER action must not be asked now: the answer would be applied to the

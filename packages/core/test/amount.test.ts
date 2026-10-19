@@ -37,6 +37,7 @@ describe("parseAmount: Iraqi words", () => {
     ["مليون ونص", 1_500_000],
     ["مليون وربع", 1_250_000],
     ["مليونين", 2_000_000],
+    ["تلثمية ألف", 300_000], // spoken «تلث» (held-out C-0187)
     ["الفين", 2000],
     ["ثلاث الاف", 3000],
     ["تلاثة آلاف", 3000],
@@ -98,9 +99,13 @@ describe("parseAmount: properties", () => {
   });
 });
 
+describe("parseAmount: «تلثمية» alone is a bare number under 1,000", () => {
+  it("asks 300 or 300,000 (never guesses the unit)", () => expect(parseAmount("تلثمية")).toEqual({ kind: "ambiguous", candidates: [300, 300_000] }));
+});
+
 describe("parseAmount: Arabizi money words", () => {
   it.each([
-    ["no9 melyon", 500_000], ["nos melyon", 500_000], ["rob3 melyon", 250_000], ["melyon", 1_000_000], ["milyon", 1_000_000],
+    ["no9 melyon", 500_000], ["nos melyon", 500_000], ["rob3 melyon", 250_000], ["roba3 melyon", 250_000], ["ruba3 melyon", 250_000], ["rbu3 melyon", 250_000], ["melyon", 1_000_000], ["milyon", 1_000_000],
     ["25 alf", 25_000], ["50 alf", 50_000], ["25k", 25_000],
   ])("«%s» is %i", (text, value) => expect(parseAmount(text)).toEqual({ kind: "ok", value }));
   it("does not disturb Arabic or plain numbers", () => {

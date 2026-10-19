@@ -77,6 +77,16 @@ describe("crossCheck: deterministic checks after Zod", () => {
     const i = parse(intent([transfer({ amount: { value: 100000, currency: "IQD", source_text: "ورقة" } })]));
     expect(crossCheck(i, "دز ورقة لعلي")).toMatchObject({ ok: false, issues: [{ code: "currency_unsupported" }] });
   });
+  it.each([
+    ["حول لي ورقة لأحمد علي فدوة"], ["دز دفتر لاخوي كرار"], ["حول 100 دولار لعلي"], ["dez 50$ l ali"], ["حول ورقتين لعلي كريم"],
+  ])("a transfer with dollars / «ورقة» / «دفتر» in the message is refused even when the model left the amount empty: %s", (text) => {
+    const i = parse(intent([transfer({ amount: null })]));
+    expect(crossCheck(i, text)).toMatchObject({ ok: false, issues: [{ code: "currency_unsupported" }] });
+  });
+  it("those words do not block a bill payment («ورقة الكهرباء» is the bill slip)", () => {
+    const i = parse(intent([{ type: "bill_pay", biller: "electricity", biller_text: "الكهرباء", amount: null }]));
+    expect(crossCheck(i, "ادفع ورقة الكهرباء")).toEqual({ ok: true });
+  });
   it("rejects amounts that are not a multiple of 250 IQD", () => {
     const i = parse(intent([transfer({ amount: { value: 50100, currency: "IQD", source_text: "50100" } })]));
     expect(crossCheck(i, "دز 50100 لأحمد")).toMatchObject({ ok: false, issues: [{ code: "amount_unit" }] });
