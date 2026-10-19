@@ -57,6 +57,11 @@ Held-out is frozen (`eval/data/heldout.sha256`) and runs once, only with `--allo
 
 ## Document map
 
+> The numbered planning docs (`docs/00`–`28`) are the author's working spec and are **kept local** (not in this public
+> repo), so those links do not resolve on GitHub. Everything a judge needs is in the files that are committed:
+> this README, [AGENTS.md](AGENTS.md), [MEMORY.md](MEMORY.md), [DISCLOSURE.md](DISCLOSURE.md),
+> [FAILURE_MODES.md](FAILURE_MODES.md) and [eval/](eval/).
+
 | # | File | What it answers |
 |---|------|-----------------|
 | — | [AGENTS.md](AGENTS.md) | Rules for any AI coding assistant working in this repo |

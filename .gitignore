@@ -29,3 +29,7 @@ eval/voice/audio/
 apps/web/AGENTS.md
 apps/web/next-env.d.ts
 *.tsbuildinfo
+
+# Python bytecode
+__pycache__/
+*.pyc
