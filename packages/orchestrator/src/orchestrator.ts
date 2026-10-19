@@ -457,7 +457,10 @@ export function createOrchestrator(opts: OrchestratorOptions) {
     if (TERMINAL.has(s.machine.phase) && s.machine.queue.length === 0) resetRequest(s); // a finished request: start a new one
 
     const phase = s.machine.phase;
-    if (phase === "EXECUTING" || phase === "UNKNOWN_OUTCOME") { sayKey(tc, "checking"); return finalize(s, tc); }
+    if (phase === "EXECUTING") { sayKey(tc, "checking"); return finalize(s, tc); }
+    // the last payment's outcome is still unknown: any message first asks the wallet again (same key, never re-sends).
+    // The answer (receipt, "nothing was sent", or "still checking") is the reply; the message itself is not acted on.
+    if (phase === "UNKNOWN_OUTCOME") { await dispatch(s, { type: "RECHECK" }, tc); return finalize(s, tc); }
 
     if (phase === "AWAITING_CONFIRM") {
       if (wantsSchedule(text)) await dispatch(s, { type: "SCHEDULE_THIS", when: parseWhen(text, now()) }, tc); // «جدولها» (+ maybe a time): same payment, later
@@ -548,11 +551,23 @@ export function createOrchestrator(opts: OrchestratorOptions) {
         const card = s.card;
         if (card && card.cardId === cardId && s.machine.phase === "AWAITING_CONFIRM") {
           await dispatch(s, { type: "CONFIRM", token: card.token, payloadHash: card.payloadHash }, tc);
-        } else if (card && card.cardId === cardId && (s.machine.phase === "EXECUTING" || s.machine.phase === "UNKNOWN_OUTCOME")) {
+        } else if (card && card.cardId === cardId && s.machine.phase === "EXECUTING") {
           sayKey(tc, "checking");
+        } else if (card && card.cardId === cardId && s.machine.phase === "UNKNOWN_OUTCOME") {
+          await dispatch(s, { type: "RECHECK" }, tc); // a second tap only asks the wallet what happened
         } else if (card && card.cardId === cardId && s.machine.phase === "EXECUTED" && s.exec) {
           await onExecuted(s, tc); // double tap after success: show the same result, execute nothing
         } else sayKey(tc, "confirm_invalid");
+        return finalize(s, tc);
+      });
+    },
+
+    /** Outcome still unknown: ask the wallet again by the card's idempotency key. Never sends anything. */
+    recheck(sessionId: string): Promise<Reply> {
+      const s = getSession(sessionId);
+      return locked(s, async () => {
+        const tc = begin(s);
+        if (s.machine.phase === "UNKNOWN_OUTCOME") await dispatch(s, { type: "RECHECK" }, tc);
         return finalize(s, tc);
       });
     },

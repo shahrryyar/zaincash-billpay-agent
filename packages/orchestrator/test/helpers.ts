@@ -1,6 +1,6 @@
 import { createApp, openDb, applySeed, SEED_NOW, DEMO_USER } from "@zc/wallet-api";
 import { createUnderstander, type ChatClient, type Block, type CompleteRequest, type Understander, type UnderstandResult } from "@zc/llm";
-import { createOrchestrator, WalletClient, appFetch, type Reply } from "../src";
+import { createOrchestrator, WalletClient, appFetch, type FetchFn, type Reply } from "../src";
 
 export { DEMO_USER, SEED_NOW };
 export const ADMIN = { "content-type": "application/json", "x-admin-secret": "s3cret" };
@@ -21,13 +21,13 @@ export const infoIntent = (query: string, biller?: string) => ({ actions: [{ typ
 export const twoActions = (a: any, b: any) => ({ actions: [...a.actions, ...b.actions], status: "ok", confidence: 0.9, language: "ar-iq" });
 export const statusIntent = (status: string) => ({ actions: [], status, confidence: 0.9, language: "ar-iq" });
 
-export function setup(o: { timeoutMs?: number; script?: Record<string, unknown>; understanderFor?: (host: any) => Understander } = {}) {
+export function setup(o: { timeoutMs?: number; script?: Record<string, unknown>; understanderFor?: (host: any) => Understander; wrapFetch?: (f: FetchFn) => FetchFn } = {}) {
   const db = openDb();
   applySeed(db);
   let t = SEED_NOW;
   const clock = { now: () => t, advance: (ms: number) => { t += ms; } };
   const app = createApp({ db, now: clock.now, demoMode: true, adminSecret: "s3cret" });
-  const wallet = new WalletClient({ baseUrl: "http://wallet.test", fetch: appFetch(app), timeoutMs: o.timeoutMs ?? 2000 });
+  const wallet = new WalletClient({ baseUrl: "http://wallet.test", fetch: o.wrapFetch ? o.wrapFetch(appFetch(app)) : appFetch(app), timeoutMs: o.timeoutMs ?? 2000 });
   const script = new Map<string, unknown>(Object.entries(o.script ?? {}));
   const llm = { calls: 0, texts: [] as string[], fail: false };
   const fakeUnderstander = (): Understander => ({

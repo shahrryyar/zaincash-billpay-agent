@@ -462,6 +462,44 @@ describe("retries and unknown outcomes (invariant 2: no duplicate debit)", () =>
     expect(e.balance()).toBe(200_000);
     expect(e.txCount()).toBe(SEED_TX);
   });
+  it("outcome unknown (debit committed, every reply lost, lookup down): says «ما متأكدين», keeps the key; a recheck later finds the ONE debit", async () => {
+    let down = false;
+    const e = setup({
+      script: { "دز خمسين ألف لعلي كريم": transferIntent("علي كريم", 50_000, "خمسين ألف") },
+      // the wallet processes the request but the answer never arrives; reads fail too, until `down` clears
+      wrapFetch: (f) => async (url, init) => { if (!down) return f(url, init); if (init?.method === "POST") await f(url, init); throw new Error("network down"); },
+    });
+    const card = (await e.orch.turn("s", { text: "دز خمسين ألف لعلي كريم" })).card!;
+    down = true;
+    const r = await e.orch.confirm("s", card.card_id);
+    expect(r.phase).toBe("UNKNOWN_OUTCOME");
+    expect(text(r)).toContain("ما متأكدين");
+    expect(e.txCount()).toBe(SEED_TX + 1); // it did go through, once (the retries replayed the same key)
+    const still = await e.orch.turn("s", { text: "شصار؟" });
+    expect(still.phase).toBe("UNKNOWN_OUTCOME");
+    expect(e.llm.texts).not.toContain("شصار؟"); // the model is not asked while the money question is open
+    down = false;
+    const done = await e.orch.recheck("s");
+    expect(done.phase).toBe("EXECUTED");
+    expect(text(done)).toMatch(/انرسلت 50,000 د\.ع لعلي كريم/);
+    expect(e.txCount()).toBe(SEED_TX + 1);
+    expect(e.balance()).toBe(149_700);
+  });
+  it("outcome unknown, then the wallet says it never arrived: «ما انرسل شي», nothing debited", async () => {
+    let down = false;
+    const e = setup({
+      script: { "دز خمسين ألف لعلي كريم": transferIntent("علي كريم", 50_000, "خمسين ألف") },
+      wrapFetch: (f) => async (url, init) => { if (down) throw new Error("network down"); return f(url, init); },
+    });
+    const card = (await e.orch.turn("s", { text: "دز خمسين ألف لعلي كريم" })).card!;
+    down = true;
+    expect((await e.orch.confirm("s", card.card_id)).phase).toBe("UNKNOWN_OUTCOME");
+    down = false;
+    const r = await e.orch.confirm("s", card.card_id); // a second tap only rechecks
+    expect(r.phase).toBe("FAILED_SAFE");
+    expect(text(r)).toContain("ما انرسل شي");
+    expect(e.txCount()).toBe(SEED_TX);
+  });
   it("a wallet rejection after confirm (balance spent elsewhere) is honest and nothing is sent", async () => {
     const { e, card } = await ready();
     e.db.prepare("UPDATE users SET balance_iqd = 1000 WHERE id = ?").run(DEMO_USER);
