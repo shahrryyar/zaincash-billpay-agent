@@ -48,7 +48,7 @@ Accepted into the build stage already. Elimination is after the MVP.
 - **Interviews (2026-10-19): 5 real**, Sulaymaniyah, 19–22, all consented, app unnamed. 5/5 want automation + scheduling + typing; 2/5 sent to wrong person; 3/5 would use, 2/5 not (no reason). All Kurdish speakers, so no Arabic phrasings, and the agent is Arabic-only. Log: `research/interview-log.csv`. Never add details the author did not give.
 
 ## Status (2026-10-19)
-- **Work on `main` only, no PRs, commits authored by the author only.** Claude's GitHub App had no write access on 19/10, so that day's commits are local until access is fixed (`git push` returns 403).
+- **Work on `main` only, no PRs, commits authored by the author only.** Push access works again (19/10).
 - Tests: core 389, asr 33, llm 78, wallet-api 104, orchestrator 137, eval 22, web 12 (**775**) + **8 Playwright browser tests** (`pnpm --filter @zc/web e2e`) + `pnpm smoke -- --fake` 15/15. CI adds smoke, e2e and a Docker image job.
 - **No-key mode:** `LLM_PROVIDER=fake` (scripted demo sentences) for web/CLI/smoke; with no provider at all the app loads and answers «busy».
 - **Hosted demo:** one sandbox per browser session (`apps/web/server/sandboxes.ts`: own wallet/clock/faults, 30 min idle, cap 200, `TURNS_PER_10_MIN`). `Dockerfile` (standalone Next, non-root, `/api/health`). Built and run locally; **deploying needs the author's host account**.
@@ -62,7 +62,7 @@ Accepted into the build stage already. Elimination is after the MVP.
 
 ## Status (2026-10-17)
 - Pushed to origin/main. Tests: core 350, asr 33, llm 74, wallet-api 102, orchestrator 126, eval 22, web 7 (714). CI: typecheck, test, build, gitleaks, **OSV-Scanner** (vitest 4 / vite 7 after it flagged 9 dev-tool advisories).
-- **Public gate docs committed:** `DISCLOSURE.md`, `FAILURE_MODES.md` (16 FMs), README with measured results (docs/ stays local).
+- **Public gate docs committed:** `DISCLOSURE.md`, `FAILURE_MODES.md` (16 FMs), README with measured results (docs/ and brief/ published 2026-10-19).
 - Local docs refreshed 2026-10-17: 02/03/05/06/09 (rewritten)/10/11/12 (results table filled)/13/14/15/18/19/20/21/22/23/24/25/26; **docs/28 = MVP one-pager draft**.
 - Resolver fix 2026-10-17 (property test found it): a bare «أبو» no longer resolves to the only «أبو …» contact. **This is after the held-out run: disclosed.**
 - Tested by hand in real Chrome (bsk) on 16/10: hero flow, scheduling, faults, out-of-scope, Arabizi, biller alias. 17/10: voice read-back seen in Chrome via the simulator (the author interrupted the browser session); the «صح» → card → «اي» never confirms → low confidence → non-WAV path verified over HTTP against the running app with the real model.
