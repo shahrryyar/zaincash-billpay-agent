@@ -106,6 +106,18 @@ describe("POST /quotes (pre-check, no side effects)", () => {
     expect((await q(w, { kind: "transfer", from: DEMO_USER, to_contact: "c_mama__low", amount_iqd: 5000 })).json.errors).toContain("CONTACT_NOT_FOUND");
     expect((await q(w, { kind: "transfer", from: DEMO_USER, to_contact: "c_nonwallet", amount_iqd: 5000 })).json.errors).toContain("CONTACT_NOT_WALLET_USER");
   });
+  it("the recipient's wallet cannot go above the 10,000,000 IQD capacity (quote and execute)", async () => {
+    const w = makeWallet();
+    w.db.prepare("UPDATE users SET balance_iqd = 9_990_000 WHERE id='u_ahmed_ali'").run();
+    expect((await q(w, { kind: "transfer", from: DEMO_USER, to_contact: ahmed, amount_iqd: 10_000 })).json.ok).toBe(true);
+    const r = await q(w, { kind: "transfer", from: DEMO_USER, to_contact: ahmed, amount_iqd: 10_250 });
+    expect(r.json.errors).toContain("RECIPIENT_WALLET_FULL");
+    const t = await w.mint("s", transferPayload(ahmed, 10_250));
+    const x = await exec(w, "/transfers", "cap-1", t, transferBody("s", ahmed, 10_250));
+    expect(x.status).toBe(422);
+    expect(x.json.error.code).toBe("RECIPIENT_WALLET_FULL");
+    expect(w.balance(DEMO_USER)).toBe(200_000);
+  });
   it("amount must be a multiple of 250 IQD", async () => {
     const r = await q(makeWallet(), { kind: "transfer", from: DEMO_USER, to_contact: ahmed, amount_iqd: 50_100 });
     expect(r.json.errors).toContain("INVALID_AMOUNT");

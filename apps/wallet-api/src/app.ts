@@ -1,7 +1,7 @@
 // Mock ZainCash wallet (docs/06). NOT the real ZainCash API: synthetic data only.
 // The money path is ONE SQLite transaction (BEGIN IMMEDIATE): idempotency check, confirmation-token check,
 // business checks, debit/credit, token consumption and the stored response all commit together or not at all.
-import { p2pFee, MONTHLY_LIMIT_IQD } from "./fees";
+import { p2pFee, MONTHLY_LIMIT_IQD, WALLET_CAPACITY_IQD } from "./fees";
 import { SCHEDULE_MAX_LEAD_MS, SCHEDULE_MIN_LEAD_MS, SCHEDULE_MISSED_AFTER_MS } from "./schedule";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { Hono, type Context } from "hono";
@@ -134,6 +134,8 @@ export function createApp(opts: AppOptions) {
     if ((amount % SMALLEST_UNIT_IQD !== 0 || amount > MAX_AMOUNT_IQD) && push("INVALID_AMOUNT")) return { codes, contact };
     if (monthTransfers(user.id) + amount > MONTHLY_LIMIT_IQD.transfer && push("LIMIT_EXCEEDED")) return { codes, contact };
     if (user.balance_iqd < amount + p2pFee(amount) && push("INSUFFICIENT_BALANCE")) return { codes, contact };
+    const recipient = contact.wallet_user_id === null ? undefined : (db.prepare("SELECT balance_iqd FROM users WHERE id=?").get(contact.wallet_user_id) as Row | undefined);
+    if (recipient && recipient.balance_iqd + amount > WALLET_CAPACITY_IQD && push("RECIPIENT_WALLET_FULL")) return { codes, contact };
     return { codes, contact };
   }
 
