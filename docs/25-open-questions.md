@@ -42,6 +42,11 @@ Update with answer + date.
 - [ ] Hosting: laptop vs Vercel/Cloudflare + wallet host (HF Spaces/Render sleep when idle)
 - [ ] Digit style on cards: Western vs Arabic-Indic
 
+## Language (from the 5 interviews, 19/10)
+- All 5 interviewees (Sulaymaniyah) are native Kurdish speakers; ZainCash serves the Kurdistan Region. Would KRG users
+  type to the agent in Arabic, or do they need Kurdish (Sorani)? Ask it directly next time. If Kurdish: intent prompt +
+  Sorani numerals/amount words + copy + a Kurdish test set; the deterministic core does not change.
+
 ## Dialect (native review)
 - [ ] All `VERIFY-DIALECT` markers
 - [ ] Slang amounts (ورقة, دفتر, dropped ألف) with ≥2 speakers

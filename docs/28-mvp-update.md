@@ -34,7 +34,7 @@ words after a name. Held-out targets missed: slots (79% vs 90%), ambiguity preci
 
 ## Honest limits
 - Test labels were made by three LLM families and adjudicated by a script; **no human labelled or reviewed them**.
-- **5 user interviews** (Sulaymaniyah, 19–22): all want sending automated and scheduled, prefer typing; 2/5 had sent to the wrong person; 3/5 would use it, 2/5 would not (reason not recorded). All 5 speak Kurdish, and the agent is Arabic-only. Tiny, one-city sample.
+- **5 user interviews** (Sulaymaniyah, 19–22): all want sending automated and scheduled, prefer typing; 2/5 had sent to the wrong person; 3/5 would use it, 2/5 would not (reason not recorded). All 5 are native Kurdish speakers and ZainCash serves the Kurdistan Region, but the agent is Arabic-only: Kurdish (Sorani) support is our next hypothesis to test (language was not asked). Tiny, one-city sample.
   Plus 500 public App Store reviews: people fear failed or stuck money and poor support, not "too many taps".
 - Voice accuracy is **not measured yet** (needs consented recordings). Dialect copy awaits a native-speaker check.
 - Disclosed conflict of interest: the voice ASR is the author's company's pre-existing service, used as an external API.

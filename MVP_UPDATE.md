@@ -26,7 +26,7 @@ Shahryar Sabir Muhammed (RegaLabs) · repo: github.com/shahrryyar/zaincash-billp
 Ambiguity recall 100% (n=42), p50 / p95 time to card 2.3 s / 3.7 s. Every miss was safe (it asked or refused).
 
 ## Users
-**5 user interviews** (Sulaymaniyah, 19–22): all want sending automated and scheduled, prefer typing; 2/5 had sent to the wrong person; 3/5 would use it, 2/5 would not (reason not recorded). All 5 speak Kurdish, and the agent is Arabic-only. Tiny, one-city sample.
+**5 user interviews** (Sulaymaniyah, 19–22): all want sending automated and scheduled, prefer typing; 2/5 had sent to the wrong person; 3/5 would use it, 2/5 would not (reason not recorded). All 5 are native Kurdish speakers and ZainCash serves the Kurdistan Region, but the agent is Arabic-only: Kurdish (Sorani) support is our next hypothesis to test (language was not asked). Tiny, one-city sample.
 
 ## What does not work yet
 - **No live model key right now** → only the scripted demo sentences run. Fix: a free Groq / Gemini key (our code
