@@ -283,11 +283,27 @@ describe("execution, retries and unknown outcomes (invariant 2: no duplicate deb
     const r = run([[{ type: "EXEC_RESULT", outcome: "timeout" }], [{ type: "LOOKUP_RESULT", found: "not_found" }]], executing());
     expect(r.state).toMatchObject({ phase: "FAILED_SAFE", reason: "not_executed" });
   });
-  it("still unknown -> FAILED_SAFE with the 'do not resend' message and the key kept", () => {
+  it("still unknown -> stays UNKNOWN_OUTCOME with the 'do not resend' message and the key kept", () => {
     const r = run([[{ type: "EXEC_RESULT", outcome: "timeout" }], [{ type: "LOOKUP_RESULT", found: "unknown" }]], executing());
-    expect(r.state).toMatchObject({ phase: "FAILED_SAFE", reason: "unknown_outcome" });
+    expect(r.state).toMatchObject({ phase: "UNKNOWN_OUTCOME", reason: "unknown_outcome" });
     expect(r.state.card?.idempotencyKey).toBe("k1");
     expect(r.effects).toContainEqual({ type: "SAY", key: "unknown_outcome" });
+  });
+  it("RECHECK looks the outcome up again by the SAME key, and never executes or retries", () => {
+    const stuck = run([[{ type: "EXEC_RESULT", outcome: "timeout" }], [{ type: "LOOKUP_RESULT", found: "unknown" }]], executing()).state;
+    const r = run([[{ type: "RECHECK" }]], stuck);
+    expect(r.state.phase).toBe("UNKNOWN_OUTCOME");
+    expect(r.effects).toContainEqual({ type: "LOOKUP_OUTCOME", idempotencyKey: "k1" });
+    expect(types(r.effects).filter((t) => t === "EXECUTE" || t === "RETRY")).toEqual([]);
+    expect(run([[{ type: "RECHECK" }], [{ type: "LOOKUP_RESULT", found: "executed" }]], stuck).state.phase).toBe("EXECUTED");
+    expect(run([[{ type: "RECHECK" }], [{ type: "LOOKUP_RESULT", found: "not_found" }]], stuck).state.phase).toBe("FAILED_SAFE");
+  });
+  it("RECHECK outside UNKNOWN_OUTCOME does nothing", () => {
+    for (const phase of ["IDLE", "AWAITING_CONFIRM", "EXECUTED", "FAILED_SAFE"] as Phase[]) {
+      const r = run([[{ type: "RECHECK" }]], { ...initialState(), phase });
+      expect(r.state.phase).toBe(phase);
+      expect(types(r.effects)).not.toContain("LOOKUP_OUTCOME");
+    }
   });
   it("EXEC_RESULT outside EXECUTING/UNKNOWN_OUTCOME is ignored (cannot fake a success)", () => {
     for (const phase of ["IDLE", "AWAITING_CONFIRM", "CLARIFYING"] as Phase[]) {
@@ -369,6 +385,7 @@ describe("model-based: invariants hold for ANY event sequence", () => {
     { weight: 4, arbitrary: fc.record({ type: fc.constant("EXEC_RESULT" as const), outcome: fc.constantFrom("ok" as const, "rejected" as const, "timeout" as const), code: fc.constantFrom(...codes) }) },
     { weight: 2, arbitrary: fc.record({ type: fc.constant("LOOKUP_RESULT" as const), found: fc.constantFrom("executed" as const, "not_found" as const, "unknown" as const) }) },
     { weight: 2, arbitrary: fc.constant({ type: "NEXT_ACTION" as const }) },
+    { weight: 2, arbitrary: fc.constant({ type: "RECHECK" as const }) },
   );
 
   // Guided generation: the happy path (and its retry/timeout variants) with random events spliced in.
@@ -453,6 +470,8 @@ describe("model-based: invariants hold for ANY event sequence", () => {
         expect(r.effects).toContainEqual({ type: "REVOKE_TOKEN", token: prev.card!.token });
       // I8: model output alone never executes or retries
       if (event.type === "LLM_OUTPUT") expect(r.effects.some((e) => e.type === "EXECUTE" || e.type === "RETRY")).toBe(false);
+      // I10: a recheck only ever looks up, it never sends
+      if (event.type === "RECHECK") expect(r.effects.some((e) => e.type === "EXECUTE" || e.type === "RETRY")).toBe(false);
       // I9: an unsent card is never executed twice via CONFIRM replay after EXECUTING
       if (prev.phase === "EXECUTING" && event.type === "CONFIRM") expect(r.effects.some((e) => e.type === "EXECUTE")).toBe(false);
     }

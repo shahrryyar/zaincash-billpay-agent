@@ -51,7 +51,8 @@ export type MachineEvent =
   | { type: "EXEC_RESULT"; outcome: "ok" | "rejected" | "timeout"; code?: string | undefined }
   | { type: "LOOKUP_RESULT"; found: "executed" | "not_found" | "unknown" }
   | { type: "NEXT_ACTION" }
-  | { type: "SCHEDULE_THIS"; when?: When }; // «جدولها» on a pending card: same payment, later
+  | { type: "SCHEDULE_THIS"; when?: When } // «جدولها» on a pending card: same payment, later
+  | { type: "RECHECK" }; // outcome still unknown: look it up again by the same key (never re-sends)
 
 export type Effect =
   | { type: "CALL_LLM" }
@@ -314,8 +315,13 @@ function step(state: MachineState, ev: MachineEvent, ctx: Ctx, cfg: Config): Res
       if (phase !== "UNKNOWN_OUTCOME") return reject(state, "no_lookup_pending");
       if (ev.found === "executed") return out({ ...state, phase: "EXECUTED", reason: null }, []);
       if (ev.found === "not_found") return failSafe(state, "not_executed", [{ type: "SAY_ERROR", code: "not_executed" }]);
-      // keep the card (and its idempotency key) so any later retry is still safe
-      return failSafe(state, "unknown_outcome", [{ type: "SAY", key: "unknown_outcome" }]);
+      // still unknown: stay here with the card and its key, so a RECHECK can find out later and nothing is ever re-sent
+      return out({ ...state, reason: "unknown_outcome" }, [{ type: "SAY", key: "unknown_outcome" }]);
+    }
+
+    case "RECHECK": {
+      if (phase !== "UNKNOWN_OUTCOME" || !state.card) return reject(state, "nothing_to_recheck");
+      return out(state, [{ type: "LOOKUP_OUTCOME", idempotencyKey: state.card.idempotencyKey }]);
     }
   }
 }
