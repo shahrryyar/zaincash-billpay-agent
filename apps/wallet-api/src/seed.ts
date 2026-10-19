@@ -57,6 +57,7 @@ const ACCOUNTS: [string, string, string, string, number | null, "unpaid" | "paid
   ["ba_water", DEMO_USER, "b_water", "WT-7781", 12_000, "paid"],
   ["ba_topup", DEMO_USER, "b_mobile_topup", "07700000001", null, "unpaid"],
   ["ba_low_elec", LOW_USER, "b_electricity", "EL-90001", 37_500, "unpaid"],
+  ["ba_low_gen", LOW_USER, "b_generator", "GN-90002", 60_000, "unpaid"],
 ];
 
 export const SEED_BALANCE = { [DEMO_USER]: 200_000, [LOW_USER]: 15_000 } as const;
@@ -85,10 +86,9 @@ export function applySeed(db: Db): void {
     }
     const [ncId, ncName, ncPhone] = NON_WALLET_CONTACT;
     addContact.run(ncId, DEMO_USER, ncName, normaliseArabic(ncName), null, ncPhone, null, null);
-    // a few contacts for the low-balance user
-    for (const id of ["c_ahmed_ali", "c_mama"]) {
-      const c = CONTACTS.find((x) => x[0] === id) as C;
-      addContact.run(`${id}__low`, LOW_USER, c[1], normaliseArabic(c[1]), c[3] ?? null, c[2], `u_${id.slice(2)}`, null);
+    // the low-balance user has the same address book (ids get a `__low` suffix), so low-balance cases differ only in money
+    for (const [id, name, phone, relation] of CONTACTS) {
+      addContact.run(`${id}__low`, LOW_USER, name, normaliseArabic(name), relation ?? null, phone, `u_${id.slice(2)}`, null);
     }
     const addBiller = db.prepare("INSERT INTO billers VALUES (?,?,?,?,?,?,?)");
     const addSettle = db.prepare("INSERT INTO settlements VALUES (?,0)");

@@ -34,6 +34,13 @@ describe("seed (docs/11): deterministic synthetic world with deliberate traps", 
     expect(amt("ba_water")).toEqual({ a: 12_000, s: "paid" });
     expect(amt("ba_topup")).toBeUndefined();
   });
+  it("the low-balance user has the same contacts and an unpaid electricity and generator bill", () => {
+    const db = fresh();
+    const count = (owner: string) => (db.prepare("SELECT COUNT(*) c FROM contacts WHERE owner_id=? AND wallet_user_id IS NOT NULL").get(owner) as { c: number }).c;
+    expect(count(LOW_USER)).toBe(count(DEMO_USER));
+    const bills = db.prepare("SELECT a.biller_id b, bl.status s FROM bill_accounts a JOIN bills bl ON bl.account_id=a.id WHERE a.owner_id=? ORDER BY b").all(LOW_USER);
+    expect(bills).toEqual([{ b: "b_electricity", s: "unpaid" }, { b: "b_generator", s: "unpaid" }]);
+  });
   it("one biller is down (service-down case)", () => {
     const db = fresh();
     expect((db.prepare("SELECT status s FROM billers WHERE id='b_mobile_topup'").get() as { s: string }).s).toBe("down");
