@@ -25,17 +25,20 @@ Shahryar Sabir Muhammed (RegaLabs) · repo: github.com/shahrryyar/zaincash-billp
 
 Ambiguity recall 100% (n=42), p50 / p95 time to card 2.3 s / 3.7 s. Every miss was safe (it asked or refused).
 
+## Users
+**5 user interviews** (Sulaymaniyah, 19–22): all want sending automated and scheduled, prefer typing; 2/5 had sent to the wrong person; 3/5 would use it, 2/5 would not (reason not recorded). All 5 speak Kurdish, and the agent is Arabic-only. Tiny, one-city sample.
+
 ## What does not work yet
 - **No live model key right now** → only the scripted demo sentences run. Fix: a free Groq / Gemini key (our code
   already supports both).
 - Fixes made after the held-out run (same-amount-as-last-time, words after names, «ورقة/دفتر», chatter) are **not
   measured yet**. A fresh frozen set (`heldout2`, 180 new cases) waits for its single run.
-- No human has checked the test labels or interviewed users yet. Voice needs its ASR key and real recordings.
+- No human has checked the test labels. Voice needs its ASR key and real recordings.
 - Known miss: «بعد الظهر» is read as 12:00 instead of asking the hour.
 
 ## Next (to the progress review)
 1. Free model key → dev run → **`heldout2` run once** with the model we will demo; publish the numbers as measured.
 2. Hand review of a 58-row sample of the test set; fix wording, re-freeze, disclose.
-3. Talk to 5+ real wallet users (bill pay / transfers); log what they say.
+3. More interviews: older users, other cities; ask why people say no and which language they want.
 4. Voice: record 40–60 consented utterances, measure WER and name/amount survival.
 5. Host the demo (Render / VPS) and rehearse with unexpected judge input.

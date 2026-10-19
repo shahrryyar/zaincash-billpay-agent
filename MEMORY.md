@@ -44,7 +44,8 @@ Accepted into the build stage already. Elimination is after the MVP.
 - **License:** proprietary, all rights reserved, until the author changes it. Judges/organisers need written permission from the author to run it.
 - **Voice:** RegaLabs ASR (author's own pre-existing service, disclosed) via its OpenAI-compatible **developer HTTP API** (`POST https://api.regalabs.dev/v1/audio/transcriptions`, WAV PCM16, Bearer key, returns `{text}` only, no confidence). **LiveKit dropped** (push-to-talk needs no media server). Built 2026-10-17: `packages/asr`, core voice gate (`asr.ts`), orchestrator read-back (mid/unknown confidence → «سمعتك تگول… صح؟», runs only after «صح»), `/api/voice`, mic button, demo simulator (`ASR_PROVIDER=fake`), WER/CER eval (`eval:voice`). **Blockers (author):** `REGALABS_API_KEY` with paid credit; RegaLabs gateway refuses `acm` (developer-audio.ts SUPPORTED_ASR_LANGUAGES) → add it, or `REGALABS_ASR_LANGUAGE=ar` (disclose). Check with `pnpm --filter @zc/asr check`.
 - **Evidence finding:** 500 App Store reviews: pain is failed/stuck money, support, fees, KYC, fraud, not "too many taps". Lead with safe/honest/recoverable.
-- **No human labels, no interviews.** Test labels are LLM-made (agy, Fable, Haiku, adjudicated). docs/17 has no interviews and must never get invented ones.
+- **No human labels.** Test labels are LLM-made (agy, Fable, Haiku, adjudicated).
+- **Interviews (2026-10-19): 5 real**, Sulaymaniyah, 19–22, all consented, app unnamed. 5/5 want automation + scheduling + typing; 2/5 sent to wrong person; 3/5 would use, 2/5 not (no reason). All Kurdish speakers, so no Arabic phrasings, and the agent is Arabic-only. Log: `research/interview-log.csv`. Never add details the author did not give.
 
 ## Status (2026-10-19)
 - **Work on `main` only, no PRs, commits authored by the author only.** Claude's GitHub App had no write access on 19/10, so that day's commits are local until access is fixed (`git push` returns 403).
@@ -57,7 +58,7 @@ Accepted into the build stage already. Elimination is after the MVP.
 - Low-balance seed user `u_low` now has the full contact book and a generator bill.
 
 - Added later on 19/10: `MVP_UPDATE.md` (one-pager draft), `DEMO.md` (runbook), `render.yaml` (Render Blueprint, not deployed), `research/INTERVIEWS.md` + empty `interview-log.csv`, review sheets in `eval/data/review/` (heldout2 sample, dialect). Free Groq/Gemini path documented; `pnpm smoke` is the model check.
-- **Waiting on the author:** a free Groq or Gemini key (Anthropic key not available), the two review sheets, 5+ user conversations, the organisers' reply.
+- **Waiting on the author:** a free Groq or Gemini key (Anthropic key not available), the two review sheets, the organisers' reply.
 
 ## Status (2026-10-17)
 - Pushed to origin/main. Tests: core 350, asr 33, llm 74, wallet-api 102, orchestrator 126, eval 22, web 7 (714). CI: typecheck, test, build, gitleaks, **OSV-Scanner** (vitest 4 / vite 7 after it flagged 9 dev-tool advisories).
@@ -74,7 +75,7 @@ Accepted into the build stage already. Elimination is after the MVP.
 1. **Voice on** (author): REGALABS_API_KEY + `acm` in the RegaLabs gateway allow-list → `pnpm --filter @zc/asr check` → hold 🎤 in Chrome. Then record 40–60 consented utterances (≥5 speakers) via `VOICE_CAPTURE_DIR=eval/voice/captures`, type references, `pnpm --filter @zc/eval eval:voice`. Never claim a voice number before that.
 2. **MVP one-pager**: docs/28 is the draft; export to PDF and submit 08/11.
 3. docs/19 final Human-vs-AI line; demo rehearsal x3 (docs/18, incl. voice read-back + scheduling) and a screen recording backup.
-4. Real interviews (docs/17 voice-note kit to 2 ZainCash users); if impossible, say "hypotheses only".
+4. More interviews (older users, Arabic-speaking cities; ask why no, ask language). Kurdish (Sorani) support is the open question from the first 5.
 5. Improvements needing a **fresh** test set: `previous`, refuse «ورقة/دفتر», clarification order, Latin-letter time words.
 6. Ask organisers: judge input text or voice, demo format, may judges run a proprietary-licensed repo, is the RegaLabs ASR OK.
 7. Keep committing on more days (history must span the build period).

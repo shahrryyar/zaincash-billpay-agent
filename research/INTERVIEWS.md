@@ -1,6 +1,6 @@
 # User conversations (judging: "Problem and impact 20%: a real user, a real problem, evidence you spoke to someone")
 
-**Status: none done yet.** Only real conversations go in `interview-log.csv`. Never write down what someone "would"
+**Status: 5 done (logged 2026-10-19).** See the summary at the end. Only real conversations go in `interview-log.csv`. Never write down what someone "would"
 say, never paraphrase into what we hoped to hear, never invent a person.
 
 ## Who and how
@@ -30,3 +30,16 @@ say, never paraphrase into what we hoped to hear, never invent a person.
 ## After each conversation
 Add one row to `interview-log.csv` the same day. Quotes go in `quote_ar` exactly as said. If something surprised you,
 say so in `surprise`. Then the README/MVP page may cite counts ("5 of 6 had …") — only from this log.
+
+## Summary (from `interview-log.csv`)
+5 short conversations, Sulaymaniyah, ages 19–22, all consented, app not named (logged 2026-10-19 from the
+author's notes; exact dates, method and quotes not recorded):
+- 5/5 send money with a wallet app and wished it was more automated.
+- 2/5 had sent money to the wrong person.
+- 3/5 would use the agent ("we hope to see it in the future"); 2/5 would not (reason not recorded).
+- 5/5 want scheduled payments and prefer typing to voice.
+- All 5 are Kurdish speakers: no Iraqi-Arabic phrasings were collected, and **the agent only understands Arabic**.
+- Limits: tiny, narrow sample (one city, one age band, no older or assisted users); no exact words recorded.
+
+If you remember anyone's exact words (including the unique thing each person said), add them to `quote_ar`.
+Next time: ask *why* when someone says no, ask the language question, and include older users.

@@ -66,7 +66,8 @@ voice and dropped: push-to-talk over one HTTPS call is simpler and needs no medi
   script, and frozen (sha256 `de55b4432582a05936c54971f1234c4329f3a4fbad15efa90bb65540bdd3aca7`) before any change was
   measured on it. Its labellers share one model family and saw the generator's trap notes, so their agreement overstates
   label quality. One scheduled card's exact time was computed by hand from the fixed seed clock. Not yet run.
-- No interviews have been done; personas are hypotheses from public App Store reviews.
+- 5 user interviews (Sulaymaniyah, ages 19–22, consented, logged in `research/interview-log.csv` from the author's notes;
+  no exact quotes recorded). Other personas are hypotheses from public App Store reviews.
 - Free LLM tiers may train on prompts; only synthetic data is ever sent to any provider.
 - Voice recordings, when collected, are consented, fictional in content, stored locally and not committed.
 
