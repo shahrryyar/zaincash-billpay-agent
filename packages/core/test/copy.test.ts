@@ -33,6 +33,23 @@ describe("copy table (single source of user-facing text, docs/15)", () => {
       expect(COPY[k].ar, k).not.toContain("✅");
   });
   it("unknown_outcome tells the user not to resend", () => expect(COPY.unknown_outcome.ar).toContain("لا تعيد"));
+  it("has Central Kurdish (Sorani) for every key, with the same placeholders", () => {
+    for (const k of keys) {
+      expect(COPY[k].ku, k).toBeTruthy();
+      expect(placeholders(COPY[k].ku), k).toEqual(placeholders(COPY[k].ar));
+    }
+  });
+  it("Kurdish strings are Kurdish script, not Arabic with Arabic-only letters", () => {
+    for (const k of keys) {
+      if (COPY[k].ku.split(" ").length >= 3) expect(COPY[k].ku, k).toMatch(/[ەێۆڕڵکی]/); // «زمان» is Kurdish too
+      expect(COPY[k].ku, k).not.toMatch(/[يكة]/); // Arabic ya / kaf / taa marbuta never appear in Sorani spelling
+    }
+  });
+  it("Kurdish failure copy also says nothing was sent and never claims success", () => {
+    expect(t("failed_safe", { ref: "R-1" }, "ku")).toContain("هیچ نەنێردرا");
+    for (const k of ["failed_safe", "unknown_outcome", "insufficient", "biller_down", "busy", "expired"] as CopyKey[]) expect(COPY[k].ku, k).not.toContain("✅");
+    expect(COPY.unknown_outcome.ku).toContain("مەینێرەوە");
+  });
 });
 
 describe("copyKeyForWalletError", () => {
