@@ -121,6 +121,15 @@ describe("ask, never guess (ambiguity and missing slots)", () => {
     const r = run([...toCard.slice(0, 2), [{ type: "RESOLUTION", slot: "recipient", result: "none", name: "زيدان" }]]);
     expect(r.effects).toContainEqual({ type: "ASK", slot: "recipient", key: "contact_not_found", vars: { name: "زيدان" } });
   });
+  it("a valid phone number that is not a saved contact: says so (never creates a contact)", () => {
+    const r = run([...toCard.slice(0, 2), [{ type: "RESOLUTION", slot: "recipient", result: "unknown_number", phone: "••••1234" }]]);
+    expect(r.state).toMatchObject({ phase: "CLARIFYING", clarifySlot: "recipient" });
+    expect(r.effects).toContainEqual({ type: "ASK", slot: "recipient", key: "number_not_saved", vars: { phone: "••••1234" } });
+  });
+  it("«نفس الشخص مال المرة الفاتت» as the recipient: asks who, not «ما لگيت نفس المرة»", () => {
+    const r = run([...toCard.slice(0, 2), [{ type: "RESOLUTION", slot: "recipient", result: "history" }]]);
+    expect(r.effects).toContainEqual({ type: "ASK", slot: "recipient", key: "ask_recipient", vars: {} });
+  });
   it("a correct clarification answer goes back through validation and resolution", () => {
     const r = run([...toCard.slice(0, 2), [{ type: "RESOLUTION", slot: "recipient", result: "ambiguous", count: 2, name: "أحمد" }], [{ type: "RESOLUTION", slot: "recipient", result: "resolved" }]]);
     expect(r.state.phase).toBe("RESOLVED");
@@ -374,7 +383,7 @@ describe("model-based: invariants hold for ANY event sequence", () => {
   const eventArb: fc.Arbitrary<MachineEvent> = fc.oneof(
     { weight: 3, arbitrary: fc.record({ type: fc.constant("INPUT_RECEIVED" as const), text: fc.constant(HERO), asrConfidence: fc.option(fc.double({ min: 0, max: 1, noNaN: true }), { nil: undefined }) }) },
     { weight: 4, arbitrary: fc.record({ type: fc.constant("LLM_OUTPUT" as const), raw: fc.constantFrom(...intents), input: fc.constantFrom(HERO, "دز لأحمد", "x") }) },
-    { weight: 4, arbitrary: fc.record({ type: fc.constant("RESOLUTION" as const), slot: fc.constantFrom("recipient" as const, "biller" as const), result: fc.constantFrom("resolved" as const, "ambiguous" as const, "fuzzy" as const, "none" as const) }) },
+    { weight: 4, arbitrary: fc.record({ type: fc.constant("RESOLUTION" as const), slot: fc.constantFrom("recipient" as const, "biller" as const), result: fc.constantFrom("resolved" as const, "ambiguous" as const, "fuzzy" as const, "none" as const, "unknown_number" as const, "history" as const) }) },
     { weight: 2, arbitrary: fc.record({ type: fc.constant("SLOT_ANSWER" as const), slot: fc.constantFrom("recipient" as const, "amount" as const, "biller" as const), filled: fc.boolean() }) },
     { weight: 4, arbitrary: fc.record({ type: fc.constant("PRECHECK" as const), ok: fc.boolean(), code: fc.constantFrom(...codes) }) },
     { weight: 4, arbitrary: fc.record({ type: fc.constant("CARD_ISSUED" as const), payloadHash: fc.constantFrom(...hashes), token: fc.constantFrom(...tokens), idempotencyKey: fc.constant("k") }) },

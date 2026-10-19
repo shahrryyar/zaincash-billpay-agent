@@ -40,7 +40,7 @@ export type MachineState = {
 export type MachineEvent =
   | { type: "INPUT_RECEIVED"; text: string; asrConfidence?: number | undefined }
   | { type: "LLM_OUTPUT"; raw: unknown; input: string }
-  | { type: "RESOLUTION"; slot: "recipient" | "biller"; result: "resolved" | "ambiguous" | "fuzzy" | "none"; count?: number; name?: string }
+  | { type: "RESOLUTION"; slot: "recipient" | "biller"; result: "resolved" | "ambiguous" | "fuzzy" | "none" | "unknown_number" | "history"; count?: number; name?: string; phone?: string }
   | { type: "SLOT_ANSWER"; slot: Slot; filled: boolean; dueAt?: number; prior?: WhenPrior; why?: "need_time" | "too_soon" | "too_far" | "unparsed" }
   | { type: "PRECHECK"; ok: boolean; code?: string | undefined }
   | { type: "CARD_ISSUED"; payloadHash: string; token: string; idempotencyKey: string }
@@ -235,6 +235,8 @@ function step(state: MachineState, ev: MachineEvent, ctx: Ctx, cfg: Config): Res
       if (ev.slot === "biller") return ask(state, "biller", ev.result === "none" ? "biller_unknown" : "ask_biller", {}, cfg);
       if (ev.result === "ambiguous") return ask(state, "recipient", "ask_which_contact", { n: ev.count ?? 2, name }, cfg);
       if (ev.result === "fuzzy") return ask(state, "recipient", "ask_fuzzy_contact", { name }, cfg);
+      if (ev.result === "unknown_number") return ask(state, "recipient", "number_not_saved", { phone: ev.phone ?? "" }, cfg); // never a new contact
+      if (ev.result === "history") return ask(state, "recipient", "ask_recipient", {}, cfg);
       return ask(state, "recipient", "contact_not_found", { name }, cfg);
     }
 

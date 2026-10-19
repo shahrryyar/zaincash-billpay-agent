@@ -24,6 +24,8 @@ export const COPY = {
   mic_transcribing: { ar: "دا أكتب اللي گلته…", en: "Transcribing…" },
   mic_denied: { ar: "ما عندي إذن أستعمل المايك. اكتب طلبك.", en: "No microphone permission. Please type your request." },
   voice_off: { ar: "الصوت مو مفعّل بهاي النسخة. اكتب طلبك.", en: "Voice is not enabled in this build. Please type your request." },
+  number_not_saved: { ar: "الرقم {phone} مو محفوظ بجهات اتصالك. ضيفه بالتطبيق أول وبعدين دز له، لو گول اسم واحد من جهاتك. ما انرسل شي.", en: "The number {phone} is not in your contacts. Add it in the app first, or tell me a saved contact's name. Nothing was sent." }, // VERIFY-DIALECT
+  recipient_full: { ar: "محفظة {name} ما تستوعب هذا المبلغ (حد المحفظة 10,000,000 د.ع). ما انرسل شي.", en: "{name}'s wallet cannot hold that amount (wallet limit 10,000,000 IQD). Nothing was sent." }, // VERIFY-DIALECT
   contact_not_found: { ar: "ما لگيت {name} بجهات الاتصال. تريد تكتب رقمه؟", en: "I couldn't find {name} in your contacts. Want to type their number?" },
   biller_unknown: { ar: "ما أعرف هاي الفاتورة. أگدر أدفع: الكهرباء، المولدة، الانترنت، الماي، الرصيد.", en: "I don't know that bill. I can pay: electricity, generator, internet, water, mobile credit." },
   two_actions: { ar: "طلبت شغلتين، نبدي بالأولى:", en: "You asked for two things. Let's start with the first:" },
@@ -59,13 +61,14 @@ export const COPY = {
   schedule_cancelled: { ar: "تمام، لغيت الجدولة. ما صار شي.", en: "OK, the schedule was cancelled. Nothing happened." },
   info_balance: { ar: "رصيدك {balance} د.ع.", en: "Your balance is {balance} IQD." },
   info_bill: { ar: "فاتورة {biller}: {amount} د.ع.", en: "{biller} bill: {amount} IQD." },
+  info_bills_none: { ar: "ما عندك فواتير مستحقة هسه.", en: "You have no outstanding bills right now." },
   info_bill_none: { ar: "ما عندك فاتورة مستحقة لـ{biller}.", en: "You have no outstanding {biller} bill." },
   info_last_transfer: { ar: "آخر تحويل: {amount} د.ع ل{name}.", en: "Last transfer: {amount} IQD to {name}." },
   info_last_transfer_none: { ar: "ما عندك تحويلات سابقة.", en: "You have no previous transfers." },
   limit_exceeded: { ar: "المبلغ أكبر من الحد المسموح. ما انرسل شي.", en: "That is above the allowed limit. Nothing was sent." },
   biller_down: { ar: "خدمة {biller} واگفة هسه. ما انخصم منك شي، جرب بعدين.", en: "{biller} is down right now. Nothing was charged." },
   bill_paid_already: { ar: "فاتورة {biller} مدفوعة من قبل. ما دفعنا شي.", en: "The {biller} bill is already paid. Nothing charged." },
-  amount_changed: { ar: "مبلغ الفاتورة تغيّر. ما انرسل شي، هذا المبلغ الجديد:", en: "The bill amount changed. Nothing was sent. Here is the new amount:" },
+  amount_changed: { ar: "مبلغ فاتورة {biller} هسه {bill} د.ع، مو {amount} د.ع. ما انرسل شي. اطلبها مرة ثانية حتى أطلعلك بطاقة بالمبلغ الصحيح.", en: "The {biller} bill is now {bill} IQD, not {amount} IQD. Nothing was sent. Ask again and I'll show a card with the right amount." }, // VERIFY-DIALECT
   confirm_invalid: { ar: "التأكيد ما صحيح أو انتهى. ما انرسل شي.", en: "That confirmation is not valid. Nothing was sent." },
   success_transfer: { ar: "✅ انرسلت {amount} د.ع ل{name}. رقم العملية {ref}. رصيدك هسه {balance}.", en: "Sent {amount} IQD to {name}. Ref {ref}. New balance {balance}." },
   success_bill: { ar: "✅ اندفعت فاتورة {biller} {amount} د.ع. رقم العملية {ref}.", en: "Paid the {biller} bill, {amount} IQD. Ref {ref}." },
@@ -102,6 +105,7 @@ const WALLET_ERROR_COPY: Record<string, CopyKey> = {
   BILL_ALREADY_PAID: "bill_paid_already",
   CONFIRMATION_INVALID: "confirm_invalid",
   AMOUNT_CHANGED: "amount_changed",
+  RECIPIENT_WALLET_FULL: "recipient_full",
   SERVICE_UNAVAILABLE: "busy",
 };
 
