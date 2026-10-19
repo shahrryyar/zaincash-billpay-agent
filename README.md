@@ -24,6 +24,11 @@ The agent:
 
 Scope: **P2P transfers + bill payments**, now or at a scheduled time (one-off, not recurring). Typed or spoken (optional RegaLabs voice). Nothing else.
 
+**Two languages:** Iraqi Arabic (default) and **Central Kurdish (Sorani)**, chosen with the عربي / کوردی switch in the
+top bar. Kurdish amounts, time words, relation words and names are read by the same kind of deterministic code as the
+Arabic ones (`packages/core/src/kurdish.ts`); the model gets a Kurdish rules block plus local retrieval from a small
+example bank and glossary (`packages/llm/src/kurdish.ts`). No fine-tuning, no vector DB.
+
 **Public evidence in this repo:** [DISCLOSURE.md](DISCLOSURE.md) (models, tools, data, conflict of interest) · [FAILURE_MODES.md](FAILURE_MODES.md) (20 failure modes, each tested) · [eval/results/](eval/results/) (every measured run).
 
 | Measured (Claude Haiku 5.5, tool mode) | Value |
@@ -32,9 +37,13 @@ Scope: **P2P transfers + bill payments**, now or at a scheduled time (one-off, n
 | Held-out: unsafe executions on must-not-execute cases | 0/180 (upper 95% bound 1.7%) |
 | Held-out: ambiguity recall / precision | 100% (n=42) / 73.7% (n=57) |
 | Held-out: p50 / p95 time to card | 2.3 s / 3.7 s |
+| **Kurdish (Sorani)** held-out, run once (n=90, commit `49319bd`): end-to-end completion | 92.2% [84.8, 96.2] |
+| Kurdish held-out: unsafe executions | 0/90 (upper 95% bound 3.3%) |
 | Wallet stress: 1,000 concurrent requests on 50 keys, 4 processes | 50 debits, 0 duplicates |
 
 Labels are LLM-made (three model families, adjudicated), not human-checked. Dev numbers are higher but were tuned on.
+The Kurdish set (150 sentences, 60 dev / 90 held-out) was written and labelled by Claude models only (one family) and has
+not been read by a native Sorani speaker yet; see [eval/data/README.md](eval/data/README.md).
 
 The held-out number describes commit `1445bff`. Fixes made since (listed in [FAILURE_MODES.md](FAILURE_MODES.md)) are
 **not** measured by it: a fresh frozen set, `heldout2` (180 new cases, [eval/data/README.md](eval/data/README.md)), is

@@ -17,20 +17,23 @@ Shahryar Sabir Muhammed (RegaLabs) · repo: github.com/shahrryyar/zaincash-billp
   a demo panel to break it on purpose, one sandboxed wallet per browser session, a Docker image.
 - **Tests:** 775 unit/property tests + 8 browser tests, run in CI on every push.
 
+- **Kurdish (Sorani) version:** an عربي / کوردی switch in the top bar. Same safety path; Kurdish amounts, times,
+  relations and names are read by deterministic code; prompt rules + local retrieval (example bank, glossary).
+
 ## First results (measured by the harness; labels LLM-made, not human-checked)
 | Set | Model | End-to-end | Unsafe executions |
 |---|---|---|---|
 | Held-out, 180 cases, run once (commit `1445bff`) | Claude Haiku 5.5 | **81.1%** [74.8, 86.2] | **0/180** |
-| Dev, 120 cases (tuned on) | Claude Haiku 5.5 | 92.5% | 0/120 |
+| Dev, 120 cases (tuned on) | Claude Haiku 5.5 | 92.5% (97.5% after later fixes) | 0/120 |
+| **Kurdish** held-out, 90 cases, run once (commit `49319bd`) | Claude Haiku 5.5 | **92.2%** [84.8, 96.2] | **0/90** |
+| Kurdish dev, 60 cases (tuned on) | Claude Haiku 5.5 | 96.7% | 0/60 |
 
 Ambiguity recall 100% (n=42), p50 / p95 time to card 2.3 s / 3.7 s. Every miss was safe (it asked or refused).
 
 ## Users
-**5 user interviews** (Sulaymaniyah, 19–22): all want sending automated and scheduled, prefer typing; 2/5 had sent to the wrong person; 3/5 would use it, 2/5 would not (reason not recorded). All 5 are native Kurdish speakers and ZainCash serves the Kurdistan Region, but the agent is Arabic-only: Kurdish (Sorani) support is our next hypothesis to test (language was not asked). Tiny, one-city sample.
+**5 user interviews** (Sulaymaniyah, 19–22): all want sending automated and scheduled, prefer typing; 2/5 had sent to the wrong person; 3/5 would use it, 2/5 would not (reason not recorded). All 5 are native Kurdish speakers and ZainCash serves the Kurdistan Region, so we built a Kurdish (Sorani) version (language picker in the top bar). Whether they prefer it over Arabic was not asked: next interviews ask it. Tiny, one-city sample.
 
 ## What does not work yet
-- **No live model key right now** → only the scripted demo sentences run. Fix: a free Groq / Gemini key (our code
-  already supports both).
 - Fixes made after the held-out run (same-amount-as-last-time, words after names, «ورقة/دفتر», chatter) are **not
   measured yet**. A fresh frozen set (`heldout2`, 180 new cases) waits for its single run.
 - No human has checked the test labels. Voice needs its ASR key and real recordings.

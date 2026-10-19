@@ -22,6 +22,9 @@ Using AI is expected; this file lists every model, tool, library and data source
 | Independent blind labellers | Anthropic Claude Fable and Claude Haiku 5.5 (Claude Code subagents) | `eval/data/independent` |
 | Fresh test set `heldout2` (2026-10-19): 180 candidate sentences | Anthropic Claude Opus (Claude Code subagent) | `eval/gen/heldout2.candidates.jsonl` |
 | `heldout2` labels: three blind labellers | Anthropic Claude Fable, Claude Sonnet 5.5, Claude Haiku 5.5 (Claude Code subagents) | `eval/data/independent/*.heldout2.jsonl` |
+| Kurdish (Sorani) test set (2026-10-19): 150 candidate sentences | Anthropic Claude Opus (Claude Code subagent, saw only `seed.ts` and a brief) | `eval/gen/ku.candidates.jsonl`, `eval/gen/KU_GEN_BRIEF.md` |
+| Kurdish labels: three blind labellers | Anthropic Claude Opus, Claude Sonnet 5.5, Claude Haiku 5.5 (Claude Code subagents) | `eval/data/independent/*-ku.jsonl` |
+| Kurdish copy, parsers, prompt block and retrieval bank | written by Claude (Claude Code), not yet checked by a native Sorani speaker | `packages/core/src/{copy,kurdish}.ts`, `packages/llm/src/kurdish.ts` |
 | Speech to text (optional) | RegaLabs ASR, Iraqi Arabic (`acm`), via its developer API | `packages/asr` |
 
 The model only understands. It has read-only tools (search contacts, bills, balance, history, quote) and `propose`
@@ -57,6 +60,18 @@ voice and dropped: push-to-talk over one HTTPS call is simpler and needs no medi
 - **100% synthetic.** Wallet seed written for this project; contacts, numbers and balances are fictional.
 - **No human labelled the test set.** Three LLM families labelled every row independently against the seed; a script
   adjudicated (2 of 3, else the safest state). Details: `eval/data/README.md`. **No native-speaker review yet.**
+- **Kurdish sets** (2026-10-19): 150 Claude-written Sorani sentences split 40/60 by category **before** labelling
+  (`eval/gen/split_ku.py`), labelled by three Claude models blind to each other and to the system (`LABEL_SPEC.ku.md`),
+  adjudicated by the same script. Held-out frozen (sha256 `55bd3ce1a02afa1e67fb9857edea5a2565dc1442a680f1ed77684da9f40e7056`)
+  before any Kurdish prompt work and run **once** (commit `49319bd`). Limits: one model family wrote and labelled it
+  (agreement 59/60 dev, 82/90 held-out unanimous is partly shared bias); no native speaker has read it; one labeller
+  (Opus) read all of `dev.final.jsonl` to learn field values, beyond the 15 lines the spec allowed (it printed only the
+  set of values); the labellers invented names for read-only intents, mapped to `info` in `eval/gen/labelcommon.py`.
+  The assistant building the system saw short summaries of some held-out rows in the labellers' reports before the run;
+  no change was made for them. The retrieval bank is checked against both Kurdish sets (`eval/test/ku-bank.test.ts`:
+  no shared people, trigram similarity below 0.6); two bank sentences that were near-copies were rewritten.
+- Eight Kurdish-named contacts were added to the seed (2026-10-19). The Arabic dev set was re-run after all Kurdish
+  changes: 97.5% e2e (no regression; `eval/results/dev-haiku-tools-v6-after-ku.md`).
 - Held-out (180 rows) frozen before its run: sha256 `13e0fa33f989210fa1e2323c7cfdf020f1b6baae4ec0b78b4a9552aef9faf4a2`.
   It was run **once** (commit `1445bff`). It is spent: no further runs, no tuning on it.
 - Changes after the held-out run (so the held-out number describes commit `1445bff`, not later code):

@@ -38,7 +38,7 @@ author's notes; exact dates, method and quotes not recorded):
 - 2/5 had sent money to the wrong person.
 - 3/5 would use the agent ("we hope to see it in the future"); 2/5 would not (reason not recorded).
 - 5/5 want scheduled payments and prefer typing to voice.
-- All 5 are native Kurdish speakers: no Iraqi-Arabic phrasings were collected, and **the agent only understands Arabic**.
+- All 5 are native Kurdish speakers: no Iraqi-Arabic phrasings were collected, and the agent then understood only Arabic. **A Kurdish (Sorani) version was built the same day** (language picker; Kurdish held-out 92.2%, n=90).
   ZainCash also serves the Kurdistan Region. Author's read: they may want to use it in Kurdish. **Hypothesis: language was not asked.**
 - Limits: tiny, narrow sample (one city, one age band, no older or assisted users); no exact words recorded.
 

@@ -7,6 +7,7 @@ Synthetic Iraqi-dialect request sets for the Topic 04 agent. **No real customer 
 | `dev.final.jsonl` | 120 cases. Prompt work and threshold tuning happen here only. |
 | `heldout.final.jsonl` | 180 cases. **Frozen** (`heldout.sha256`). Run once (commit `1445bff`): **spent**, the harness refuses to run it again. |
 | `heldout2.final.jsonl` | 180 **new** cases built 2026-10-19 after the first held-out was spent, frozen (`heldout2.sha256`) before any change was measured on it. Run once, only with `--allow-heldout`. |
+| `dev-ku.final.jsonl`, `heldout-ku.final.jsonl` | **Central Kurdish (Sorani)**: 60 dev / 90 held-out (built 2026-10-19). Held-out frozen (`heldout-ku.sha256`) and run once (commit `49319bd`): spent. |
 | `*.jsonl` (no `.final`) | `agy` labels. `independent/` holds the blind Fable and Haiku labels. |
 | `agreement.json`, `adjudication.*.jsonl` | Agreement stats and every row where the labellers disagreed. |
 
@@ -35,3 +36,15 @@ Built because the first held-out was spent and later fixes need an honest number
 **Limits, stated plainly:** all three labellers are one model family (Claude), so their very high agreement
 (`agreement.json`) is partly shared bias; the candidate notes named each row's intended trap, which the labellers saw.
 No human checked these labels either.
+
+## Kurdish sets (dev-ku, heldout-ku, 2026-10-19)
+1. Candidates: 150 Sorani sentences written by a Claude subagent (Opus) from `seed.ts` and a brief (`eval/gen/KU_GEN_BRIEF.md`):
+   16 categories (the 14 Arabic ones plus `scheduled`, `previous_amount`, `spelling_variant`), 76% standard Sorani spelling,
+   the rest Arabic keyboard, Latin letters or mixed with Arabic words. It did not see the system.
+2. Split 40/60 per category (`eval/gen/split_ku.py`, fixed seed) **before** labelling; labellers got only id, text,
+   category, profile and the follow-up answer (no intended-trap note, no translation).
+3. Labels: Claude Opus, Sonnet 5.5 and Haiku 5.5, blind to each other and the system (`LABEL_SPEC.ku.md`); same
+   adjudication script. Rows carry `lang: "ku"`, so the harness runs them with the language picker on Kurdish.
+
+**Limits:** one model family wrote and labelled everything; **no native Sorani speaker has read it yet**. Review sheet:
+`eval/gen/ku.candidates.jsonl` has an English gloss per row for that review.

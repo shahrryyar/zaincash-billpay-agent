@@ -26,6 +26,17 @@ Rule: **fail closed.** When anything is in doubt, nothing moves, and the message
 | FM-19 | The model's answer is cut off by its output limit | `stop = max_tokens` | the cut answer is never used; one retry with a bigger budget, then «ما فهمت» | «ما فهمت عليك زين…» | llm `understand.test.ts` |
 | FM-20 | Many people use the hosted demo at once | one sandbox per browser session | own wallet, clock and faults per session; per-session turn limit | normal flow; «النظام مشغول…» when over the limit | web `sandboxes.test.ts`, e2e «two judges at once» |
 
+| FM-21 | Kurdish: the model names a person the user never wrote, or reads Kurdish number/time words wrong | deterministic checks: the recipient must be in the user's own words (Kurdish name key), `parseAmountKu` / Kurdish time words must give the model's value | rephrase or ask; never a card for a person not written | «باش تێنەگەیشتم…» | `packages/core/test/kurdish.test.ts`, `packages/orchestrator/test/kurdish.test.ts` |
+
+## Known misses from the one Kurdish held-out run (commit 49319bd, n=90, nothing was sent in any of them)
+- **Spelling variants resolve without a question** («حەسێن», «شێلان»): the Kurdish name key folds them onto one saved
+  contact (حسين, شیلان) and the card comes straight away. «حەسێن» could also mean حسن. The card still needs a tap and shows
+  the name and masked number, but asking («مەبەستت …؟») would be safer. Not changed after the run; needs a fresh set.
+- A near-miss proposes the closest contact only («ڕێبار» -> ڕێبوار, not also ڕێباز); a surname alone («کەریم») is not matched.
+- Two transfers in one sentence («… بۆ شیلان و دە هەزاریش بۆ کاروان») was asked to rephrase.
+- «دووسەد و پەنجا» (250 dinars) is asked as «250 هەزار؟» (by design) and a «250 dinars» answer is not taken.
+- Water (already paid) then electricity: the first fails honestly, then the second gets its card (same as Arabic).
+
 ## Known misses from the one held-out run (commit 1445bff, all safe: nothing was sent)
 - «نفس المبلغ مال اخر مرة» (same amount as last time): history lookup is not implemented, so it asks instead.
 - Malformed chatter answered as out of scope instead of "rephrase".
