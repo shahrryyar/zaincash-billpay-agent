@@ -40,7 +40,7 @@ export type MachineState = {
 export type MachineEvent =
   | { type: "INPUT_RECEIVED"; text: string; asrConfidence?: number | undefined }
   | { type: "LLM_OUTPUT"; raw: unknown; input: string }
-  | { type: "RESOLUTION"; slot: "recipient" | "biller"; result: "resolved" | "ambiguous" | "fuzzy" | "none" | "unknown_number" | "history"; count?: number; name?: string; phone?: string }
+  | { type: "RESOLUTION"; slot: "recipient" | "biller"; result: "resolved" | "ambiguous" | "fuzzy" | "none" | "unknown_number" | "history"; count?: number; name?: string; phone?: string; needAmount?: boolean }
   | { type: "SLOT_ANSWER"; slot: Slot; filled: boolean; dueAt?: number; prior?: WhenPrior; why?: "need_time" | "too_soon" | "too_far" | "unparsed" }
   | { type: "PRECHECK"; ok: boolean; code?: string | undefined }
   | { type: "CARD_ISSUED"; payloadHash: string; token: string; idempotencyKey: string }
@@ -123,7 +123,7 @@ function processAction(state: MachineState, cfg: Config): Result {
   if (a.type === "info") return out({ ...state, phase: "ANSWERED", reason: null }, [{ type: "ANSWER_INFO", query: a.query }]);
   if (a.type === "transfer") {
     if (!a.recipient) return ask(state, "recipient", "ask_recipient", {}, cfg);
-    if (!a.amount) return ask(state, "amount", "ask_amount", { name: a.recipient.text }, cfg);
+    if (!a.amount && !a.amount_ref) return ask(state, "amount", "ask_amount", { name: a.recipient.text }, cfg);
   } else if (a.biller === "unknown") {
     return ask(state, "biller", "ask_biller", {}, cfg);
   }
@@ -231,6 +231,7 @@ function step(state: MachineState, ev: MachineEvent, ctx: Ctx, cfg: Config): Res
       const okPhase = phase === "VALIDATED" || (phase === "CLARIFYING" && state.clarifySlot === ev.slot);
       if (!okPhase) return reject(state, "resolution_not_expected");
       const name = ev.name ?? "";
+      if (ev.result === "resolved" && ev.needAmount) return ask(state, "amount", "ask_amount_no_history", { name }, cfg); // «same as last time», but there was no last time
       if (ev.result === "resolved") return out({ ...state, phase: "RESOLVED", clarifySlot: null, reason: null }, [{ type: "PRECHECK" }]);
       if (ev.slot === "biller") return ask(state, "biller", ev.result === "none" ? "biller_unknown" : "ask_biller", {}, cfg);
       if (ev.result === "ambiguous") return ask(state, "recipient", "ask_which_contact", { n: ev.count ?? 2, name }, cfg);

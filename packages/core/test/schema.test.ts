@@ -87,6 +87,18 @@ describe("crossCheck: deterministic checks after Zod", () => {
     const i = parse(intent([{ type: "bill_pay", biller: "electricity", biller_text: "الكهرباء", amount: null }]));
     expect(crossCheck(i, "ادفع ورقة الكهرباء")).toEqual({ ok: true });
   });
+  it.each(["نفس المبلغ مال اخر مرة", "مثل المرة الفاتت", "نفس المبلغ مال ذيج المرة", "نفس الشي مال اخر مرة"])("«%s» is accepted as a reference to the previous amount", (phrase) => {
+    const i = parse(intent([transfer({ amount: null, amount_ref: { kind: "previous", source_text: phrase } })]));
+    expect(crossCheck(i, `دز لعلي كريم ${phrase}`)).toEqual({ ok: true });
+  });
+  it("a previous-amount reference must be the user's own words", () => {
+    const i = parse(intent([transfer({ amount: null, amount_ref: { kind: "previous", source_text: "نفس المبلغ" } })]));
+    expect(crossCheck(i, "دز لعلي كريم")).toMatchObject({ ok: false, issues: [{ code: "amount_ref_invalid" }] });
+  });
+  it("a previous-amount reference must actually say «same as last time»", () => {
+    const i = parse(intent([transfer({ amount: null, amount_ref: { kind: "previous", source_text: "لعلي" } })]));
+    expect(crossCheck(i, "دز لعلي كريم")).toMatchObject({ ok: false, issues: [{ code: "amount_ref_invalid" }] });
+  });
   it("rejects amounts that are not a multiple of 250 IQD", () => {
     const i = parse(intent([transfer({ amount: { value: 50100, currency: "IQD", source_text: "50100" } })]));
     expect(crossCheck(i, "دز 50100 لأحمد")).toMatchObject({ ok: false, issues: [{ code: "amount_unit" }] });

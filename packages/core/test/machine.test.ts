@@ -74,6 +74,20 @@ describe("invalid / unsafe model output never reaches execution", () => {
     expect(r.state.phase).toBe("FAILED_SAFE");
     expect(r.effects).toContainEqual({ type: "SAY", key: "usd_unsupported" });
   });
+  it("«same amount as last time»: no amount question; the amount is filled from wallet history after resolution", () => {
+    const text = "دز لعلي كريم نفس المبلغ مال اخر مرة";
+    const raw = intent([transfer({ amount: null, amount_ref: { kind: "previous", source_text: "نفس المبلغ مال اخر مرة" } })]);
+    const r = run([[{ type: "LLM_OUTPUT", raw, input: text }]]);
+    expect(r.state.phase).toBe("VALIDATED");
+    expect(r.effects).toContainEqual({ type: "RESOLVE", slot: "recipient" });
+  });
+  it("no earlier transfer to that person: asks for the amount, never guesses", () => {
+    const text = "دز لعلي كريم نفس المبلغ مال اخر مرة";
+    const raw = intent([transfer({ amount: null, amount_ref: { kind: "previous", source_text: "نفس المبلغ مال اخر مرة" } })]);
+    const r = run([[{ type: "LLM_OUTPUT", raw, input: text }], [{ type: "RESOLUTION", slot: "recipient", result: "resolved", needAmount: true, name: "علي كريم" }]]);
+    expect(r.state).toMatchObject({ phase: "CLARIFYING", clarifySlot: "amount" });
+    expect(r.effects).toContainEqual({ type: "ASK", slot: "amount", key: "ask_amount_no_history", vars: { name: "علي كريم" } });
+  });
   it("«cancel» with nothing pending is not a cancellation: ask to rephrase (held-out C-0202, C-0208)", () => {
     const r = run([[{ type: "LLM_OUTPUT", raw: intent([], { status: "cancel" }), input: "لا لا وگف شنو هذا" }]]);
     expect(r.state.phase).toBe("NEEDS_REPHRASE");

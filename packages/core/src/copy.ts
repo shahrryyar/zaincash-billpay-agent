@@ -6,6 +6,8 @@ type Entry = { ar: string; en: string };
 export const COPY = {
   ask_which_contact: { ar: "عندك {n} باسم {name}، ياهو تقصد؟", en: "You have {n} contacts named {name}. Which one?" },
   ask_amount: { ar: "شكد تريد تدز ل{name}؟", en: "How much do you want to send to {name}?" },
+  ask_amount_no_history: { ar: "ما لگيت تحويل سابق لـ{name}. شكد تريد تدز؟", en: "I found no earlier transfer to {name}. How much do you want to send?" },
+  amount_from_history: { ar: "نفس مبلغ آخر تحويل لـ{name}: {amount} د.ع.", en: "Same as your last transfer to {name}: {amount} IQD." },
   ask_amount_thousands: { ar: "تقصد {value} ألف دينار؟", en: "Do you mean {value} thousand dinars?" },
   ask_rephrase: { ar: "ما فهمت عليك زين، تگدر تعيدها بطريقة ثانية؟", en: "I didn't quite get that, can you say it another way?" },
   ask_fuzzy_contact: { ar: "تقصد {name}؟", en: "Do you mean {name}?" },

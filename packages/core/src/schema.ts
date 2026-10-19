@@ -23,6 +23,9 @@ export const TransferAction = z.strictObject({
   type: z.literal("transfer"),
   recipient: RecipientMention.nullable().default(null), // null (or missing) -> must clarify
   amount: Money.nullable().default(null), // null (or missing) -> must clarify
+  // «نفس المبلغ مال اخر مرة»: the user's words only. Code takes the amount of the latest transfer to the resolved contact
+  // from the wallet's history (no history -> it asks). Ignored when an amount was said.
+  amount_ref: z.strictObject({ kind: z.literal("previous"), source_text: z.string().min(1).max(60) }).optional(),
   note: z.string().max(140).optional(),
   when_text: z.string().min(1).max(80).optional(), // the user's own words about WHEN («باچر الساعة 9»); code computes the instant
 });
@@ -61,7 +64,7 @@ export type ValidateResult = { ok: true; intent: Intent } | { ok: false; error: 
 
 // Models often send `"note": null` for an optional field. That is "absent", not wrong. Only these optional keys are
 // cleaned: `recipient: null` and `amount: null` are meaningful (they trigger a question) and are left alone.
-const OPTIONAL_KEYS = new Set(["note", "qualifier", "account_ref", "biller", "clarify_reply", "when_text"]);
+const OPTIONAL_KEYS = new Set(["note", "qualifier", "account_ref", "biller", "clarify_reply", "when_text", "amount_ref"]);
 function dropNullOptionals(v: unknown, key?: string): unknown {
   if (Array.isArray(v)) return v.map((x) => dropNullOptionals(x));
   if (v && typeof v === "object") {
@@ -86,12 +89,15 @@ export type IssueCode =
   | "amount_invalid"
   | "amount_unit"
   | "phone_invalid"
-  | "when_not_in_input";
+  | "when_not_in_input"
+  | "amount_ref_invalid";
 
 export type Issue = { code: IssueCode; actionIndex: number; candidates?: [number, number] };
 export type CrossCheckResult = { ok: true } | { ok: false; issues: Issue[] };
 
 const PHONE = /^07[3-9]\d{8}$/;
+/** What «same as last time» sounds like (after normaliseArabic). A closed list: anything else is not a reference. <!-- VERIFY-DIALECT --> */
+const PREVIOUS = /نفس (?:المبلغ|الشي|المبلغ اللي)|مثل (?:المره|اخر مره|ذيج المره|كل مره)|المره الفاتت|المره الماضيه|اخر مره|ذيج المره|مثل ما دزيت/;
 
 /**
  * Deterministic checks after Zod (docs/05): source_text must be in the input,
@@ -113,6 +119,11 @@ export function crossCheck(intent: Intent, inputText: string): CrossCheckResult 
     }
     if (a.type === "transfer" && mentionsForeignCurrency(inputText)) {
       issues.push({ code: "currency_unsupported", actionIndex }); // «حول ورقة لأحمد»: refuse even with no amount
+      return;
+    }
+    if (a.type === "transfer" && !a.amount && a.amount_ref) {
+      const span = normaliseArabic(a.amount_ref.source_text);
+      if (!span || !input.includes(span) || !PREVIOUS.test(span)) issues.push({ code: "amount_ref_invalid", actionIndex });
       return;
     }
     if (a.type === "info" || !a.amount) return;
