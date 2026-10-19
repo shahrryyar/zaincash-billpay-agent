@@ -20,7 +20,7 @@ const wrap = (data: unknown): string =>
 export function createUnderstander(opts: UnderstanderOptions): Understander {
   const { chat, mode } = opts;
   const maxToolCalls = opts.maxToolCalls ?? 4;
-  const maxTokens = opts.maxTokens ?? 700; // a propose call is ~150-350 tokens
+  const maxTokens = opts.maxTokens ?? 1024; // a propose call is ~150-350 tokens; the model sometimes writes text first
   if (mode === "tools" && !opts.host) throw new Error("tools mode needs a ToolHost");
 
   async function runTool(name: ReadToolName, input: unknown): Promise<{ content: string; ok: boolean }> {
@@ -51,12 +51,23 @@ export function createUnderstander(opts: UnderstanderOptions): Understander {
       let via = chat.id;
       let executed = 0;
       const maxTurns = mode === "workflow" ? 1 : maxToolCalls + 2;
+      let cutRetried = false;
 
       for (let turn = 1; turn <= maxTurns; turn++) {
         const forced = mode === "workflow" || executed >= maxToolCalls || turn === maxTurns;
-        const res = await chat.complete({ system, systemPrefix: prefix, messages, tools, toolChoice: forced ? { name: FINAL_TOOL } : "auto", maxTokens });
+        let res = await chat.complete({ system, systemPrefix: prefix, messages, tools, toolChoice: forced ? { name: FINAL_TOOL } : "auto", maxTokens });
         usage = addUsage(usage, res.usage);
         via = res.via ?? via;
+        // Cut off by the output limit: whatever was produced is incomplete and is never used. Ask again ONCE, forcing
+        // `propose` with a bigger budget; a second cut-off returns nothing, so the machine asks the user to rephrase.
+        if (res.stop === "max_tokens") {
+          if (cutRetried) return { raw: null, toolCalls: trace, usage, model: via, mode, turns: turn };
+          cutRetried = true;
+          res = await chat.complete({ system, systemPrefix: prefix, messages, tools, toolChoice: { name: FINAL_TOOL }, maxTokens: maxTokens * 2 });
+          usage = addUsage(usage, res.usage);
+          via = res.via ?? via;
+          if (res.stop === "max_tokens") return { raw: null, toolCalls: trace, usage, model: via, mode, turns: turn };
+        }
         const uses = res.content.filter((b): b is Extract<Block, { type: "tool_use" }> => b.type === "tool_use");
 
         const propose = uses.find((u) => u.name === FINAL_TOOL);

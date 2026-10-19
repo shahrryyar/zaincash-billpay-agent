@@ -221,3 +221,40 @@ describe("quote arguments", () => {
     expect((requests[1]!.messages[2]!.content[0] as { is_error?: boolean }).is_error).toBe(true);
   });
 });
+
+describe("an answer cut off by the output limit is never used (held-out C-0187, C-0241)", () => {
+  const cutThenOk = () => {
+    const requests: import("../src/types").CompleteRequest[] = [];
+    let i = 0;
+    const chat: import("../src/types").ChatClient = {
+      id: "fake:cut",
+      async complete(req) {
+        requests.push(JSON.parse(JSON.stringify(req)));
+        if (i++ === 0) return { content: [say("thinking out loud…"), use("propose", { actions: [{ type: "transfer", recipient: { kind: "relation", text: "خالي" } }] })], stop: "max_tokens", usage: { input: 100, output: 1024 } };
+        return { content: [use("propose", HERO_INTENT)], stop: "tool_use", usage: { input: 100, output: 200 } };
+      },
+    };
+    return { chat, requests };
+  };
+  for (const mode of ["workflow", "tools"] as const) {
+    it(`${mode}: retries once with propose forced and a bigger output budget`, async () => {
+      const { chat, requests } = cutThenOk();
+      const r = await createUnderstander({ chat, mode, ...(mode === "tools" ? { host: fakeHost() } : {}) }).understand(input);
+      expect(r.raw).toEqual(HERO_INTENT);
+      expect(requests).toHaveLength(2);
+      expect(requests[1]!.toolChoice).toEqual({ name: "propose" });
+      expect(requests[1]!.maxTokens).toBeGreaterThan(requests[0]!.maxTokens);
+      expect(r.usage.output).toBe(1224);
+    });
+  }
+  it("cut off twice: returns nothing usable (the machine asks to rephrase), never the truncated intent", async () => {
+    const chat: import("../src/types").ChatClient = { id: "fake:cut", async complete() { return { content: [use("propose", { actions: [] })], stop: "max_tokens", usage: { input: 1, output: 1 } }; } };
+    const r = await createUnderstander({ chat, mode: "workflow" }).understand(input);
+    expect(r.raw).toBeNull();
+  });
+  it("the default output budget leaves room for a two-action propose", async () => {
+    const { chat, requests } = scriptedChat([[use("propose", HERO_INTENT)]]);
+    await createUnderstander({ chat, mode: "workflow" }).understand(input);
+    expect(requests[0]!.maxTokens).toBeGreaterThanOrEqual(1024);
+  });
+});
