@@ -7,7 +7,7 @@ import { createInterface } from "node:readline";
 import { resolve } from "node:path";
 import { applySeed, createApp, openDb, DEMO_USER, SEED_NOW } from "@zc/wallet-api";
 import { chatFromEnv, createUnderstander, type Understander } from "@zc/llm";
-import { DEMO_SCRIPT } from "./demo-script";
+import { DEMO_SCRIPT, createScriptedUnderstander } from "./demo-script";
 import { appFetch, createOrchestrator, WalletClient, type Reply } from "./index";
 
 const args = new Map(process.argv.slice(2).filter((a) => a.startsWith("--")).map((a) => { const [k, v] = a.slice(2).split("="); return [k as string, v ?? "1"] as const; }));
@@ -37,7 +37,7 @@ const mode = (args.get("mode") ?? process.env.LLM_MODE ?? "tools") as "tools" | 
 let understanderFor: (host: Parameters<typeof createUnderstander>[0]["host"]) => Understander;
 if (args.has("fake")) {
   console.log(c("yellow", "FAKE model: only these sentences are understood:\n  " + Object.keys(DEMO_SCRIPT).join("\n  ")));
-  understanderFor = () => ({ understand: async ({ text }) => ({ raw: DEMO_SCRIPT[text] ?? null, toolCalls: [], usage: { input: 0, output: 0 }, model: "fake", mode: "workflow", turns: 1 }) });
+  understanderFor = () => createScriptedUnderstander();
 } else {
   const { chat, description } = chatFromEnv(process.env, { cacheDir: resolve(dir, ".cache/llm") });
   console.log(c("dim", description.join("\n")));

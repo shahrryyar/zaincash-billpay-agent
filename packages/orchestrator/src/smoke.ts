@@ -6,7 +6,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { applySeed, createApp, openDb, SEED_NOW } from "@zc/wallet-api";
 import { chatFromEnv, createUnderstander, type Understander } from "@zc/llm";
-import { DEMO_SCRIPT } from "./demo-script";
+import { createScriptedUnderstander } from "./demo-script";
 import { appFetch, createOrchestrator, WalletClient, type Reply } from "./index";
 
 const args = new Map(process.argv.slice(2).filter((a) => a.startsWith("--")).map((a) => { const [k, v] = a.slice(2).split("="); return [k as string, v ?? "1"] as const; }));
@@ -43,7 +43,7 @@ const CASES: Case[] = [
 async function main() {
   const mode = (args.get("mode") ?? process.env.LLM_MODE ?? "tools") as "tools" | "workflow";
   let understanderFor: (h: never) => Understander;
-  if (args.has("fake")) understanderFor = () => ({ understand: async ({ text }) => ({ raw: DEMO_SCRIPT[text] ?? null, toolCalls: [], usage: { input: 0, output: 0 }, model: "fake", mode: "workflow", turns: 1 }) });
+  if (args.has("fake")) understanderFor = () => createScriptedUnderstander();
   else {
     const { chat, description } = chatFromEnv(process.env, { cacheDir: resolve(dir, ".cache/llm") });
     console.log(description.join("\n"));
