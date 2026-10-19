@@ -6,15 +6,18 @@ type Card = NonNullable<Reply["card"]>;
 const fmt = (n: number) => n.toLocaleString("en-US");
 
 /** The hero component (docs/15). Shows exactly what will happen (and WHEN, for a schedule), says nothing is sent now, has a visible countdown. */
-export function ConfirmCard({ card, busy, onConfirm, onCancel, onExpire, onSchedule }: { card: Card; busy: boolean; onConfirm: () => void; onCancel: () => void; onExpire: () => void; onSchedule: () => void }) {
-  const [left, setLeft] = useState(() => Math.max(0, Math.ceil((card.expires_at - Date.now()) / 1000)));
+// `skewMs` = browser clock minus server clock, so the countdown matches the server's expiry even when the demo clock moved.
+export function ConfirmCard({ card, busy, skewMs = 0, onConfirm, onCancel, onExpire, onSchedule }: { card: Card; busy: boolean; skewMs?: number; onConfirm: () => void; onCancel: () => void; onExpire: () => void; onSchedule: () => void }) {
+  const secondsLeft = () => Math.max(0, Math.ceil((card.expires_at - (Date.now() - skewMs)) / 1000));
+  const [left, setLeft] = useState(secondsLeft);
   useEffect(() => {
-    const tick = () => setLeft(Math.max(0, Math.ceil((card.expires_at - Date.now()) / 1000)));
+    const tick = () => setLeft(secondsLeft());
     tick();
     const t = setInterval(tick, 500);
     return () => clearInterval(t);
-  }, [card.card_id, card.expires_at]);
-  useEffect(() => { if (left === 0) onExpire(); }, [left]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [card.card_id, card.expires_at, skewMs]); // eslint-disable-line react-hooks/exhaustive-deps
+  // if the app was busy when the time ran out, tell the server as soon as it is free
+  useEffect(() => { if (left === 0 && !busy) onExpire(); }, [left, busy]); // eslint-disable-line react-hooks/exhaustive-deps
   const expired = left === 0;
   const mm = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`;
   const sched = card.schedule;

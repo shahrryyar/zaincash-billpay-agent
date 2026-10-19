@@ -9,7 +9,7 @@ export type ScheduleItem = {
   amount_iqd: number; fee_iqd: number; counterparty: string; when_text: string; relative: string | null; notice: string | null; failure_code: string | null;
 };
 export type VoiceInfo = { enabled: boolean; provider: string; max_seconds: number; simulator: boolean };
-export type Envelope = { reply: Reply; wallet: WalletView; schedules: ScheduleItem[]; fault: string | null; model: string; mode: string; voice?: VoiceInfo };
+export type Envelope = { reply: Reply; wallet: WalletView; schedules: ScheduleItem[]; fault: string | null; model: string; mode: string; voice?: VoiceInfo; server_now?: number };
 export type VoiceEnvelope = Envelope & { transcript: { text: string; confidence: number | null; provider: string; latency_ms: number } };
 export type Bubble = { id: number; from: "user" | "agent"; kind: "info" | "ask" | "success" | "error" | "status" | "card"; text: string };
 export type { Reply };

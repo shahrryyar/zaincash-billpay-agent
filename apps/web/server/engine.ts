@@ -136,5 +136,5 @@ export const engine = (): Engine => (g.__zcEngine ??= build());
 /** Replies go to the browser together with the fresh wallet snapshot, so the balance on screen is always read from the wallet. */
 export async function withWallet(reply: Reply) {
   const e = engine();
-  return { reply, wallet: await e.snapshot(), schedules: await e.schedules(), fault: e.fault(), model: e.model, mode: e.mode, voice: e.voice() };
+  return { reply, wallet: await e.snapshot(), schedules: await e.schedules(), fault: e.fault(), model: e.model, mode: e.mode, voice: e.voice(), server_now: e.now() };
 }

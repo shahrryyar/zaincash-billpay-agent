@@ -11,13 +11,15 @@ const SESSION = typeof crypto !== "undefined" && "randomUUID" in crypto ? "" : "
 const EXAMPLES = ["دز خمسين ألف لأحمد", "ادفع المولدة", "شكد رصيدي", "حول لأمي ميت ألف"];
 
 async function post(path: string, body: unknown): Promise<Envelope> {
-  const r = await fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  const r = await fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body), signal: AbortSignal.timeout(25_000) });
   if (!r.ok) throw new Error(`${path} ${r.status}`);
   return r.json();
 }
 
 export function PhoneApp() {
   const [sid, setSid] = useState<string>(SESSION || "web");
+  const sidRef = useRef(sid);
+  sidRef.current = sid;
   const [bubbles, setBubbles] = useState<Bubble[]>([]);
   const [reply, setReply] = useState<Reply | null>(null);
   const [wallet, setWallet] = useState<WalletView | null>(null);
@@ -34,6 +36,10 @@ export function PhoneApp() {
   const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
   const pending = useRef<Set<string>>(new Set());
   const [why, setWhy] = useState(false);
+  /** Browser clock minus server clock: the card's countdown follows the server (the demo clock can be moved forward). */
+  const [skewMs, setSkewMs] = useState(0);
+  /** Confirm was tapped but no answer came back: the payment may or may not have happened. Holds the card id to re-ask. */
+  const [uncertain, setUncertain] = useState<string | null>(null);
   const n = useRef(0);
   const endRef = useRef<HTMLDivElement>(null);
 
@@ -49,7 +55,7 @@ export function PhoneApp() {
     if (fresh.length) setBubbles((b) => [...b, ...fresh]);
   }, []);
   const refresh = useCallback(async () => {
-    try { const d = await (await fetch("/api/wallet", { cache: "no-store" })).json(); setWallet(d.wallet); setMeta({ model: d.model, mode: d.mode, fault: d.fault }); setVoice(d.voice ?? null); syncSchedules(d.schedules ?? []); setOffline(false); }
+    try { const d = await (await fetch(`/api/wallet?session_id=${encodeURIComponent(sidRef.current)}`, { cache: "no-store" })).json(); setWallet(d.wallet); setMeta({ model: d.model, mode: d.mode, fault: d.fault }); setVoice(d.voice ?? null); syncSchedules(d.schedules ?? []); if (typeof d.server_now === "number") setSkewMs(Date.now() - d.server_now); setOffline(false); }
     catch { setOffline(true); }
   }, [syncSchedules]);
   useEffect(() => { setSid(crypto.randomUUID()); void refresh(); }, [refresh]);
@@ -58,6 +64,8 @@ export function PhoneApp() {
 
   const apply = useCallback((env: Envelope) => {
     setOffline(false);
+    setUncertain(null);
+    if (typeof env.server_now === "number") setSkewMs(Date.now() - env.server_now);
     setReply(env.reply);
     setWallet(env.wallet);
     setMeta({ model: env.model, mode: env.mode, fault: env.fault });
@@ -70,13 +78,27 @@ export function PhoneApp() {
   }, [syncSchedules]);
 
   // The user's message goes on screen immediately; only then do we wait for the agent (typing indicator).
-  const run = useCallback(async (fn: () => Promise<Envelope>, userText?: string, kind: "think" | "confirm" = "think") => {
+  // `afterConfirm`: the request was a Confirm, so a lost answer means "we don't know", never "nothing was sent".
+  const run = useCallback(async (fn: () => Promise<Envelope>, userText?: string, kind: "think" | "confirm" = "think", afterConfirm?: string) => {
     if (userText) setBubbles((b) => [...b, { id: ++n.current, from: "user", kind: "info", text: userText }]);
     setBusy(true); setWaiting(kind);
     try { apply(await fn()); }
-    catch { setOffline(true); setBubbles((b) => [...b, { id: ++n.current, from: "agent", kind: "error", text: "النظام مشغول هسه، جرب بعد شوية. ما صار أي تحويل." }]); }
+    catch {
+      setOffline(true);
+      if (afterConfirm) setUncertain(afterConfirm);
+      setBubbles((b) => [...b, { id: ++n.current, from: "agent", kind: "error", text: afterConfirm ? t("unknown_outcome") : t("busy") }]);
+    }
     finally { setBusy(false); setWaiting(null); }
   }, [apply]);
+  const confirmCard = (cardId: string) => run(() => post("/api/confirm", { session_id: sid, card_id: cardId }), undefined, "confirm", cardId);
+
+  // While the wallet has not told us what happened to a payment, ask it again every few seconds (by the same key; never re-sends).
+  const phase = reply?.phase;
+  useEffect(() => {
+    if (phase !== "UNKNOWN_OUTCOME") return;
+    const timer = setInterval(() => { if (!busy) void post("/api/recheck", { session_id: sid }).then(apply).catch(() => undefined); }, 5000);
+    return () => clearInterval(timer);
+  }, [phase, busy, sid, apply]);
 
   const send = (t: string) => { const v = t.trim(); if (!v || busy) return; setText(""); void run(() => post("/api/turn", { session_id: sid, text: v }), v); };
   const say = (kind: Bubble["kind"], text: string) => setBubbles((b) => [...b, { id: ++n.current, from: "agent", kind, text }]);
@@ -103,9 +125,20 @@ export function PhoneApp() {
   const editReadback = (heard: string) => { setText(heard); setReply((r) => (r ? { ...r, readback: null } : r)); inputRef.current?.focus(); };
   const micProblem = (key: CopyKey) => say(key === "mic_hold" ? "info" : "error", t(key));
   const pick = (id: string, name: string) => { if (!busy) void run(() => post("/api/turn", { session_id: sid, choice: id }), name); };
-  const admin = async (body: object) => { const r = await fetch("/api/admin", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ session_id: sid, ...body }) }); const d = await r.json(); if (d.wallet) setWallet(d.wallet); if (d.schedules) syncSchedules(d.schedules); setMeta((m) => ({ ...m, fault: d.fault ?? null })); return d; };
-  const cancelSchedule = async (id: string) => { const r = await fetch("/api/schedules/cancel", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ id }) }); const d = await r.json(); if (d.schedules) { pending.current.delete(id); syncSchedules(d.schedules); }
-    if (d.cancelled) setReply((r) => (r && r.result?.scheduled?.id === id ? { ...r, result: null } : r)); setBubbles((b) => [...b, { id: ++n.current, from: "agent", kind: d.cancelled ? "info" : "error", text: d.cancelled ? "تمام، لغيت الجدولة. ما صار شي." : "ما گدرت ألغيها، يمكن تنفذت أو انلغت من قبل." }]); };
+  const admin = async (body: object) => {
+    try {
+      const r = await fetch("/api/admin", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ session_id: sid, ...body }), signal: AbortSignal.timeout(15_000) });
+      const d = await r.json(); if (d.wallet) setWallet(d.wallet); if (d.schedules) syncSchedules(d.schedules); setMeta((m) => ({ ...m, fault: d.fault ?? null })); return d;
+    } catch { setOffline(true); return null; }
+  };
+  const cancelSchedule = async (id: string) => {
+    let d: any = null;
+    try { d = await (await fetch("/api/schedules/cancel", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ session_id: sid, id }), signal: AbortSignal.timeout(15_000) })).json(); }
+    catch { setOffline(true); }
+    if (d?.schedules) { pending.current.delete(id); syncSchedules(d.schedules); }
+    if (d?.cancelled) setReply((r) => (r && r.result?.scheduled?.id === id ? { ...r, result: null } : r));
+    say(d?.cancelled ? "info" : "error", d?.cancelled ? t("schedule_cancelled") : d ? "ما گدرت ألغيها، يمكن تنفذت أو انلغت من قبل." : t("busy"));
+  };
   const discussSchedule = () => { setSchedPanel(false); send("اريد أجدول دفعة"); };
   const reset = async () => { await admin({ action: "reset" }); pending.current.clear(); setBubbles([]); setReply(null); setSid(crypto.randomUUID()); };
 
@@ -230,7 +263,8 @@ export function PhoneApp() {
             <ConfirmCard
               card={card}
               busy={busy}
-              onConfirm={() => run(() => post("/api/confirm", { session_id: sid, card_id: card.card_id }), undefined, "confirm")}
+              skewMs={skewMs}
+              onConfirm={() => confirmCard(card.card_id)}
               onCancel={() => run(() => post("/api/cancel", { session_id: sid }))}
               onExpire={() => { if (!busy) void run(() => post("/api/tick", { session_id: sid })); }}
               onSchedule={() => run(() => post("/api/schedule-card", { session_id: sid, card_id: card.card_id }))}
@@ -263,6 +297,11 @@ export function PhoneApp() {
                 <button disabled={busy} onClick={() => editReadback(reply.readback!.text)} className="rounded-full border-2 border-[var(--line)] px-5 min-h-12">{t("readback_edit")}</button>
               </div>
             </section>
+          )}
+          {uncertain && !busy && (
+            <button onClick={() => confirmCard(uncertain)} className="rise w-full min-h-12 rounded-xl border-2 border-[var(--warn)] text-[var(--warn)] bg-white font-semibold">
+              تحقق شصار بالعملية (ما راح ينرسل مرتين)
+            </button>
           )}
           {busy && waiting === "voice" && <p className="text-[var(--muted)] text-center" role="status">{t("mic_transcribing")}</p>}
           {busy && waiting === "confirm" && <p className="text-[var(--muted)] text-center" role="status">جاي نتأكد…</p>}
