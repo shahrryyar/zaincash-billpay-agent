@@ -45,7 +45,11 @@ export function openAIChat(opts: OpenAIOptions): ChatClient {
         const res = await doFetch(`${opts.baseUrl.replace(/\/$/, "")}/chat/completions`, {
           method: "POST", headers: { "content-type": "application/json", authorization: `Bearer ${opts.apiKey}` }, body: JSON.stringify(body), signal: ctl.signal,
         });
-        if (!res.ok) throw new ProviderError(`${opts.label} HTTP ${res.status}`, res.status);
+        if (!res.ok) {
+          // the provider's own reason (e.g. a tool schema it does not accept), so a failed setup is diagnosable; never the key
+          const why = await res.text().then((t) => { try { return String(JSON.parse(t)?.error?.message ?? t); } catch { return t; } }, () => "");
+          throw new ProviderError(`${opts.label} HTTP ${res.status}${why ? `: ${why.replace(/\s+/g, " ").slice(0, 300)}` : ""}`, res.status);
+        }
         const data = await res.json();
         const msg = data.choices?.[0]?.message ?? {};
         const content: Block[] = [];

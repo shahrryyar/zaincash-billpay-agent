@@ -56,6 +56,11 @@ pnpm --filter @zc/web e2e   # 8 browser tests in Chromium (scripted model)
 pnpm eval -- --split dev --mode tools   # evaluation harness on the dev set
 ```
 
+**No Anthropic key?** Use a free provider from the organisers' guide (no payment card): set `LLM_PROVIDER=groq` (or
+`gemini`), its key and its exact model id in `.env` (see `.env.example`), then run `pnpm smoke` to check the model drives
+the agent. Free tiers may train on prompts (all data here is synthetic) and have rate limits: keep a fallback in
+`LLM_FALLBACKS`. Any number reported must name the model it was measured with.
+
 ### Run it for judges
 
 - **Hosted URL (Docker).** One image holds the web app and the in-process mock wallet. Every browser tab gets its own

@@ -135,4 +135,12 @@ describe("OpenAI-format adapter (Groq / Gemini / OpenRouter / local)", () => {
     await expect(chat(mkFetch({}, 429).fetchFn).complete(req())).rejects.toMatchObject({ status: 429 });
     await expect(chat(mkFetch({}, 429).fetchFn).complete(req())).rejects.toBeInstanceOf(ProviderError);
   });
+  it("the provider's own error text is in the message (a refused tool schema is diagnosable), short and without the key", async () => {
+    const err = { error: { message: "tools.0.function.parameters: unsupported keyword propertyNames", type: "invalid_request_error" } };
+    const e = (await chat(mkFetch(err, 400).fetchFn).complete(req()).then(() => null, (x: unknown) => x)) as ProviderError;
+    expect(e.message).toContain("HTTP 400");
+    expect(e.message).toContain("propertyNames");
+    expect(e.message).not.toContain("Bearer");
+    expect(e.message.length).toBeLessThan(400);
+  });
 });
