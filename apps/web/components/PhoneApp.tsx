@@ -58,7 +58,13 @@ export function PhoneApp() {
     try { const d = await (await fetch(`/api/wallet?session_id=${encodeURIComponent(sidRef.current)}`, { cache: "no-store" })).json(); setWallet(d.wallet); setMeta({ model: d.model, mode: d.mode, fault: d.fault }); setVoice(d.voice ?? null); syncSchedules(d.schedules ?? []); if (typeof d.server_now === "number") setSkewMs(Date.now() - d.server_now); setOffline(false); }
     catch { setOffline(true); }
   }, [syncSchedules]);
-  useEffect(() => { setSid(crypto.randomUUID()); void refresh(); }, [refresh]);
+  // one sandbox per tab: the id survives a reload of this tab (sessionStorage), a new tab gets a fresh wallet
+  useEffect(() => {
+    let id = "";
+    try { id = sessionStorage.getItem("zc_session") ?? ""; } catch { /* storage blocked: a fresh id each load */ }
+    if (!id) { id = crypto.randomUUID(); try { sessionStorage.setItem("zc_session", id); } catch { /* ignore */ } }
+    sidRef.current = id; setSid(id); void refresh();
+  }, [refresh]);
   useEffect(() => { const t = setInterval(() => { if (document.visibilityState === "visible") void refresh(); }, 4000); return () => clearInterval(t); }, [refresh]);
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }); }, [bubbles, reply?.card?.card_id, busy]);
 
@@ -140,7 +146,7 @@ export function PhoneApp() {
     say(d?.cancelled ? "info" : "error", d?.cancelled ? t("schedule_cancelled") : d ? "ما گدرت ألغيها، يمكن تنفذت أو انلغت من قبل." : t("busy"));
   };
   const discussSchedule = () => { setSchedPanel(false); send("اريد أجدول دفعة"); };
-  const reset = async () => { await admin({ action: "reset" }); pending.current.clear(); setBubbles([]); setReply(null); setSid(crypto.randomUUID()); };
+  const reset = async () => { await admin({ action: "reset" }); pending.current.clear(); setBubbles([]); setReply(null); setUncertain(null); };
 
   const card = reply?.card ?? null;
   const showCandidates = reply && reply.phase === "CLARIFYING" && reply.candidates.length > 0;

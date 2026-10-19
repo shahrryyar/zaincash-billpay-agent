@@ -1,7 +1,7 @@
-import { engine } from "../../../server/engine";
+import { sessionState } from "../../../server/engine";
+import { cleanSessionId } from "../../../server/sandboxes";
 export const dynamic = "force-dynamic";
 
-export async function GET() {
-  const e = engine();
-  return Response.json({ wallet: await e.snapshot(), schedules: await e.schedules(), fault: e.fault(), model: e.model, mode: e.mode, voice: e.voice(), server_now: e.now() });
+export async function GET(req: Request) {
+  return Response.json(await sessionState(cleanSessionId(new URL(req.url).searchParams.get("session_id"))));
 }

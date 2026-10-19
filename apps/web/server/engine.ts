@@ -1,12 +1,14 @@
-// One in-process engine for the demo: mock wallet (SQLite in memory) + orchestrator + the real model.
-// Everything the model can do is inside @zc/orchestrator; the browser only ever sees Reply objects (no token, no key).
+// The in-process engine for the demo: the model (shared) + one sandbox per browser session (own in-memory mock wallet,
+// clock and orchestrator; server/sandboxes.ts). Everything the model can do is inside @zc/orchestrator; the browser only
+// ever sees Reply objects (no token, no key).
 import { existsSync, readFileSync } from "node:fs";
 import { isAbsolute, join, resolve } from "node:path";
-import { applySeed, createApp, openDb, DEMO_USER } from "@zc/wallet-api";
+import { DEMO_USER } from "@zc/wallet-api";
 import { chatFromEnv, createUnderstander } from "@zc/llm";
-import { asrPolicyFrom, formatWhenAr, relativeAr, t } from "@zc/core";
+import { formatWhenAr, relativeAr, t } from "@zc/core";
 import { asrFromEnv } from "@zc/asr";
-import { appFetch, createOrchestrator, createScriptedUnderstander, WalletClient, type Reply } from "@zc/orchestrator";
+import { createScriptedUnderstander, type Reply } from "@zc/orchestrator";
+import { createSandboxes, type Sandbox } from "./sandboxes";
 
 function loadRootEnv(): void {
   let dir = process.cwd();
@@ -41,14 +43,6 @@ const FAIL_REASON: Record<string, string> = {
 
 function build() {
   loadRootEnv();
-  const adminSecret = process.env.ADMIN_SECRET || "demo";
-  const db = openDb();
-  applySeed(db);
-  // One clock for the wallet, the orchestrator and the scheduler. The demo panel can move it forward ("+1 hour") to show a
-  // scheduled payment running without waiting; it only ever moves forward and «reset» puts it back.
-  const clock = { skewMs: 0, now: () => Date.now() + clock.skewMs };
-  const app = createApp({ db, demoMode: true, adminSecret, now: clock.now });
-  const wallet = new WalletClient({ baseUrl: "http://wallet.local", fetch: appFetch(app), timeoutMs: 2500 });
   const mode = (process.env.LLM_MODE ?? "tools") as "tools" | "workflow";
   // LLM_PROVIDER=fake: scripted demo sentences, no key, no network. No provider configured: the app still loads and every
   // turn answers an honest «النظام مشغول» (the understander throws, the orchestrator fails closed); nothing is ever sent.
@@ -71,21 +65,18 @@ function build() {
   const cap = process.env.VOICE_CAPTURE_DIR?.trim();
   const voiceCaptureDir = cap ? (isAbsolute(cap) ? cap : join(/* turbopackIgnore: true */ repoRoot, cap)) : undefined;
   console.log(`[voice] ${asr.description}`);
-  const orch = createOrchestrator({
-    wallet,
-    userId: DEMO_USER,
-    asrPolicy: asrPolicyFrom(process.env),
+  const num = (v: string | undefined, d: number) => (v && Number.isFinite(Number(v)) && Number(v) > 0 ? Number(v) : d);
+  const boxes = createSandboxes({
     understanderFor: llm.understanderFor as never,
-    retryDelayMs: 300,
-    now: clock.now,
+    env: process.env,
+    idleMs: num(process.env.SANDBOX_IDLE_MIN, 30) * 60_000,
+    maxSandboxes: num(process.env.SANDBOX_MAX, 200),
+    rate: { limit: num(process.env.TURNS_PER_10_MIN, 60), windowMs: 10 * 60_000 },
   });
-  const state: { fault: string | null } = { fault: null };
-  const admin = (path: string, body?: unknown) =>
-    app.request(path, { method: "POST", headers: { "x-admin-secret": adminSecret, "content-type": "application/json" }, ...(body ? { body: JSON.stringify(body) } : {}) });
 
-  /** The user's schedules from the wallet, with the Arabic notice for finished ones. */
-  async function schedules(): Promise<ScheduleView[]> {
-    const list = await orch.listSchedules();
+  /** A sandbox's schedules from its wallet, with the Arabic notice for finished ones. */
+  async function schedules(b: Sandbox): Promise<ScheduleView[]> {
+    const list = await b.orch.listSchedules();
     return list.map((x: any): ScheduleView => {
       const isTransfer = x.kind === "transfer";
       const what = isTransfer ? `${x.amount_iqd.toLocaleString("en-US")} د.ع لـ${x.counterparty}` : `${x.counterparty} ${x.amount_iqd.toLocaleString("en-US")} د.ع`;
@@ -95,37 +86,32 @@ function build() {
         : null;
       return {
         id: x.id, reference: x.reference, kind: x.kind, status: x.status, run_at: x.run_at, amount_iqd: x.amount_iqd, fee_iqd: x.fee_iqd, counterparty: x.counterparty,
-        when_text: formatWhenAr(x.run_at), relative: x.status === "scheduled" ? relativeAr(x.run_at, clock.now()) : null, notice, failure_code: x.failure_code ?? null,
+        when_text: formatWhenAr(x.run_at), relative: x.status === "scheduled" ? relativeAr(x.run_at, b.now()) : null, notice, failure_code: x.failure_code ?? null,
       };
     });
   }
 
-  async function snapshot(): Promise<WalletSnapshot> {
-    const u = (await wallet.user(DEMO_USER)).json;
-    const t = (await wallet.transactions(DEMO_USER, { limit: 8 })).json.transactions ?? [];
+  async function snapshot(b: Sandbox): Promise<WalletSnapshot> {
+    const u = (await b.wallet.user(DEMO_USER)).json;
+    const tx = (await b.wallet.transactions(DEMO_USER, { limit: 8 })).json.transactions ?? [];
     return {
       balance_iqd: u.balance_iqd as number,
-      transactions: t.map((x: any) => ({ reference: x.reference, kind: x.kind, amount_iqd: x.amount_iqd, counterparty: x.counterparty?.name ?? "", created_at: x.created_at })),
+      transactions: tx.map((x: any) => ({ reference: x.reference, kind: x.kind, amount_iqd: x.amount_iqd, counterparty: x.counterparty?.name ?? "", created_at: x.created_at })),
     };
   }
 
-  // the scheduler: due schedules run here, deterministically, no model involved
-  const timer = setInterval(() => { try { (app as unknown as { runDueSchedules: () => unknown }).runDueSchedules(); } catch (e) { console.error("[scheduler]", (e as Error).message); } }, 3000);
+  // the scheduler: due schedules in every live sandbox run here, deterministically, no model involved
+  const timer = setInterval(() => boxes.runAllDue(), 3000);
   timer.unref?.();
 
   return {
-    orch, snapshot, schedules, model: llm.id, mode, description: llm.description, now: clock.now, asr, demo, voiceCaptureDir,
+    /** The caller's own sandbox (created on first use). */
+    box: (sessionId: unknown) => boxes.get(sessionId),
+    /** One model-backed request for this session; false when it hit its per-session limit. */
+    allow: (sessionId: unknown) => boxes.allow(sessionId),
+    snapshot, schedules, model: llm.id, mode, description: llm.description, asr, demo, voiceCaptureDir,
     /** What the browser may know about voice: never the key or the base URL. */
     voice: () => ({ enabled: asr.transcriber !== null, provider: asr.provider, max_seconds: asr.maxSeconds, simulator: asr.provider === "fake" && demo }),
-    async advance(ms: number) { clock.skewMs += Math.max(0, ms); (app as unknown as { runDueSchedules: () => unknown }).runDueSchedules(); },
-    fault: () => state.fault,
-    async arm(kind: "timeout" | "5xx" | "biller_down" | "none") {
-      if (kind === "none") { state.fault = null; return; } // faults are one-shot or until reset; "none" just clears the label
-      const body = kind === "timeout" ? { mode: "timeout_after_commit", count: 1, sleep_ms: 4000 } : kind === "5xx" ? { mode: "error_5xx_before_commit", count: 1 } : { mode: "biller_down", biller: "b_generator" };
-      await admin("/admin/faults", body);
-      state.fault = kind;
-    },
-    async reset(sessionId: string) { await admin("/admin/reset"); orch.reset(sessionId); state.fault = null; clock.skewMs = 0; },
   };
 }
 
@@ -133,8 +119,17 @@ type Engine = ReturnType<typeof build>;
 const g = globalThis as unknown as { __zcEngine?: Engine };
 export const engine = (): Engine => (g.__zcEngine ??= build());
 
-/** Replies go to the browser together with the fresh wallet snapshot, so the balance on screen is always read from the wallet. */
-export async function withWallet(reply: Reply) {
+/** Everything the browser needs about its sandbox; the balance on screen is always read from the wallet. */
+export async function sessionState(sessionId: unknown) {
   const e = engine();
-  return { reply, wallet: await e.snapshot(), schedules: await e.schedules(), fault: e.fault(), model: e.model, mode: e.mode, voice: e.voice(), server_now: e.now() };
+  const b = e.box(sessionId);
+  return { wallet: await e.snapshot(b), schedules: await e.schedules(b), fault: b.fault(), model: e.model, mode: e.mode, voice: e.voice(), server_now: b.now() };
 }
+
+/** A reply goes to the browser together with its sandbox's fresh wallet snapshot. */
+export async function withWallet(reply: Reply) {
+  return { reply, ...(await sessionState(reply.session_id)) };
+}
+
+/** The honest answer when a session has used its turn budget: nothing was sent. */
+export const rateLimited = () => Response.json({ error: "rate_limited", message: t("busy") }, { status: 429 });
