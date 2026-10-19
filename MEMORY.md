@@ -56,6 +56,9 @@ Accepted into the build stage already. Elimination is after the MVP.
 - **`heldout2`**: fresh 180-case set, Claude-only generator + 3 blind Claude labellers, frozen sha256 `de55b443…`. **Run it once** with the key: `pnpm eval -- --split heldout2 --mode tools --allow-heldout`. Then fix «بعد الظهر» (read as 12:00; deliberately NOT fixed before the run).
 - Low-balance seed user `u_low` now has the full contact book and a generator bill.
 
+- Added later on 19/10: `MVP_UPDATE.md` (one-pager draft), `DEMO.md` (runbook), `render.yaml` (Render Blueprint, not deployed), `research/INTERVIEWS.md` + empty `interview-log.csv`, review sheets in `eval/data/review/` (heldout2 sample, dialect). Free Groq/Gemini path documented; `pnpm smoke` is the model check.
+- **Waiting on the author:** a free Groq or Gemini key (Anthropic key not available), the two review sheets, 5+ user conversations, the organisers' reply.
+
 ## Status (2026-10-17)
 - Pushed to origin/main. Tests: core 350, asr 33, llm 74, wallet-api 102, orchestrator 126, eval 22, web 7 (714). CI: typecheck, test, build, gitleaks, **OSV-Scanner** (vitest 4 / vite 7 after it flagged 9 dev-tool advisories).
 - **Public gate docs committed:** `DISCLOSURE.md`, `FAILURE_MODES.md` (16 FMs), README with measured results (docs/ stays local).
