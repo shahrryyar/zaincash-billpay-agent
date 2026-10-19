@@ -20,6 +20,18 @@ jobs:
       - run: pnpm smoke -- --fake   # the whole pipeline on the scripted demo sentences, no key
       - run: pnpm build
 
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the hosted-demo image
+        run: docker build -t zc-billpay .
+      - name: Run it with the scripted model and check health + one turn
+        run: |
+          docker run -d --name zc -p 3000:3000 -e LLM_PROVIDER=fake zc-billpay
+          for i in $(seq 1 30); do curl -sf localhost:3000/api/health && break; sleep 1; done
+          curl -sf -X POST localhost:3000/api/turn -H 'content-type: application/json' -d '{"session_id":"ci","text":"ادفع المولدة"}' | grep -q AWAITING_CONFIRM
+
   dependencies:
     runs-on: ubuntu-latest
     steps:

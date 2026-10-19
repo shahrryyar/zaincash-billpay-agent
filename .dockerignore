@@ -1,0 +1,13 @@
+**/node_modules
+**/.next
+.git
+.env
+.env.*
+!.env.example
+.cache
+docs
+brief
+eval/results
+eval/voice/captures
+eval/voice/audio
+**/*.log
