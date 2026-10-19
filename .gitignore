@@ -33,3 +33,7 @@ apps/web/next-env.d.ts
 # Python bytecode
 __pycache__/
 *.pyc
+
+# Playwright output
+test-results/
+playwright-report/

@@ -134,7 +134,9 @@ export function PhoneApp() {
   const admin = async (body: object) => {
     try {
       const r = await fetch("/api/admin", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ session_id: sid, ...body }), signal: AbortSignal.timeout(15_000) });
-      const d = await r.json(); if (d.wallet) setWallet(d.wallet); if (d.schedules) syncSchedules(d.schedules); setMeta((m) => ({ ...m, fault: d.fault ?? null })); return d;
+      const d = await r.json(); if (d.wallet) setWallet(d.wallet); if (d.schedules) syncSchedules(d.schedules); setMeta((m) => ({ ...m, fault: d.fault ?? null }));
+      if (typeof d.server_now === "number") setSkewMs(Date.now() - d.server_now); // «قدّم الوقت» moves the card's countdown too
+      return d;
     } catch { setOffline(true); return null; }
   };
   const cancelSchedule = async (id: string) => {
