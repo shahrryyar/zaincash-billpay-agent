@@ -9,7 +9,8 @@
     "test": "vitest run --testTimeout=60000",
     "typecheck": "tsc -p tsconfig.json",
     "eval": "tsx src/run.ts",
-    "eval:voice": "tsx src/voice.ts"
+    "eval:voice": "tsx src/voice.ts",
+    "dialect-sheet": "tsx src/dialect-sheet.ts"
   },
   "dependencies": {
     "@zc/asr": "workspace:*",
