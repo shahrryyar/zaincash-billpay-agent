@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 
 /** Outcome of a payment still unknown: ask the wallet again by the same idempotency key. Never sends anything. */
 export async function POST(req: Request) {
-  const b = (await req.json()) as { session_id?: string };
+  const b = (await req.json()) as { session_id?: string; lang?: string };
   const sid = cleanSessionId(b.session_id);
-  return Response.json(await withWallet(await engine().box(sid).orch.recheck(sid)));
+  return Response.json(await withWallet(await engine().box(sid, b.lang).orch.recheck(sid)));
 }

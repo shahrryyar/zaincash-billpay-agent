@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "مساعد الدفع (تجريبي)",
-  description: "Iraqi Arabic bill pay and transfer agent. Mock wallet, synthetic data.",
+  description: "Iraqi Arabic and Central Kurdish bill pay and transfer agent. Mock wallet, synthetic data.",
 };
 export const viewport: Viewport = { width: "device-width", initialScale: 1 };
 

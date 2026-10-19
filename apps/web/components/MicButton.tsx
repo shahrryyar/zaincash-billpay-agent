@@ -1,12 +1,12 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { t, type CopyKey } from "@zc/core";
+import { t, type CopyKey, type Lang } from "@zc/core";
 import { toWav16k } from "./recorder";
 
-type Props = { maxSeconds: number; disabled: boolean; onWav: (wav: Blob) => void; onProblem: (key: CopyKey) => void };
+type Props = { maxSeconds: number; disabled: boolean; onWav: (wav: Blob) => void; onProblem: (key: CopyKey) => void; lang?: Lang };
 
 /** Push to talk: hold (pointer, or Space/Enter on the keyboard) to record, release to send. */
-export function MicButton({ maxSeconds, disabled, onWav, onProblem }: Props) {
+export function MicButton({ maxSeconds, disabled, onWav, onProblem, lang = "ar" }: Props) {
   const [state, setState] = useState<"idle" | "starting" | "recording" | "processing">("idle");
   const [secs, setSecs] = useState(0);
   const rec = useRef<MediaRecorder | null>(null);
@@ -63,11 +63,11 @@ export function MicButton({ maxSeconds, disabled, onWav, onProblem }: Props) {
   const recording = state === "recording" || state === "starting";
   return (
     <div className="flex items-center gap-2">
-      {recording && <span className="text-sm text-[var(--bad)] nums" role="status">{t("mic_listening")} {secs}s</span>}
+      {recording && <span className="text-sm text-[var(--bad)] nums" role="status">{t("mic_listening", {}, lang)} {secs}s</span>}
       <button
         type="button"
-        aria-label={t("mic_hold")}
-        title={t("mic_hold")}
+        aria-label={t("mic_hold", {}, lang)}
+        title={t("mic_hold", {}, lang)}
         aria-pressed={recording}
         disabled={disabled || state === "processing"}
         onPointerDown={(e) => { e.preventDefault(); (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId); void start(); }}

@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { t, type CopyKey, type Lang } from "@zc/core";
 import type { Reply } from "./types";
 
 type Card = NonNullable<Reply["card"]>;
@@ -7,7 +8,8 @@ const fmt = (n: number) => n.toLocaleString("en-US");
 
 /** The hero component (docs/15). Shows exactly what will happen (and WHEN, for a schedule), says nothing is sent now, has a visible countdown. */
 // `skewMs` = browser clock minus server clock, so the countdown matches the server's expiry even when the demo clock moved.
-export function ConfirmCard({ card, busy, skewMs = 0, onConfirm, onCancel, onExpire, onSchedule }: { card: Card; busy: boolean; skewMs?: number; onConfirm: () => void; onCancel: () => void; onExpire: () => void; onSchedule: () => void }) {
+export function ConfirmCard({ card, lang = "ar", busy, skewMs = 0, onConfirm, onCancel, onExpire, onSchedule }: { card: Card; lang?: Lang; busy: boolean; skewMs?: number; onConfirm: () => void; onCancel: () => void; onExpire: () => void; onSchedule: () => void }) {
+  const tt = (k: CopyKey) => t(k, {}, lang);
   const secondsLeft = () => Math.max(0, Math.ceil((card.expires_at - (Date.now() - skewMs)) / 1000));
   const [left, setLeft] = useState(secondsLeft);
   useEffect(() => {
@@ -36,21 +38,21 @@ export function ConfirmCard({ card, busy, skewMs = 0, onConfirm, onCancel, onExp
         <span className="rounded-full bg-[#fff3d6] text-[var(--warn)] px-3 py-0.5 text-sm font-semibold">{card.nothing_sent}</span>
       </header>
       <dl>
-        {sched && row("الموعد", <>{sched.when_text}<div className="text-sm font-normal text-[var(--muted)]">({sched.relative})</div></>, true)}
-        {card.recipient && row("إلى", <>{card.recipient.name} <span className="nums text-[var(--muted)]">{card.recipient.masked}</span></>)}
-        {card.biller && row("الفاتورة", <>{card.biller.name} <span className="nums text-[var(--muted)]">{card.biller.account_ref}</span></>)}
-        {row("المبلغ", <><span className="nums text-2xl">{card.amount_text}</span><div className="text-sm font-normal text-[var(--muted)]">({card.amount_words})</div></>)}
-        {row("الرسوم", <span className="nums">{card.fee_text}</span>)}
+        {sched && row(tt("ui_when"), <>{sched.when_text}<div className="text-sm font-normal text-[var(--muted)]">({sched.relative})</div></>, true)}
+        {card.recipient && row(tt("ui_card_to"), <>{card.recipient.name} <span className="nums text-[var(--muted)]">{card.recipient.masked}</span></>)}
+        {card.biller && row(tt("ui_card_bill"), <>{card.biller.name} <span className="nums text-[var(--muted)]">{card.biller.account_ref}</span></>)}
+        {row(tt("ui_amount"), <><span className="nums text-2xl">{card.amount_text}</span><div className="text-sm font-normal text-[var(--muted)]">({card.amount_words})</div></>)}
+        {row(tt("ui_card_fee"), <span className="nums">{card.fee_text}</span>)}
         {sched
-          ? row("رصيدك الحالي", <span className="nums">{fmt(card.balance_before_iqd)} د.ع</span>)
-          : row("الرصيد", <span className="nums">{fmt(card.balance_before_iqd)} → {fmt(card.balance_after_iqd)} د.ع</span>)}
+          ? row(tt("ui_card_balance_now"), <span className="nums">{fmt(card.balance_before_iqd)} {tt("ui_currency")}</span>)
+          : row(tt("ui_card_balance"), <span className="nums">{fmt(card.balance_before_iqd)} → {fmt(card.balance_after_iqd)} {tt("ui_currency")}</span>)}
       </dl>
       {sched && <p className="mt-2 text-sm text-[var(--muted)]">{sched.note}</p>}
       {sched?.low_balance_warning && <p role="note" className="mt-2 rounded-lg bg-[#fff3d6] px-3 py-2 text-[var(--warn)] font-semibold">{sched.low_balance_warning}</p>}
       {card.first_time_recipient && (
-        <p role="note" className="mt-2 rounded-lg bg-[#fff3d6] px-3 py-2 text-[var(--warn)] font-semibold">⚠ أول مرة تدز لهذا الشخص. تأكد من الاسم والرقم.</p>
+        <p role="note" className="mt-2 rounded-lg bg-[#fff3d6] px-3 py-2 text-[var(--warn)] font-semibold">⚠ {tt("first_time_recipient")}</p>
       )}
-      <p className="mt-2 text-[var(--muted)] text-base" aria-live="polite">{expired ? "انتهى الوقت" : <>⏱ <span className="nums">{mm}</span></>}</p>
+      <p className="mt-2 text-[var(--muted)] text-base" aria-live="polite">{expired ? tt("ui_card_expired") : <>⏱ <span className="nums">{mm}</span></>}</p>
       <div className="mt-3 flex gap-3">
         <button disabled={busy || expired} onClick={onConfirm} className="flex-1 min-h-14 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] font-bold text-lg px-4">
           {card.labels.confirm}
@@ -61,7 +63,7 @@ export function ConfirmCard({ card, busy, skewMs = 0, onConfirm, onCancel, onExp
       </div>
       {!sched && (
         <button disabled={busy || expired} onClick={onSchedule} className="mt-2 w-full min-h-12 rounded-xl border-2 border-dashed border-[var(--accent)] text-[var(--accent)] bg-white font-semibold">
-          🕒 جدولها لوقت ثاني (ناقشها مع المساعد)
+          {tt("ui_card_schedule")}
         </button>
       )}
     </section>

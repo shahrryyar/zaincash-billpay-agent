@@ -5,7 +5,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { isAbsolute, join, resolve } from "node:path";
 import { DEMO_USER } from "@zc/wallet-api";
 import { chatFromEnv, createUnderstander } from "@zc/llm";
-import { formatWhenAr, relativeAr, t } from "@zc/core";
+import { formatWhenAr, formatWhenKu, isLang, relativeAr, relativeKu, t, KU_BILLER_NAMES, type CopyKey, type Lang } from "@zc/core";
 import { asrFromEnv } from "@zc/asr";
 import { createScriptedUnderstander, type Reply } from "@zc/orchestrator";
 import { createSandboxes, type Sandbox } from "./sandboxes";
@@ -36,10 +36,11 @@ export type ScheduleView = {
   amount_iqd: number; fee_iqd: number; counterparty: string; when_text: string; relative: string | null; notice: string | null; failure_code: string | null;
 };
 
-const FAIL_REASON: Record<string, string> = {
-  INSUFFICIENT_BALANCE: "الرصيد ما يكفي", LIMIT_EXCEEDED: "تجاوز الحد الشهري", BILLER_UNAVAILABLE: "الخدمة واگفة", BILL_ALREADY_PAID: "الفاتورة مدفوعة من قبل",
-  AMOUNT_CHANGED: "مبلغ الفاتورة تغيّر", SCHEDULE_MISSED: "فات الموعد بأكثر من يوم", AUTHORIZATION_MISMATCH: "التفاصيل ما تطابق اللي أكّدته", CONTACT_NOT_WALLET_USER: "المستلم ما عنده محفظة", RECIPIENT_WALLET_FULL: "محفظة المستلم وصلت حدها",
-};
+const FAIL_CODES = new Set(["INSUFFICIENT_BALANCE", "LIMIT_EXCEEDED", "BILLER_UNAVAILABLE", "BILL_ALREADY_PAID", "AMOUNT_CHANGED", "SCHEDULE_MISSED", "AUTHORIZATION_MISMATCH", "CONTACT_NOT_WALLET_USER", "RECIPIENT_WALLET_FULL"]);
+const failReason = (code: string | null | undefined, lang: Lang) => t((FAIL_CODES.has(code ?? "") ? `sched_fail_${code}` : "sched_fail_unknown") as CopyKey, {}, lang);
+/** A bill's name on a Kurdish screen (the wallet stores the Arabic name). */
+const KU_BY_AR: Record<string, string> = { "الكهرباء (تجريبي)": "electricity", "اشتراك المولدة (تجريبي)": "generator", "شركة النور للإنترنت (تجريبي)": "internet", "الماء (تجريبي)": "water", "شحن الرصيد (تجريبي)": "mobile_topup" };
+const billLabel = (name: string, lang: Lang) => (lang === "ku" ? KU_BILLER_NAMES[KU_BY_AR[name] ?? ""] ?? name : name);
 
 function build() {
   loadRootEnv();
@@ -74,19 +75,22 @@ function build() {
     rate: { limit: num(process.env.TURNS_PER_10_MIN, 60), windowMs: 10 * 60_000 },
   });
 
-  /** A sandbox's schedules from its wallet, with the Arabic notice for finished ones. */
-  async function schedules(b: Sandbox): Promise<ScheduleView[]> {
+  /** A sandbox's schedules from its wallet, with the notice for finished ones, in the session's language. */
+  async function schedules(b: Sandbox, lang: Lang = "ar"): Promise<ScheduleView[]> {
     const list = await b.orch.listSchedules();
+    const cur = t("ui_currency", {}, lang);
     return list.map((x: any): ScheduleView => {
       const isTransfer = x.kind === "transfer";
-      const what = isTransfer ? `${x.amount_iqd.toLocaleString("en-US")} د.ع لـ${x.counterparty}` : `${x.counterparty} ${x.amount_iqd.toLocaleString("en-US")} د.ع`;
+      const amount = x.amount_iqd.toLocaleString("en-US");
+      const who = isTransfer ? x.counterparty : billLabel(x.counterparty, lang);
+      const what = isTransfer ? (lang === "ku" ? `${amount} ${cur} بۆ ${who}` : `${amount} ${cur} لـ${who}`) : `${who} ${amount} ${cur}`;
       const notice = x.status === "executed"
-        ? (isTransfer ? t("schedule_ran_transfer", { amount: x.amount_iqd.toLocaleString("en-US"), name: x.counterparty, ref: x.transaction_reference ?? x.reference }) : t("schedule_ran_bill", { biller: x.counterparty, amount: x.amount_iqd.toLocaleString("en-US"), ref: x.transaction_reference ?? x.reference }))
-        : x.status === "failed" ? t("schedule_failed", { what, reason: FAIL_REASON[x.failure_code ?? ""] ?? "سبب غير متوقع" })
+        ? (isTransfer ? t("schedule_ran_transfer", { amount, name: who, ref: x.transaction_reference ?? x.reference }, lang) : t("schedule_ran_bill", { biller: who, amount, ref: x.transaction_reference ?? x.reference }, lang))
+        : x.status === "failed" ? t("schedule_failed", { what, reason: failReason(x.failure_code, lang) }, lang)
         : null;
       return {
-        id: x.id, reference: x.reference, kind: x.kind, status: x.status, run_at: x.run_at, amount_iqd: x.amount_iqd, fee_iqd: x.fee_iqd, counterparty: x.counterparty,
-        when_text: formatWhenAr(x.run_at), relative: x.status === "scheduled" ? relativeAr(x.run_at, b.now()) : null, notice, failure_code: x.failure_code ?? null,
+        id: x.id, reference: x.reference, kind: x.kind, status: x.status, run_at: x.run_at, amount_iqd: x.amount_iqd, fee_iqd: x.fee_iqd, counterparty: who,
+        when_text: lang === "ku" ? formatWhenKu(x.run_at) : formatWhenAr(x.run_at), relative: x.status === "scheduled" ? (lang === "ku" ? relativeKu(x.run_at, b.now()) : relativeAr(x.run_at, b.now())) : null, notice, failure_code: x.failure_code ?? null,
       };
     });
   }
@@ -105,8 +109,8 @@ function build() {
   timer.unref?.();
 
   return {
-    /** The caller's own sandbox (created on first use). */
-    box: (sessionId: unknown) => boxes.get(sessionId),
+    /** The caller's own sandbox (created on first use). `lang` (the picker, sent with every request) sets its reply language. */
+    box: (sessionId: unknown, lang?: unknown) => { const b = boxes.get(sessionId); if (isLang(lang)) b.orch.setLang(b.id, lang); return b; },
     /** One model-backed request for this session; false when it hit its per-session limit. */
     allow: (sessionId: unknown) => boxes.allow(sessionId),
     snapshot, schedules, model: llm.id, mode, description: llm.description, asr, demo, voiceCaptureDir,
@@ -120,10 +124,10 @@ const g = globalThis as unknown as { __zcEngine?: Engine };
 export const engine = (): Engine => (g.__zcEngine ??= build());
 
 /** Everything the browser needs about its sandbox; the balance on screen is always read from the wallet. */
-export async function sessionState(sessionId: unknown) {
+export async function sessionState(sessionId: unknown, lang?: unknown) {
   const e = engine();
-  const b = e.box(sessionId);
-  return { wallet: await e.snapshot(b), schedules: await e.schedules(b), fault: b.fault(), model: e.model, mode: e.mode, voice: e.voice(), server_now: b.now() };
+  const b = e.box(sessionId, lang);
+  return { wallet: await e.snapshot(b), schedules: await e.schedules(b, b.orch.langOf(b.id)), fault: b.fault(), model: e.model, mode: e.mode, voice: e.voice(), server_now: b.now() };
 }
 
 /** A reply goes to the browser together with its sandbox's fresh wallet snapshot. */
@@ -132,4 +136,4 @@ export async function withWallet(reply: Reply) {
 }
 
 /** The honest answer when a session has used its turn budget: nothing was sent. */
-export const rateLimited = () => Response.json({ error: "rate_limited", message: t("busy") }, { status: 429 });
+export const rateLimited = (lang?: unknown) => Response.json({ error: "rate_limited", message: t("busy", {}, isLang(lang) ? lang : "ar") }, { status: 429 });

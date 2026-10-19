@@ -16,7 +16,9 @@ export async function POST(req: Request) {
   const form = await req.formData().catch(() => null);
   if (!form) return Response.json({ error: "bad_form", message: "" }, { status: 400 });
   form.set("session_id", cleanSessionId(form.get("session_id")));
-  if (!e.allow(form.get("session_id"))) return rateLimited();
+  const lang = form.get("lang") ?? undefined;
+  e.box(form.get("session_id"), lang); // the reply (and the read-back) follow the language picker
+  if (!e.allow(form.get("session_id"))) return rateLimited(lang);
   const r = await handler(form);
   if (r.status !== 200) return Response.json({ error: r.error, message: r.message }, { status: r.status });
   return Response.json({ ...(await withWallet(r.reply)), transcript: r.transcript });

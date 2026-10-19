@@ -3,7 +3,7 @@ import { cleanSessionId } from "../../../server/sandboxes";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
-  const b = (await req.json()) as { session_id?: string; card_id?: string };
+  const b = (await req.json()) as { session_id?: string; card_id?: string; lang?: string };
   const sid = cleanSessionId(b.session_id);
-  return Response.json(await withWallet(await engine().box(sid).orch.confirm(sid, String(b.card_id ?? ""))));
+  return Response.json(await withWallet(await engine().box(sid, b.lang).orch.confirm(sid, String(b.card_id ?? ""))));
 }
