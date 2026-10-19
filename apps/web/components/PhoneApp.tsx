@@ -81,6 +81,7 @@ export function PhoneApp() {
   useEffect(() => {
     const l = LANGS.find((x) => x.id === lang);
     if (l) document.documentElement.lang = l.html; // Kurdish is RTL too: dir stays rtl
+    document.title = `${t("ui_title", {}, lang)} (${lang === "ku" ? "تاقیکاری" : "تجريبي"})`;
   }, [lang]);
   const chooseLang = (l: "ar" | "ku") => {
     if (l === lang) return;
