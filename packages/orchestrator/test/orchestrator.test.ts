@@ -221,6 +221,20 @@ describe("bills", () => {
     const r2 = await e.orch.turn("s", { text: "الانترنت" });
     expect(r2.card).toMatchObject({ kind: "bill_pay", amount_iqd: 35_000 });
   });
+  it("the model's biller must match the user's words: «الامبيرات» tagged electricity asks which bill (held-out C-0056)", async () => {
+    const e = setup({ script: { "سددلي الامبيرات": billIntent("electricity", "الامبيرات") } });
+    const r = await e.orch.turn("s", { text: "سددلي الامبيرات" });
+    expect(r.phase).toBe("CLARIFYING");
+    expect(r.card).toBeNull();
+    expect((await e.orch.turn("s", { text: "المولدة" })).card).toMatchObject({ kind: "bill_pay", amount_iqd: 60_000 });
+  });
+  it("the model sees every biller alias", async () => {
+    let system = "";
+    const e = setup({ understanderFor: () => ({ understand: async (i: { context: { billers: string[] } }) => { system = i.context.billers.join(" | "); return { raw: null, toolCalls: [], usage: { input: 0, output: 0 }, model: "x", mode: "workflow", turns: 1 }; } }) as never });
+    await e.orch.turn("s", { text: "اي شي" });
+    expect(system).toContain("الأمبيرات");
+    expect(system).toContain("الواي فاي");
+  });
   it("an amount said for an unknown bill is dropped when the user picks a real one: the card shows the wallet's amount", async () => {
     const e = setup({ script: { "ادفع قسط المدرسة 150 الف": billIntent("unknown", "قسط المدرسة", { value: 150_000, source: "150 الف" }) } });
     expect((await e.orch.turn("s", { text: "ادفع قسط المدرسة 150 الف" })).phase).toBe("CLARIFYING");
@@ -323,6 +337,37 @@ describe("info requests and multiple actions", () => {
   it("last transfer", async () => {
     const e = setup({ script: { "شكد دزيت اخر مرة": infoIntent("last_transfer") } });
     expect(text(await e.orch.turn("s", { text: "شكد دزيت اخر مرة" }))).toContain("آخر تحويل: 25,000 د.ع لعلي كريم");
+  });
+  it("«نفس المبلغ مال اخر مرة»: the amount is the latest transfer to that person, from the wallet (held-out C-0017)", async () => {
+    const msg = "دز لعلي كريم نفس المبلغ مال اخر مرة";
+    const intentPrev = { actions: [{ type: "transfer", recipient: { kind: "name", text: "علي كريم" }, amount: null, amount_ref: { kind: "previous", source_text: "نفس المبلغ مال اخر مرة" } }], status: "ok", confidence: 0.9, language: "ar-iq" };
+    const e = setup({ script: { [msg]: intentPrev } });
+    const r = await e.orch.turn("s", { text: msg });
+    expect(r.phase).toBe("AWAITING_CONFIRM");
+    expect(r.card).toMatchObject({ recipient: { name: "علي كريم" }, amount_iqd: 25_000 });
+    expect(text(r)).toContain("نفس مبلغ آخر تحويل لـعلي كريم: 25,000");
+    expect(e.txCount()).toBe(SEED_TX);
+  });
+  it("«same as last time» to an ambiguous name: the pick fills the amount from that person's history", async () => {
+    const msg = "دز لأحمد نفس المبلغ مال اخر مرة";
+    const intentPrev = { actions: [{ type: "transfer", recipient: { kind: "name", text: "أحمد" }, amount: null, amount_ref: { kind: "previous", source_text: "نفس المبلغ مال اخر مرة" } }], status: "ok", confidence: 0.9, language: "ar-iq" };
+    const e = setup({ script: { [msg]: intentPrev } });
+    const r = await e.orch.turn("s", { text: msg });
+    expect(r.phase).toBe("CLARIFYING");
+    const byTap = await e.orch.turn("s", { choice: "c_ahmed_moh" });
+    expect(byTap.card).toMatchObject({ recipient: { name: "أحمد محمد" }, amount_iqd: 75_000 });
+    const e2 = setup({ script: { [msg]: intentPrev } });
+    await e2.orch.turn("s", { text: msg });
+    expect((await e2.orch.turn("s", { text: "أحمد علي" })).card).toMatchObject({ recipient: { name: "أحمد علي" }, amount_iqd: 50_000 });
+  });
+  it("«same as last time» to someone with no earlier transfer: asks the amount, then the card", async () => {
+    const msg = "حول لمحسن مثل المرة الفاتت";
+    const intentPrev = { actions: [{ type: "transfer", recipient: { kind: "name", text: "محسن" }, amount: null, amount_ref: { kind: "previous", source_text: "مثل المرة الفاتت" } }], status: "ok", confidence: 0.9, language: "ar-iq" };
+    const e = setup({ script: { [msg]: intentPrev } });
+    const r = await e.orch.turn("s", { text: msg });
+    expect(r.phase).toBe("CLARIFYING");
+    expect(text(r)).toContain("ما لگيت تحويل سابق لـمحسن");
+    expect((await e.orch.turn("s", { text: "عشرين الف" })).card).toMatchObject({ recipient: { name: "محسن" }, amount_iqd: 20_000 });
   });
   it("last transfer skips a newer bill payment (a bill is not a «تحويل»)", async () => {
     const e = setup({ script: { "ادفع الكهرباء": billIntent("electricity", "الكهرباء"), "شكد دزيت اخر مرة": infoIntent("last_transfer") } });

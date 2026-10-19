@@ -74,7 +74,7 @@ export function createOrchestrator(opts: OrchestratorOptions) {
   async function billerNames(): Promise<string[]> {
     if (!billerNamesCache) {
       const bs = (await wallet.billers()).json.billers as any[];
-      billerNamesCache = bs.map((b) => `${b.code}: ${(b.aliases as string[])[0] ?? b.name_ar}`);
+      billerNamesCache = bs.map((b) => `${b.code}: ${[...(b.aliases as string[]), b.name_ar].join(" / ")}`); // every alias: «الأمبيرات» is the generator
       billerAliasCache = bs.flatMap((b) => [...(b.aliases as string[]), b.name_ar].map((alias) => ({ code: b.code as string, alias })));
     }
     return billerNamesCache;
@@ -163,7 +163,7 @@ export function createOrchestrator(opts: OrchestratorOptions) {
           const fresh = await answerUnknownContact(s, ef.choice_text, tc);
           if (fresh) return fresh;
         }
-        return answerClarification(s, ef.choice_text, tc, false) ?? [];
+        return withPreviousAmountAll(s, answerClarification(s, ef.choice_text, tc, false) ?? [], tc);
       }
       case "REJECT":
         if (ef.reason === "confirmation_invalid") sayKey(tc, "confirm_invalid");
@@ -183,7 +183,7 @@ export function createOrchestrator(opts: OrchestratorOptions) {
         const r = resolveContact({ kind: m.kind, text: m.text, ...(m.qualifier ? { qualifier: m.qualifier } : {}) }, contacts);
         tc.reply.trace.resolution = { slot, status: r.status, candidates: r.candidates?.map((c) => c.id) };
         s.candidates = []; s.fuzzy = null;
-        if (r.status === "resolved") { d.recipient = r.contact; return [{ type: "RESOLUTION", slot, result: "resolved" }]; }
+        if (r.status === "resolved") { d.recipient = r.contact; return withPreviousAmount(d, tc); }
         if (r.status === "ambiguous") { s.candidates = r.candidates; return [{ type: "RESOLUTION", slot, result: "ambiguous", count: r.candidates.length, name: m.text }]; }
         if (r.status === "fuzzy") { s.candidates = r.candidates; s.fuzzy = r.candidates[0] as Contact; return [{ type: "RESOLUTION", slot, result: "fuzzy", name: (r.candidates[0] as Contact).display_name }]; }
         if (r.status === "unknown_number") return [{ type: "RESOLUTION", slot, result: "unknown_number", phone: mask(r.phone) }]; // never a new contact
@@ -192,6 +192,13 @@ export function createOrchestrator(opts: OrchestratorOptions) {
       }
       if (slot === "biller" && d.action.type === "bill_pay") {
         const code = d.billerCode ?? d.action.biller;
+        if (!d.billerCode && d.action.biller_text) {
+          // the user's own words for the bill must not name a DIFFERENT biller than the model picked (C-0056: «الامبيرات» read as electricity)
+          await billerNames();
+          const said = normaliseArabic(d.action.biller_text);
+          const named = new Set(billerAliasCache.filter(({ alias }) => said && (said.includes(normaliseArabic(alias)) || normaliseArabic(alias).includes(said))).map((x) => x.code));
+          if (named.size > 0 && !named.has(code)) return [{ type: "RESOLUTION", slot, result: "ambiguous" }];
+        }
         const accounts = (await wallet.billAccounts(userId)).json.bill_accounts as BillAccount[];
         const hits = accounts.filter((a) => a.biller_code === code);
         if (hits.length === 1) { d.account = hits[0] as BillAccount; return [{ type: "RESOLUTION", slot, result: "resolved" }]; }
@@ -202,6 +209,33 @@ export function createOrchestrator(opts: OrchestratorOptions) {
       throw e;
     }
     return [];
+  }
+
+  /**
+   * «نفس المبلغ مال اخر مرة»: once the recipient is known, the amount is the latest transfer to that contact in the
+   * wallet's own history (never a model number). No such transfer: the machine asks for the amount.
+   */
+  async function withPreviousAmount(d: Draft, tc: TurnCtx): Promise<MachineEvent[]> {
+    const resolved: MachineEvent = { type: "RESOLUTION", slot: "recipient", result: "resolved" };
+    if (d.action.type !== "transfer" || !d.action.amount_ref || d.amountIqd !== null || !d.recipient) return [resolved];
+    const who = d.recipient;
+    const last = ((await wallet.transactions(userId, { limit: 100 })).json.transactions as any[]).find((x) => x.kind === "transfer" && x.counterparty.id === who.id);
+    tc.reply.trace.previous_amount = last ? { reference: last.reference, amount_iqd: last.amount_iqd } : null;
+    if (!last) return [{ ...resolved, needAmount: true, name: who.display_name }];
+    d.amountIqd = last.amount_iqd as number;
+    say(tc, "info", t("amount_from_history", { name: who.display_name, amount: num(last.amount_iqd) }));
+    return [resolved];
+  }
+
+  /** A clarification answer that resolved the recipient also fills a «same as last time» amount. */
+  async function withPreviousAmountAll(s: Session, evs: MachineEvent[], tc: TurnCtx): Promise<MachineEvent[]> {
+    const out: MachineEvent[] = [];
+    for (const ev of evs) {
+      if (ev.type === "RESOLUTION" && ev.slot === "recipient" && ev.result === "resolved" && s.draft) {
+        try { out.push(...(await withPreviousAmount(s.draft, tc))); } catch { out.push({ type: "RESOLUTION", slot: "recipient", result: "none", name: s.draft.recipient?.display_name ?? "" }); }
+      } else out.push(ev);
+    }
+    return out;
   }
 
   async function precheck(s: Session, tc: TurnCtx): Promise<MachineEvent[]> {
@@ -377,7 +411,7 @@ export function createOrchestrator(opts: OrchestratorOptions) {
       const contacts = toContacts((await wallet.contacts(userId)).json.contacts);
       const r = resolveContact(mention, contacts);
       tc.reply.trace.resolution = { slot: "recipient", status: r.status, candidates: r.candidates?.map((c) => c.id), via: "typed_answer" };
-      if (r.status === "resolved") { d.recipient = r.contact; s.candidates = []; s.fuzzy = null; return [{ type: "RESOLUTION", slot: "recipient", result: "resolved" }]; }
+      if (r.status === "resolved") { d.recipient = r.contact; s.candidates = []; s.fuzzy = null; return withPreviousAmount(d, tc); }
       if (r.status === "ambiguous") { s.candidates = r.candidates; s.fuzzy = null; return [{ type: "RESOLUTION", slot: "recipient", result: "ambiguous", count: r.candidates.length, name: mention.text }]; }
       return null; // fuzzy-only or nothing: not accepted from a bare typed answer
     } catch (e) {
@@ -495,7 +529,8 @@ export function createOrchestrator(opts: OrchestratorOptions) {
       await billerNames();
       const fresh = s.machine.clarifySlot === "recipient" ? await answerUnknownContact(s, text, tc) : null;
       if (fresh) { for (const e of fresh) await dispatch(s, e, tc); return finalize(s, tc); }
-      const events = answerClarification(s, text, tc, true);
+      const answered = answerClarification(s, text, tc, true);
+      const events = answered ? await withPreviousAmountAll(s, answered, tc) : null;
       if (events) { for (const e of events) await dispatch(s, e, tc); }
       else {
         // not an answer: maybe a new request, so ask the model. If it changed nothing, the user still used up a turn
@@ -554,7 +589,7 @@ export function createOrchestrator(opts: OrchestratorOptions) {
           const pick = (s.fuzzy ? [s.fuzzy] : s.candidates).find((c) => c.id === input.choice);
           if (s.machine.phase === "CLARIFYING" && s.machine.clarifySlot === "recipient" && pick && s.draft) {
             s.draft.recipient = pick; s.candidates = []; s.fuzzy = null;
-            await dispatch(s, { type: "RESOLUTION", slot: "recipient", result: "resolved" }, tc);
+            for (const ev of await withPreviousAmount(s.draft, tc)) await dispatch(s, ev, tc);
           } else sayKey(tc, "ask_rephrase");
           return finalize(s, tc);
         }
