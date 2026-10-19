@@ -14,6 +14,15 @@ ZainCash Agentic AI Challenge Iraq, **Topic 04: Bill Pay & Transfer Agent**. Sol
 
 Accepted into the build stage already. Elimination is after the MVP.
 
+### Organiser pack (emails from sarah.haider@zaincash.iq: Topic Briefs 17/09, Next Steps + Resources + Free LLM API Access 11/10)
+- **MVP 08/11:** core working end to end on sample inputs; repo with commit history; first test-set results; one-page update (works / not yet / next). Book a 20-min session (link to come). Top 10 continue.
+- **Progress review (finalists):** live demo incl. an input they give; results on a held-out set not tuned on; ≥3 failure modes; full disclosure. **Demo Day:** live demo + one unexpected judge input; final repo, one-page summary, eval results.
+- **Topic 04 must-haves:** explicit readable confirmation before anything executes; ambiguity → ask; retries never double-pay (show how); honest failure messages; mock wallet only. **Data:** wallet generated with an LLM from a schema; test set ≥50 dialect requests incl. ambiguous/malformed, LLM-generated **"then edited by hand for realism"** (rules: "check a sample by hand"). Strong: designed confirmation, deliberate edge cases (balance, unknown contact, two requests), results on must-not-execute requests. Stretch: voice.
+- **Judging:** "Problem and impact 20%: a real user, a real problem, **evidence you spoke to someone**". Gates: commit history across the build period, live run on judge input, full disclosure, ≥3 failure modes.
+- **Free LLM access (their guide):** Anthropic has **no free tier**. Free, no card: **Groq** (~30 req/min, open models like GPT-OSS/Qwen/Llama), **Google AI Studio** (Gemini 3 Flash-Lite ~500/day, Flash ~20/day; free prompts may train Google's models), OpenRouter `:free` (50/day), local (Ollama/LM Studio). Our `packages/llm` already speaks the OpenAI format with tool calls for groq/gemini/openrouter/local (`LLM_PROVIDER`, `*_API_KEY`, `*_MODEL`).
+- Free hosting they list: Render (free tier sleeps when idle; open the demo before presenting), Hugging Face Spaces.
+- The author's 06/10 clarification email (RegaLabs ASR, dates, public repo, demo input text/voice, branding) has **no reply** yet.
+
 ## Prime directive
 **The LLM understands. Deterministic code moves money.** The model may call read-only tools and `propose` a pending card. It has no payment tool, no token access, no wallet write.
 
