@@ -412,7 +412,7 @@ export function createOrchestrator(opts: OrchestratorOptions) {
       say(tc, "success", sc.kind === "transfer"
         ? tr(tc, "scheduled_ok_transfer", { amount: num(sc.amount_iqd), name: sc.counterparty, when, ref: sc.reference })
         : tr(tc, "scheduled_ok_bill", { biller: billerLabel(tc.lang, sc.counterparty), amount: num(sc.amount_iqd), when, ref: sc.reference }));
-      tc.reply.result = { reference: sc.reference, amount_iqd: sc.amount_iqd, balance_after_iqd: null, scheduled: { id: sc.id, due_at: sc.run_at, when_text: when } };
+      tc.reply.result = { reference: sc.reference, amount_iqd: sc.amount_iqd, fee_iqd: sc.fee_iqd, counterparty: sc.kind === "transfer" ? sc.counterparty : billerLabel(tc.lang, sc.counterparty), created_at: sc.created_at, balance_after_iqd: null, scheduled: { id: sc.id, due_at: sc.run_at, when_text: when } };
       return;
     }
     const tx = e.transaction;
@@ -421,7 +421,7 @@ export function createOrchestrator(opts: OrchestratorOptions) {
     say(tc, "success", isTransfer
       ? tr(tc, "success_transfer", { amount: num(tx.amount_iqd), name: tx.counterparty?.name ?? d?.recipient?.display_name ?? "", ref: tx.reference, balance: num(balance) })
       : tr(tc, "success_bill", { biller: billerLabel(tc.lang, tx.counterparty?.name ?? d?.account?.biller_name_ar ?? "", d?.account?.biller_code), amount: num(tx.amount_iqd), ref: tx.reference }));
-    tc.reply.result = { reference: tx.reference, amount_iqd: tx.amount_iqd, balance_after_iqd: balance };
+    tc.reply.result = { reference: tx.reference, amount_iqd: tx.amount_iqd, fee_iqd: tx.fee_iqd, counterparty: isTransfer ? tx.counterparty.name : billerLabel(tc.lang, tx.counterparty.name, d?.account?.biller_code), created_at: tx.created_at, balance_after_iqd: balance };
   }
 
   // ------------------------------------------------------------------ clarification answers (deterministic, no LLM)

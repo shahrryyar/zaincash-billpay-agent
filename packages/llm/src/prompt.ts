@@ -1,4 +1,4 @@
-// System prompts (docs/10). The model only UNDERSTANDS. Examples here are illustrative, not from any eval set.
+// System prompts (docs/10). The model only UNDERSTANDS. Examples are synthetic/development phrases, never held-out.
 // The STABLE part (never changes between requests) comes first so providers can cache it together with the tools.
 // A Kurdish session adds the Kurdish rules to the stable part (cached separately) and retrieved examples to the per-request part.
 import { KU_RULES } from "./kurdish";

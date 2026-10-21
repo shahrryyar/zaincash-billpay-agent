@@ -31,7 +31,7 @@ describe("the hero scenario: one sentence to a confirmed, exactly-once transfer"
     const r3 = await e.orch.confirm("s1", card.card_id);
     expect(r3.phase).toBe("EXECUTED");
     expect(text(r3)).toMatch(/انرسلت 50,000 د\.ع لأحمد علي\. رقم العملية ZC-\d{8}\. رصيدك هسه 149,700/);
-    expect(r3.result).toMatchObject({ amount_iqd: 50_000, balance_after_iqd: 149_700 });
+    expect(r3.result).toMatchObject({ amount_iqd: 50_000, balance_after_iqd: 149_700, counterparty: "أحمد علي", fee_iqd: 300, created_at: expect.any(Number) });
     expect(e.balance()).toBe(149_700);
     expect(e.balance("u_ahmed_ali")).toBe(100_000);
     expect(e.txCount()).toBe(SEED_TX + 1);

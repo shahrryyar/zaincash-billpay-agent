@@ -40,6 +40,8 @@ test("hero: two Ahmeds is a question, the pick gives a card, confirm sends once"
   await expect(card).toContainText("ما انرسل شي بعد");
   await card.getByRole("button", { name: "أكّد ودز" }).click();
   await expect(page.getByRole("region", { name: "الإيصال" })).toContainText(/ZC-\d{8}/);
+  await expect(page.getByRole("region", { name: "الإيصال" })).toContainText("أحمد علي");
+  await expect(page.getByRole("region", { name: "الإيصال" })).toContainText("وقت العملية (بغداد)");
   await expect(balance(page)).toHaveText("149,700 د.ع");
 });
 

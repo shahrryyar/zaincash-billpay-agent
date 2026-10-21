@@ -15,7 +15,7 @@ const EXAMPLES: Record<"ar" | "ku", string[]> = {
 const LANGS: { id: "ar" | "ku"; label: string; html: string }[] = [{ id: "ar", label: "عربي", html: "ar" }, { id: "ku", label: "کوردی", html: "ckb" }];
 
 async function post(path: string, body: unknown): Promise<Envelope> {
-  const r = await fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body), signal: AbortSignal.timeout(25_000) });
+  const r = await fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body), signal: AbortSignal.timeout(60_000) });
   if (!r.ok) throw new Error(`${path} ${r.status}`);
   return r.json();
 }
@@ -315,7 +315,10 @@ export function PhoneApp() {
             <section className="rise rounded-2xl bg-[#e3f4ec] border-2 border-[#8ccdb3] p-4" aria-label={tt("ui_receipt")}>
               <h2 className="font-bold text-[#0b5a42]">{tt(reply.result.scheduled ? "ui_receipt_scheduled" : "ui_receipt_done")}</h2>
               <dl className="mt-1 text-base">
+                <div className="flex flex-wrap justify-between gap-x-3"><dt className="text-[var(--muted)]">{tt("ui_card_to")}</dt><dd className="font-semibold min-w-0 break-words">{reply.result.counterparty}</dd></div>
                 <div className="flex justify-between"><dt className="text-[var(--muted)]">{tt("ui_amount")}</dt><dd className="nums font-semibold">{fmt(reply.result.amount_iqd)} {tt("ui_currency")}</dd></div>
+                <div className="flex justify-between"><dt className="text-[var(--muted)]">{tt("ui_card_fee")}</dt><dd className="nums font-semibold">{fmt(reply.result.fee_iqd)} {tt("ui_currency")}</dd></div>
+                <div className="flex flex-wrap justify-between gap-x-3"><dt className="text-[var(--muted)]">{tt("ui_receipt_time")}</dt><dd className="nums font-semibold break-words">{new Intl.DateTimeFormat(lang === "ku" ? "ckb" : "ar-IQ", { timeZone: "Asia/Baghdad", dateStyle: "short", timeStyle: "short", numberingSystem: "latn" }).format(reply.result.created_at)}</dd></div>
                 {reply.result.scheduled && <div className="flex justify-between gap-3"><dt className="text-[var(--muted)] shrink-0">{tt("ui_when")}</dt><dd className="font-semibold text-end">{reply.result.scheduled.when_text}</dd></div>}
                 <div className="flex justify-between"><dt className="text-[var(--muted)]">{tt(reply.result.scheduled ? "ui_ref_sched" : "ui_ref_tx")}</dt><dd className="nums font-semibold">{reply.result.reference}</dd></div>
                 {reply.result.balance_after_iqd !== null && <div className="flex justify-between"><dt className="text-[var(--muted)]">{tt("ui_balance_now")}</dt><dd className="nums font-semibold">{fmt(reply.result.balance_after_iqd)} {tt("ui_currency")}</dd></div>}

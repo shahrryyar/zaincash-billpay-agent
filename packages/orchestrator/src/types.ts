@@ -42,7 +42,7 @@ export type Reply = {
   messages: AgentMessage[];
   card: CardView | null;
   candidates: CandidateView[];
-  result: { reference: string; amount_iqd: number; balance_after_iqd: number | null; scheduled?: { id: string; due_at: number; when_text: string } } | null;
+  result: { reference: string; amount_iqd: number; fee_iqd: number; counterparty: string; created_at: number; balance_after_iqd: number | null; scheduled?: { id: string; due_at: number; when_text: string } } | null;
   audit: AuditEntry[];
   trace: Trace;
   /** Voice only: what the ASR heard, shown back for a «صح» / «لا» tap before anything else happens (docs/09). */
