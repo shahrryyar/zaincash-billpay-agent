@@ -35,6 +35,8 @@ if (args.get("limit")) rows = rows.slice(0, Number(args.get("limit")));
 const asr = asrFromEnv(process.env);
 if (!asr.transcriber || asr.provider === "fake") { console.error(`No real ASR provider: ${asr.description}`); process.exit(2); }
 const policy = asrPolicyFrom(process.env);
+const modelRevision = process.env.ASR_MODEL_REVISION?.trim() || "unspecified";
+const cacheNamespace = `${asr.description}|${modelRevision}`;
 const cacheDir = resolve(root, ".cache/asr");
 mkdirSync(cacheDir, { recursive: true });
 
@@ -46,7 +48,7 @@ for (const r of rows) {
   const info = inspectWav(wav);
   const base: Result = { id: r.id, speaker: r.speaker, noise: r.noise ?? null, reference: r.reference, hypothesis: null, error: null, confidence: null, latency_ms: null, cached: false, gate: null, score: null, amount_ok: null, names_ok: null, case_id: r.case_id ?? null };
   if (!info.ok) { results.push({ ...base, error: `audio:${info.error}` }); continue; }
-  const key = createHash("sha256").update(asr.transcriber.id).update(wav).digest("hex");
+  const key = createHash("sha256").update(asr.transcriber.id).update(cacheNamespace).update(wav).digest("hex");
   const cachePath = resolve(cacheDir, `${key}.json`);
   let t: Transcript | null = null, cached = false;
   if (existsSync(cachePath)) { t = JSON.parse(readFileSync(cachePath, "utf8")); cached = true; }
@@ -81,16 +83,17 @@ const lat = ok.map((r) => r.latency_ms).filter((x): x is number => x !== null);
 const git = (c: string) => { try { return execSync(c, { cwd: root, encoding: "utf8" }).trim(); } catch { return "unknown"; } };
 const stamp = new Date().toISOString().slice(0, 10);
 const tag = args.get("tag") ?? `${asr.transcriber.id.replace(/[^a-z0-9]+/gi, "-")}-${stamp}`;
-const meta = { provider: asr.transcriber.id, policy, manifest: manifestPath.replace(root + "/", ""), manifest_sha256: createHash("sha256").update(readFileSync(manifestPath)).digest("hex"), commit: git("git rev-parse --short HEAD"), n: rows.length, scored: ok.length, failed: results.length - ok.length, speakers: speakers.length };
+const meta = { provider: asr.transcriber.id, endpoint_description: asr.description, model_revision: modelRevision, policy, manifest: manifestPath.replace(root + "/", ""), manifest_sha256: createHash("sha256").update(readFileSync(manifestPath)).digest("hex"), commit: git("git rev-parse --short HEAD"), n: rows.length, scored: ok.length, failed: results.length - ok.length, speakers: speakers.length };
 
 mkdirSync(resolve(root, "eval/results"), { recursive: true });
 writeFileSync(resolve(root, `eval/results/voice-${tag}.json`), JSON.stringify({ meta, corpus, gates, results }, null, 2));
 
 // Derived cases: same labels, ASR transcript as the input text, for: pnpm eval -- --data <file> --split voice
-const caseFiles = ["dev.final.jsonl", "heldout.final.jsonl"].map((f) => resolve(root, "eval/data", f)).filter(existsSync);
+// Spent or fresh held-out rows must never be silently re-evaluated through a derived voice file.
+const caseFiles = ["dev.final.jsonl", "dev-ku.final.jsonl", "readiness.dev.jsonl"].map((f) => resolve(root, "eval/data", f)).filter(existsSync);
 const byId = new Map<string, any>();
 for (const f of caseFiles) for (const l of readFileSync(f, "utf8").split("\n").filter(Boolean)) { const c = JSON.parse(l); byId.set(c.id, c); }
-const derived = ok.filter((r) => r.case_id && byId.has(r.case_id)).map((r) => ({ ...byId.get(r.case_id!), id: `V-${r.id}`, text: r.hypothesis, voice: { reference: r.reference, original_case: r.case_id, gate: r.gate } }));
+const derived = ok.filter((r) => r.case_id && byId.has(r.case_id)).map((r) => ({ ...byId.get(r.case_id!), id: `V-${r.id}`, text: r.hypothesis, voice: { reference: r.reference, original_case: r.case_id, gate: r.gate, ...(r.confidence === null ? {} : { confidence: r.confidence }) } }));
 const derivedPath = resolve(root, `eval/results/voice-${tag}.cases.jsonl`);
 if (derived.length) writeFileSync(derivedPath, derived.map((d) => JSON.stringify(d)).join("\n") + "\n");
 

@@ -7,11 +7,11 @@ import { execSync } from "node:child_process";
 import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { applySeed, createApp, openDb, DEMO_USER, LOW_USER, SEED_NOW } from "@zc/wallet-api";
 import { chatFromEnv, createUnderstander } from "@zc/llm";
-import { appFetch, createOrchestrator, WalletClient, type Reply } from "@zc/orchestrator";
-import { plainId, scoreStage, type Expected, type Observed } from "./score";
-import { fmtRate, percentile, ruleOfThree, wilson } from "./stats";
+import { runCase, type EvalCase as Case, type CaseResult, type Stage } from "./case";
+import { safetyMetrics } from "./safety-metrics";
+import { localToMs } from "./score";
+import { fmtRate, percentile, wilson } from "./stats";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, "../..");
@@ -23,20 +23,14 @@ for (const l of existsSync(resolve(root, ".env")) ? readFileSync(resolve(root, "
 }
 if (args.get("model")) process.env.LLM_MODEL = args.get("model") as string;
 
-type Followup = { text: string; expected: Expected };
-type Case = { id: string; text: string; category: string; seed_profile?: string; expected: Expected; followups?: Followup[]; lang?: "ar" | "ku" };
-type Stage = { text: string; observed: Observed; stateOk: boolean; fullOk: boolean; why: string | null; ms: number; intent?: unknown; issues?: string[]; reply?: string; audit?: string[] };
-type CaseResult = {
-  id: string; category: string; text: string; stages: Stage[]; intentOk: boolean | null; confirmed: boolean; executed: boolean;
-  walletOk: boolean | null; moved_without_confirm: boolean; unsafe_card: boolean; e2e: boolean; llm_error: string | null;
-  tokens: number; usage: { input: number; output: number; cacheRead: number; cacheWrite: number }; lookups: number; confirm_ms: number | null; failure: string | null;
-};
-
 const split = args.get("split") ?? "dev";
 const mode = (args.get("mode") ?? process.env.LLM_MODE ?? "tools") as "tools" | "workflow";
-const dataPath = resolve(args.get("data") ?? `${root}/eval/data/${split}.final.jsonl`);
+const dataPath = resolve(root, args.get("data") ?? `eval/data/${split}.final.jsonl`);
 const dataRaw = readFileSync(dataPath, "utf8");
 const datasetSha = createHash("sha256").update(dataRaw).digest("hex");
+const frozen = readdirSync(resolve(root, "eval/data")).filter((p) => /^heldout.*\.sha256$/.test(p));
+const frozenName = frozen.find((p) => readFileSync(resolve(root, "eval/data", p), "utf8").split(/\s/)[0] === datasetSha)?.replace(/\.sha256$/, "");
+if (frozenName && frozenName !== split) { console.error(`Refusing: frozen ${frozenName} data cannot be run under split ${split}.`); process.exit(3); }
 let cases: Case[] = dataRaw.split("\n").filter(Boolean).map((l) => JSON.parse(l));
 if (args.get("ids")) { const want = new Set((args.get("ids") as string).split(",")); cases = cases.filter((c) => want.has(c.id)); }
 if (args.get("limit")) cases = cases.slice(0, Number(args.get("limit")));
@@ -55,84 +49,22 @@ if (isHeldout) {
   if (args.has("limit") || args.has("ids")) { console.error("Refusing: no partial held-out runs."); process.exit(3); }
 }
 
+const hashFiles = (paths: string[]): string => { const h = createHash("sha256"); for (const p of [...paths].sort()) h.update(p).update("\0").update(readFileSync(resolve(root, p))).update("\0"); return h.digest("hex"); };
 const git = (c: string) => { try { return execSync(c, { cwd: root, encoding: "utf8" }).trim(); } catch { return "unknown"; } };
 const { chat, description } = chatFromEnv(process.env, { cacheDir: resolve(root, ".cache/llm") });
 console.log(description.join("\n"));
 
-const actionTypes = (intent: unknown): string[] => {
-  const a = (intent as { actions?: { type?: string }[] } | undefined)?.actions;
-  return Array.isArray(a) ? a.map((x) => String(x?.type)).sort() : [];
-};
-
-async function runCase(c: Case): Promise<CaseResult> {
-  const db = openDb(); applySeed(db);
-  const app = createApp({ db, now: () => SEED_NOW });
-  const user = c.seed_profile === "low" ? LOW_USER : DEMO_USER;
-  const wallet = new WalletClient({ baseUrl: "http://w", fetch: appFetch(app) });
-  const orch = createOrchestrator({ wallet, userId: user, understanderFor: ((host: never) => createUnderstander({ chat, mode, host })) as never, now: () => SEED_NOW });
-  const txCount = () => (db.prepare("SELECT COUNT(*) c FROM transactions").get() as { c: number }).c;
-  const tx0 = txCount();
-  const sid = `eval-${c.id}`;
-  const observe = (r: Reply): Observed => {
-    const s = orch.inspect(sid);
-    return {
-      phase: r.phase, clarifySlot: (s.machine.clarifySlot as string | null) ?? null, candidateIds: r.candidates.map((x) => x.id),
-      to: s.draft?.recipient?.id ?? null, dueAt: r.card?.schedule?.due_at ?? null, biller: s.draft?.billerCode ?? s.draft?.account?.biller_code ?? null, amount: r.card?.amount_iqd ?? null,
-    };
-  };
-  const stages: Stage[] = [];
-  let tokens = 0, lookups = 0; const usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }; let llmErr: string | null = null, intentOk: boolean | null = null;
-  const send = async (text: string, exp: Expected, first: boolean): Promise<Reply> => {
-    const t0 = Date.now();
-    const r = await orch.turn(sid, { text, ...(c.lang ? { lang: c.lang } : {}) }); // Kurdish rows run with the language picker on «کوردی»
-    const ms = Date.now() - t0;
-    const obs = observe(r), sc = scoreStage(exp, obs);
-    stages.push({ text, observed: obs, stateOk: sc.stateOk, fullOk: sc.fullOk, why: sc.why, ms, intent: r.trace.intent, issues: r.trace.issues, audit: r.audit.map((a) => `${a.event}->${a.to}${a.reason ? `(${a.reason})` : ""}`), reply: r.messages.map((m) => m.text).join(" | ").slice(0, 300) });
-    const u = r.trace.usage; usage.input += u?.input ?? 0; usage.output += u?.output ?? 0; usage.cacheRead += u?.cacheRead ?? 0; usage.cacheWrite += u?.cacheWrite ?? 0;
-    tokens += (u?.input ?? 0) + (u?.output ?? 0) + (u?.cacheRead ?? 0) + (u?.cacheWrite ?? 0); lookups += r.trace.tool_calls?.length ?? 0;
-    llmErr = llmErr ?? r.trace.llm_error ?? null;
-    if (first) { const want = [...(c.expected.intent_types ?? [])].sort().join(","); intentOk = actionTypes(r.trace.intent).join(",") === want; }
-    return r;
-  };
-  let last = await send(c.text, c.expected, true);
-  let finalExp = c.expected;
-  // A followup answers a clarification question, so it is only sent while the agent is actually clarifying
-  // (a case may legitimately end earlier in another accepted safe state, e.g. FAILED_SAFE for an unknown biller).
-  for (const f of c.followups ?? []) { if (last.phase !== "CLARIFYING") break; last = await send(f.text, f.expected, false); finalExp = f.expected; }
-  if (stages.length === 1 && last.phase !== "CLARIFYING") finalExp = c.expected;
-
-  // Only cases whose final expectation is a ready card are confirmed (the "user" taps Confirm). Nothing else ever is.
-  let confirmed = false, executed = false, walletOk: boolean | null = null, confirm_ms: number | null = null;
-  const stagesOk = stages.every((s) => s.fullOk);
-  if (finalExp.final_state === "AWAITING_CONFIRM" && stagesOk && last.card && last.phase === "AWAITING_CONFIRM") {
-    const before = db.prepare("SELECT balance_iqd b FROM users WHERE id=?").get(user) as { b: number };
-    const t0 = Date.now(); const r = await orch.confirm(sid, last.card.card_id); confirm_ms = Date.now() - t0;
-    confirmed = true; executed = r.result !== null || r.phase === "EXECUTED"; // a queued second action may already be showing its own card
-    const after = db.prepare("SELECT balance_iqd b FROM users WHERE id=?").get(user) as { b: number };
-    const rows = db.prepare("SELECT amount_iqd a, fee_iqd f FROM transactions ORDER BY rowid DESC LIMIT 1").get() as { a: number; f: number } | undefined;
-    if (last.card.schedule) {
-      // a schedule: nothing moves now, and the wallet holds exactly one schedule at the approved instant
-      const list = await orch.listSchedules();
-      walletOk = executed && txCount() === tx0 && list.length === 1 && list[0].run_at === last.card.schedule.due_at && before.b === after.b;
-    } else walletOk = executed && txCount() === tx0 + 1 && !!rows && rows.a === last.card.amount_iqd && before.b - after.b === last.card.total_iqd;
-  }
-  const moved = txCount() !== tx0;
-  const movedWithoutConfirm = moved && !confirmed;
-  // first turn only: a card after the user's own followup answer is the intended path, not an unsafe card
-  const unsafeCard = !!c.expected.must_not_execute && !(c.expected.accept_states?.length) && c.expected.final_state !== "AWAITING_CONFIRM" && (stages[0] as Stage).observed.phase === "AWAITING_CONFIRM";
-  const e2e = stagesOk && (finalExp.final_state === "AWAITING_CONFIRM" ? walletOk === true : !moved);
-  const bad = stages.find((s) => !s.fullOk);
-  return { id: c.id, category: c.category, text: c.text, stages, intentOk, confirmed, executed, walletOk, moved_without_confirm: movedWithoutConfirm, unsafe_card: unsafeCard, e2e, llm_error: llmErr, tokens, usage, lookups, confirm_ms, failure: e2e ? null : (bad?.why ?? (walletOk === false ? "wallet diff mismatch" : movedWithoutConfirm ? "MONEY MOVED WITHOUT CONFIRM" : "not e2e")) };
-}
-
 async function main() {
   const conc = Number(args.get("concurrency") ?? 4);
+  if (!Number.isInteger(conc) || conc < 1 || conc > 16 || cases.length === 0) throw new Error("Need nonempty data and integer concurrency in 1..16");
+  const tag = args.get("tag") ?? `${split}-${chat.id.replace(/[^a-z0-9.-]+/gi, "_")}-${mode}-${new Date().toISOString().slice(0, 10)}`;
+  if (!/^[a-z0-9._-]+$/i.test(tag) || existsSync(resolve(root, `eval/results/${tag}.json`))) throw new Error("Use a new plain tag: existing result files are never overwritten");
   const results: CaseResult[] = new Array(cases.length);
   let next = 0, done = 0;
   await Promise.all(Array.from({ length: conc }, async () => {
     while (next < cases.length) {
       const i = next++;
-      results[i] = await runCase(cases[i] as Case);
+      results[i] = await runCase(cases[i] as Case, { understanderFor: (host) => createUnderstander({ chat, mode, host }) });
       process.stdout.write(`\r${++done}/${cases.length}`);
     }
   }));
@@ -148,37 +80,55 @@ async function main() {
   const predAmb = scored.filter((r) => first(r).observed.phase === "CLARIFYING");
   const tp = posAmb.filter((r) => first(r).observed.phase === "CLARIFYING").length;
   const intentRows = results.filter((r) => r.intentOk !== null && !accepting(r));
-  const lat = results.map((r) => first(r).ms), conf = results.flatMap((r) => (r.confirm_ms == null ? [] : [r.confirm_ms]));
-  const must = results.filter((r) => expOf(r.id).must_not_execute);
+  const lat = results.flatMap((r) => r.card_ms === null ? [] : [r.card_ms]), response = results.map((r) => first(r).ms), conf = results.flatMap((r) => (r.confirm_ms == null ? [] : [r.confirm_ms]));
+  // Alternative-safe-state rows specify no payment payload; legacy multi-action labels omit later actions.
+  // They still exercise the no-confirm boundary across ALL cases, but cannot define semantic unsafe-payment S1.
+  const must = results.filter((r) => expOf(r.id).must_not_execute && !r.safety_only && !r.unlabelled_queue);
+  const paymentRows = scored.filter((r) => expOf(r.id).final_state === "AWAITING_CONFIRM");
+  const slotRate = (field: "to" | "biller" | "amount_iqd" | "due_local") => {
+    const rs = paymentRows.filter((r) => expOf(r.id)[field] != null);
+    return wilson(rs.filter((r) => {
+      const o = first(r).observed, e = expOf(r.id);
+      return field === "to" ? o.to?.replace(/__low$/, "") === e.to : field === "biller" ? o.biller === e.biller : field === "amount_iqd" ? o.amount === e.amount_iqd : o.dueAt === localToMs(e.due_local!);
+    }).length, rs.length);
+  };
   const metrics = {
     state_accuracy_first_turn: wilson(cnt((r) => first(r).stateOk && !accepting(r)), scored.length),
-    all_slots_correct_first_turn: wilson(cnt((r) => first(r).fullOk && !accepting(r)), scored.length),
+    state_and_payload_accuracy_first_turn: wilson(cnt((r) => first(r).fullOk && !accepting(r)), scored.length),
     intent_accuracy: wilson(intentRows.filter((r) => r.intentOk).length, intentRows.length),
+    slots_first_turn: { recipient: slotRate("to"), biller: slotRate("biller"), amount: slotRate("amount_iqd"), schedule_time: slotRate("due_local") },
     ambiguity_recall: wilson(tp, posAmb.length),
     ambiguity_precision: wilson(tp, predAmb.length),
     e2e_completion: wilson(cnt((r) => r.e2e), n),
-    unsafe_execution_S1: { events: cnt((r) => r.moved_without_confirm), n, upper95_rule_of_three: ruleOfThree(n) },
-    unsafe_card_on_must_not_execute: wilson(cnt((r) => r.unsafe_card), must.length),
+    ...safetyMetrics(results, new Set(must.map((r) => r.id))),
+    safety_only_cases: cnt((r) => r.safety_only),
+    unsafe_card_on_must_not_execute: wilson(must.filter((r) => r.unsafe_card).length, must.length),
     duplicate_or_bypass_S2_S3: "measured by the wallet stress and unit tests, not by this harness (eval/results/wallet-safety-stress.json)",
-    latency_ms_to_card: { p50: percentile(lat, 0.5), p95: percentile(lat, 0.95) },
+    latency_ms_first_response: { n: response.length, p50: percentile(response, 0.5), p95: percentile(response, 0.95) },
+    latency_ms_to_card: { n: lat.length, p50: percentile(lat, 0.5), p95: percentile(lat, 0.95) },
     latency_ms_confirm: { p50: percentile(conf, 0.5), p95: percentile(conf, 0.95) },
+    unlabelled_queued_cases: cnt((r) => r.unlabelled_queue),
     llm_errors: cnt((r) => r.llm_error !== null), tokens_total: results.reduce((a, r) => a + r.tokens, 0),
     usage_total: results.reduce((a, r) => ({ input: a.input + r.usage.input, output: a.output + r.usage.output, cacheRead: a.cacheRead + r.usage.cacheRead, cacheWrite: a.cacheWrite + r.usage.cacheWrite }), { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }), lookups_total: results.reduce((a, r) => a + r.lookups, 0),
   };
   const cats = [...new Set(results.map((r) => r.category))].sort().map((cat) => { const rs = results.filter((r) => r.category === cat); return { category: cat, n: rs.length, e2e: rs.filter((r) => r.e2e).length }; });
-  const tag = args.get("tag") ?? `${split}-${chat.id.replace(/[^a-z0-9.-]+/gi, "_")}-${mode}-${new Date().toISOString().slice(0, 10)}`;
-  const meta = { split, mode, model: chat.id, commit: git("git rev-parse --short HEAD"), dirty: git("git status --porcelain -- . ':!eval/results' ':!.cache'") !== "", dataset: dataPath.replace(root + "/", ""), dataset_sha256: datasetSha, n, date: new Date().toISOString(), temperature: "per adapter (see packages/llm)" };
+  const meta = { split, mode, model: chat.id, commit: git("git rev-parse --short HEAD"), dirty: git("git status --porcelain -- . ':!eval/results' ':!.cache'") !== "", dataset: dataPath.replace(root + "/", ""), dataset_sha256: datasetSha, n, date: new Date().toISOString(), scorer_version: 2, seed_sha256: hashFiles(["apps/wallet-api/src/seed.ts", "apps/wallet-api/src/db.ts", "apps/wallet-api/src/fees.ts"]), prompt_sha256: hashFiles(["packages/llm/src/prompt.ts", "packages/llm/src/kurdish.ts", "packages/llm/src/tools.ts", "packages/core/src/schema.ts"]), scorer_sha256: hashFiles(["eval/src/run.ts", "eval/src/case.ts", "eval/src/score.ts", "eval/src/safety-metrics.ts"]), configuration: { primary: process.env.LLM_PROVIDER ?? "anthropic", fallbacks: process.env.LLM_FALLBACKS ?? "", response_cache: process.env.LLM_CACHE === "1", temperature: (process.env.LLM_PROVIDER ?? "anthropic") === "anthropic" ? "provider default (omitted)" : 0, concurrency: conc }, source_sha256: hashFiles(git("git ls-files apps packages eval/src").split("\n").filter((p) => /\.(ts|tsx|json)$/.test(p))) };
   mkdirSync(resolve(root, "eval/results"), { recursive: true });
   writeFileSync(resolve(root, `eval/results/${tag}.json`), JSON.stringify({ meta, metrics, categories: cats, cases: results }, null, 2));
   const failures = results.filter((r) => !r.e2e);
   const md = [
     `# Eval ${tag}`, "", `model \`${meta.model}\` · mode \`${mode}\` · split \`${split}\` · n=${n} · commit \`${meta.commit}\`${meta.dirty ? " (dirty)" : ""} · dataset sha256 \`${datasetSha.slice(0, 16)}…\``, "",
-    `Labels: ${split.endsWith("-ku") ? "three Claude labellers (opus, sonnet, haiku)" : split === "heldout2" ? "three Claude labellers (fable, sonnet, haiku)" : "three LLM labellers (agy, fable, haiku)"}, adjudicated; no human labeller (docs/19).`, "",
+    `Labels: ${split === "readiness-dev" ? "AI-authored developer fixtures against seed, including subsequent actions" : split.endsWith("-ku") ? "three Claude labellers (opus, sonnet, haiku), adjudicated" : split === "heldout2" ? "three Claude labellers (fable, sonnet, haiku), adjudicated" : "three LLM labellers (agy, fable, haiku), adjudicated"}; no human labeller (docs/19).`, "",
     "| Metric | Value (Wilson 95% CI) |", "|---|---|",
-    `| State accuracy, first turn | ${fmtRate(metrics.state_accuracy_first_turn)} |`, `| All slots correct, first turn | ${fmtRate(metrics.all_slots_correct_first_turn)} |`,
+    `| State accuracy, first turn | ${fmtRate(metrics.state_accuracy_first_turn)} |`, `| State and payload accuracy, first turn (composite) | ${fmtRate(metrics.state_and_payload_accuracy_first_turn)} |`,
     `| Intent accuracy | ${fmtRate(metrics.intent_accuracy)} |`, `| Ambiguity recall | ${fmtRate(metrics.ambiguity_recall)} |`, `| Ambiguity precision | ${fmtRate(metrics.ambiguity_precision)} |`,
-    `| End-to-end completion | ${fmtRate(metrics.e2e_completion)} |`, `| S1 unsafe execution | ${metrics.unsafe_execution_S1.events}/${n}, upper 95% bound ${(metrics.unsafe_execution_S1.upper95_rule_of_three * 100).toFixed(1)}% |`,
-    `| Card shown on must-not-execute case | ${fmtRate(metrics.unsafe_card_on_must_not_execute)} |`, `| p50 / p95 latency to card | ${metrics.latency_ms_to_card.p50} / ${metrics.latency_ms_to_card.p95} ms |`,
+    ...Object.entries(metrics.slots_first_turn).map(([key, value]) => `| First-turn ${key} on labelled payment cards | ${fmtRate(value)} |`),
+    `| End-to-end completion | ${fmtRate(metrics.e2e_completion)} |`, `| S1 unsafe execution | ${fmtRate(metrics.unsafe_execution_S1)}; events=${metrics.unsafe_execution_S1.events} |`,
+    `| No-confirm bypass across all cases | ${fmtRate(metrics.confirmation_bypass_S2)} |`,
+    `| Alternative-state cases scored on no-confirm safety only | ${metrics.safety_only_cases} |`,
+    `| Later actions without independent labels (not complete E2E) | ${metrics.unlabelled_queued_cases} |`,
+    `| Card shown on must-not-execute case | ${fmtRate(metrics.unsafe_card_on_must_not_execute)} |`, `| p50 / p95 request to actual card (incl. clarification computation, excludes human time) | ${metrics.latency_ms_to_card.p50} / ${metrics.latency_ms_to_card.p95} ms, n=${metrics.latency_ms_to_card.n} |`,
+    `| p50 / p95 first response (all states) | ${metrics.latency_ms_first_response.p50} / ${metrics.latency_ms_first_response.p95} ms |`,
     `| LLM errors | ${metrics.llm_errors} |`, `| Tokens (billed at normal rate / output / cache read / cache write) | ${metrics.usage_total.input} / ${metrics.usage_total.output} / ${metrics.usage_total.cacheRead} / ${metrics.usage_total.cacheWrite} |`, "",
     "| Category | e2e | n |", "|---|---|---|", ...cats.map((x) => `| ${x.category} | ${x.e2e} | ${x.n} |`), "",
     `## Failures (${failures.length})`, ...failures.map((r) => `- ${r.id} [${r.category}] «${r.text}» → ${r.failure}${r.llm_error ? ` (llm error: ${r.llm_error.slice(0, 120)})` : ""}`), "",

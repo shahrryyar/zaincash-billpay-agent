@@ -36,6 +36,17 @@ describe("scoreStage", () => {
     expect(scoreStage({ final_state: "FAILED_SAFE", accept_states: ["FAILED_SAFE"] }, o).stateOk).toBe(false);
   });
   it("plainId strips the low-profile suffix", () => { expect(plainId("c_x__low")).toBe("c_x"); expect(plainId(null)).toBeNull(); });
+  it("a safe state with the wrong failure reason fails", () => {
+    const e = { final_state: "FAILED_SAFE", failure_code: "INSUFFICIENT_BALANCE" };
+    expect(scoreStage(e, { ...obs, phase: "FAILED_SAFE", failureCode: "BILLER_UNAVAILABLE" }).fullOk).toBe(false);
+    expect(scoreStage(e, { ...obs, phase: "FAILED_SAFE", failureCode: "INSUFFICIENT_BALANCE" }).fullOk).toBe(true);
+    expect(scoreStage({ final_state: "FAILED_SAFE", failure_code: "OUT_OF_SCOPE" }, { ...obs, phase: "FAILED_SAFE", failureCode: "out_of_scope" }).fullOk).toBe(true);
+  });
+  it("read-only answers need the expected wallet facts", () => {
+    const e = { final_state: "ANSWERED", reply_includes: ["200,000"] };
+    expect(scoreStage(e, { ...obs, phase: "ANSWERED", reply: "رصيدك 500,000" }).fullOk).toBe(false);
+    expect(scoreStage(e, { ...obs, phase: "ANSWERED", reply: "رصيدك 200,000" }).fullOk).toBe(true);
+  });
 });
 
 describe("scheduled cards", () => {
