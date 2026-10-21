@@ -183,7 +183,7 @@ export function PhoneApp() {
     <main className="min-h-dvh flex items-center justify-center md:p-6">
       <div className="relative flex flex-col w-full max-w-[430px] h-dvh md:h-[880px] md:max-h-[94dvh] bg-[var(--paper)] md:rounded-[34px] md:border-[10px] md:border-[#1b1f1d] overflow-hidden shadow-2xl">
         <header className="bg-[var(--ink)] text-white px-4 pt-4 pb-3">
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <h1 className="text-lg font-bold">{tt("ui_title")}</h1>
             <div role="group" aria-label={tt("ui_language")} className="flex shrink-0 rounded-full border border-white/40 p-0.5">
               {LANGS.map((l) => (
@@ -193,7 +193,7 @@ export function PhoneApp() {
             </div>
           </div>
           <span className="mt-1 inline-block rounded-full bg-[#ffe8a3] text-[#5c3b00] text-xs font-bold px-2.5 py-1">{tt("ui_demo_badge")}</span>
-          <div className="mt-2 flex items-end justify-between">
+          <div className="mt-2 flex flex-wrap items-end justify-between gap-2">
             <div>
               <div className="text-sm opacity-80">{tt("ui_balance")}</div>
               <div className="text-2xl font-bold nums" aria-live="polite">{wallet ? `${fmt(wallet.balance_iqd)} ${tt("ui_currency")}` : "…"}</div>
@@ -359,9 +359,9 @@ export function PhoneApp() {
           </div>
         )}
 
-        <form onSubmit={(e) => { e.preventDefault(); send(text); }} className="flex items-center gap-2 border-t border-[var(--line)] bg-white px-3 py-2.5">
+        <form onSubmit={(e) => { e.preventDefault(); send(text); }} className="flex flex-wrap items-center gap-2 border-t border-[var(--line)] bg-white px-3 py-2.5">
           <label htmlFor="msg" className="sr-only">{tt("ui_placeholder")}</label>
-          <input id="msg" ref={inputRef} value={text} onChange={(e) => setText(e.target.value)} autoComplete="off" enterKeyHint="send" placeholder={tt("ui_placeholder")} className="flex-1 min-w-0 min-h-12 rounded-full border-2 border-[var(--line)] bg-[var(--paper)] px-4 outline-none focus:border-[var(--accent)]" />
+          <input id="msg" ref={inputRef} value={text} onChange={(e) => setText(e.target.value)} autoComplete="off" enterKeyHint="send" placeholder={tt("ui_placeholder")} className="flex-1 basis-40 min-w-0 min-h-12 rounded-full border-2 border-[var(--line)] bg-[var(--paper)] px-4 outline-none focus:border-[var(--accent)]" />
           {voice?.enabled && !text.trim() && <MicButton lang={lang} maxSeconds={voice.max_seconds} disabled={busy} onWav={(w) => void sendVoice(w)} onProblem={micProblem} />}
           <button type="submit" disabled={busy || !text.trim()} className="min-h-12 min-w-20 rounded-full bg-[var(--accent)] text-white font-bold px-5">{tt("ui_send")}</button>
         </form>

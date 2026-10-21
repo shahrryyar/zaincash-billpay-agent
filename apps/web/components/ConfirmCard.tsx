@@ -25,15 +25,15 @@ export function ConfirmCard({ card, lang = "ar", busy, skewMs = 0, onConfirm, on
   const sched = card.schedule;
 
   const row = (label: string, value: React.ReactNode, strong = false) => (
-    <div className={`flex items-baseline justify-between gap-3 py-1.5 border-b border-[var(--line)] last:border-0 ${strong ? "bg-[#eef7f2] -mx-2 px-2 rounded-lg" : ""}`}>
+    <div className={`flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 py-1.5 border-b border-[var(--line)] last:border-0 ${strong ? "bg-[#eef7f2] -mx-2 px-2 rounded-lg" : ""}`}>
       <dt className="text-[var(--muted)] text-base shrink-0">{label}</dt>
-      <dd className="font-semibold text-end">{value}</dd>
+      <dd className="min-w-0 max-w-full break-words font-semibold text-end">{value}</dd>
     </div>
   );
 
   return (
     <section aria-label={card.title} className={`rise rounded-2xl bg-[var(--card)] border-2 ${expired ? "border-[var(--line)] opacity-60" : "border-[var(--accent)]"} p-4 shadow-sm`}>
-      <header className="flex items-center justify-between gap-2 mb-2">
+      <header className="flex flex-wrap items-center justify-between gap-2 mb-2">
         <h2 className="text-xl font-bold">{card.title}</h2>
         <span className="rounded-full bg-[#fff3d6] text-[var(--warn)] px-3 py-0.5 text-sm font-semibold">{card.nothing_sent}</span>
       </header>
@@ -53,7 +53,7 @@ export function ConfirmCard({ card, lang = "ar", busy, skewMs = 0, onConfirm, on
         <p role="note" className="mt-2 rounded-lg bg-[#fff3d6] px-3 py-2 text-[var(--warn)] font-semibold">⚠ {tt("first_time_recipient")}</p>
       )}
       <p className="mt-2 text-[var(--muted)] text-base" aria-live="polite">{expired ? tt("ui_card_expired") : <>⏱ <span className="nums">{mm}</span></>}</p>
-      <div className="mt-3 flex gap-3">
+      <div className="mt-3 flex flex-wrap gap-3">
         <button disabled={busy || expired} onClick={onConfirm} className="flex-1 min-h-14 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] font-bold text-lg px-4">
           {card.labels.confirm}
         </button>

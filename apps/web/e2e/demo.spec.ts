@@ -13,6 +13,23 @@ test.beforeEach(async ({ page }) => {
   await expect(balance(page)).toHaveText("200,000 د.ع");
 });
 
+test("phone at 200% zoom keeps the language controls, payment amount and input within reach", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.evaluate(() => { document.documentElement.style.zoom = "200%"; });
+  const picker = page.getByRole("group", { name: "اللغة" });
+  const bounds = await picker.boundingBox();
+  expect(bounds).not.toBeNull();
+  expect(bounds!.x).toBeGreaterThanOrEqual(0);
+  expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(391);
+  await say(page, "دز خمسين ألف لعلي كريم");
+  const card = page.getByRole("region", { name: "تأكيد التحويل" });
+  await expect(card).toContainText("50,000 د.ع");
+  const overflow = await card.locator("dd").evaluateAll((nodes) => nodes.some((n) => n.scrollWidth > n.clientWidth + 1));
+  expect(overflow).toBe(false);
+  await card.getByRole("button", { name: "إلغاء", exact: true }).click();
+  await expect(balance(page)).toHaveText("200,000 د.ع");
+});
+
 test("hero: two Ahmeds is a question, the pick gives a card, confirm sends once", async ({ page }) => {
   await say(page, "دز خمسين ألف لأحمد");
   await expect(page.getByText("عندك 2 باسم أحمد، ياهو تقصد؟")).toBeVisible();
