@@ -22,7 +22,10 @@ export function anthropicChat(opts: AnthropicOptions): ChatClient {
         model: opts.model,
         max_tokens: req.maxTokens,
         system: systemParam(req),
-        messages: req.messages.map((m) => ({ role: m.role, content: m.content })),
+        messages: req.messages.map((m) => ({ role: m.role, content: m.content.map((b) => {
+          if (b.type !== "tool_use") return b;
+          return { type: b.type, id: b.id, name: b.name, input: b.input };
+        }) })),
         tools: req.tools.map((t) => ({ name: t.name, description: t.description, input_schema: t.input_schema })),
         tool_choice: req.toolChoice === "auto" ? { type: "auto" } : { type: "tool", name: req.toolChoice.name },
       };

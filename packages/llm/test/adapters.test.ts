@@ -73,6 +73,11 @@ describe("Anthropic adapter", () => {
     const client = { messages: { create: async () => { throw Object.assign(new Error("rate"), { status: 429 }); } } };
     await expect(anthropicChat({ client, model: "m" }).complete(req())).rejects.toMatchObject({ status: 429 });
   });
+  it("does not send Gemini-only signatures to Anthropic on a fallback", async () => {
+    const f = fakeClient(resp);
+    await anthropicChat({ client: f.client, model: "m" }).complete(req({ messages: [{ role: "assistant", content: [{ type: "tool_use", id: "t1", name: "get_balance", input: {}, googleThoughtSignature: "opaque-signature" }] }] }));
+    expect(f.calls[0].messages[0].content).toEqual([{ type: "tool_use", id: "t1", name: "get_balance", input: {} }]);
+  });
 });
 
 describe("OpenAI-format adapter (Groq / Gemini / OpenRouter / local)", () => {
@@ -121,10 +126,34 @@ describe("OpenAI-format adapter (Groq / Gemini / OpenRouter / local)", () => {
     expect(r.usage).toEqual({ input: 30, output: 9 });
     expect(r.via).toBe("groq:qwen");
   });
+  it("round-trips Gemini thought signatures on their original tool calls across multiple steps", async () => {
+    const m = mkFetch({ choices: [{ finish_reason: "tool_calls", message: { tool_calls: [
+      { id: "signed", function: { name: "get_balance", arguments: "{}" }, extra_content: { google: { thought_signature: "opaque+/==" } } },
+      { id: "unsigned", function: { name: "get_bills", arguments: "{}" } },
+    ] } }] });
+    const c = openAIChat({ baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai", apiKey: "fake", model: "gemini-test", label: "gemini", fetch: m.fetchFn });
+    const first = await c.complete(req());
+    const messages = [...req().messages, { role: "assistant" as const, content: first.content }, { role: "user" as const, content: [
+      { type: "tool_result" as const, tool_use_id: "signed", content: "{}" },
+      { type: "tool_result" as const, tool_use_id: "unsigned", content: "{}" },
+    ] }];
+    const second = await c.complete(req({ messages }));
+    await c.complete(req({ messages: [...messages, { role: "assistant", content: second.content }] }));
+    for (const index of [1, 2]) {
+      const sent = JSON.parse(m.calls[index]!.init.body).messages[2].tool_calls;
+      expect(sent[0].extra_content).toEqual({ google: { thought_signature: "opaque+/==" } });
+      expect(sent[1]).not.toHaveProperty("extra_content");
+    }
+  });
   it("text-only replies", async () => {
     const r = await chat(mkFetch({ choices: [{ finish_reason: "stop", message: { content: "hello" } }] }).fetchFn).complete(req());
     expect(r.content).toEqual([{ type: "text", text: "hello" }]);
     expect(r.stop).toBe("end");
+  });
+  it("does not forward Gemini signatures to another OpenAI-format provider", async () => {
+    const m = mkFetch(okData);
+    await chat(m.fetchFn).complete(req({ messages: [{ role: "assistant", content: [{ type: "tool_use", id: "t", name: "get_balance", input: {}, googleThoughtSignature: "opaque" }] }] }));
+    expect(JSON.parse(m.calls[0]!.init.body).messages[1].tool_calls[0]).not.toHaveProperty("extra_content");
   });
   it("unparseable tool arguments do not crash: they become an input the schema will reject", async () => {
     const bad = { choices: [{ finish_reason: "tool_calls", message: { tool_calls: [{ id: "c1", function: { name: "propose", arguments: "{oops" } }] } }] };

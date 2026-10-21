@@ -3,7 +3,8 @@
 
 export type Block =
   | { type: "text"; text: string }
-  | { type: "tool_use"; id: string; name: string; input: unknown }
+  // Opaque Gemini continuation metadata. Never shown to users or treated as intent.
+  | { type: "tool_use"; id: string; name: string; input: unknown; googleThoughtSignature?: string }
   | { type: "tool_result"; tool_use_id: string; content: string; is_error?: boolean };
 
 export type Msg = { role: "user" | "assistant"; content: Block[] };
