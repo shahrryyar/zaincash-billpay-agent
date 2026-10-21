@@ -1,0 +1,60 @@
+{
+  "date": "2026-10-21T18:18:53.148Z",
+  "base": "http://localhost:3000",
+  "models": [
+    "gemini:gemini-3.5-flash-lite"
+  ],
+  "checks": [
+    {
+      "name": "two Ahmeds ask; typed yes does not pay; confirmation and replay debit once",
+      "pass": true,
+      "ms": 294
+    },
+    {
+      "name": "editing a pending amount invalidates the old card",
+      "pass": false,
+      "ms": 2252,
+      "error": "Expected values to be strictly equal:\n\n50000 !== 25000\n"
+    },
+    {
+      "name": "timeout after commit returns one debit and one stable receipt",
+      "pass": true,
+      "ms": 2934
+    },
+    {
+      "name": "biller down and insufficient funds keep the wallet unchanged",
+      "pass": false,
+      "ms": 1981,
+      "error": "Expected values to be strictly equal:\n+ actual - expected\n\n+ 'IDLE'\n- 'FAILED_SAFE'\n"
+    },
+    {
+      "name": "two actions require two approvals with independent amounts",
+      "pass": false,
+      "ms": 2426,
+      "error": "Cannot read properties of null (reading 'amount_iqd')"
+    },
+    {
+      "name": "scheduled transfer: approval moves nothing; due runner pays once",
+      "pass": false,
+      "ms": 2360,
+      "error": "Cannot read properties of null (reading 'schedule')"
+    },
+    {
+      "name": "vague scheduled time asks for an hour",
+      "pass": false,
+      "ms": 2198,
+      "error": "Expected values to be strictly equal:\n+ actual - expected\n\n+ 'IDLE'\n- 'CLARIFYING'\n"
+    },
+    {
+      "name": "bad WAV fails without affecting the typed-text path",
+      "pass": true,
+      "ms": 109
+    },
+    {
+      "name": "real ASR upload is read back before the model; accepting non-payment speech sends nothing",
+      "pass": true,
+      "ms": 5097
+    }
+  ],
+  "note": "Live local-web transport/behaviour checks; public audio is not a consented payment-accuracy set. Screenshots/rehearsal video live in .cache/readiness."
+}

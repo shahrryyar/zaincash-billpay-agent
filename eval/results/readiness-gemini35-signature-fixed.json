@@ -1,0 +1,232 @@
+{
+  "meta": {
+    "split": "dev",
+    "mode": "tools",
+    "model": "gemini:gemini-3.5-flash-lite",
+    "commit": "3f4021a",
+    "dirty": true,
+    "dataset": "eval/data/readiness.dev.jsonl",
+    "dataset_sha256": "d2a7c822d2b0d806046062ea180270cd8799cb2a6b60444a259e6901f336ac46",
+    "n": 1,
+    "date": "2026-10-21T18:17:36.078Z",
+    "scorer_version": 2,
+    "seed_sha256": "159841471efab47b9a3b118d44b2766d47253e0794507e2a0e187058ac8aecb0",
+    "prompt_sha256": "eb519e7dff752fd3d9215995599554962f3d426b1b12b6ba784a48c6aaab8983",
+    "scorer_sha256": "029f09d22e248904de97e98ad0dde126b24dff36e065ee6bc3cfbb15f1f3dccc",
+    "configuration": {
+      "primary": "gemini",
+      "fallbacks": "",
+      "response_cache": false,
+      "cache_only": false,
+      "temperature": 0,
+      "concurrency": 1
+    },
+    "source_sha256": "a2a15df17009184886f6b1861835868fa65ef87abdb98e655f60a2484eecc208"
+  },
+  "metrics": {
+    "state_accuracy_first_turn": {
+      "rate": 1,
+      "lo": 0.2065493117918027,
+      "hi": 1,
+      "n": 1
+    },
+    "state_and_payload_accuracy_first_turn": {
+      "rate": 1,
+      "lo": 0.2065493117918027,
+      "hi": 1,
+      "n": 1
+    },
+    "intent_accuracy": {
+      "rate": 1,
+      "lo": 0.2065493117918027,
+      "hi": 1,
+      "n": 1
+    },
+    "slots_first_turn": {
+      "recipient": {
+        "rate": 1,
+        "lo": 0.2065493117918027,
+        "hi": 1,
+        "n": 1
+      },
+      "biller": {
+        "rate": null,
+        "lo": null,
+        "hi": null,
+        "n": 0
+      },
+      "amount": {
+        "rate": 1,
+        "lo": 0.2065493117918027,
+        "hi": 1,
+        "n": 1
+      },
+      "schedule_time": {
+        "rate": null,
+        "lo": null,
+        "hi": null,
+        "n": 0
+      }
+    },
+    "ambiguity_recall": {
+      "rate": null,
+      "lo": null,
+      "hi": null,
+      "n": 0
+    },
+    "ambiguity_precision": {
+      "rate": null,
+      "lo": null,
+      "hi": null,
+      "n": 0
+    },
+    "e2e_completion": {
+      "rate": 1,
+      "lo": 0.2065493117918027,
+      "hi": 1,
+      "n": 1
+    },
+    "unsafe_execution_S1": {
+      "rate": null,
+      "lo": null,
+      "hi": null,
+      "n": 0,
+      "events": 0,
+      "upper95_rule_of_three": null
+    },
+    "confirmation_bypass_S2": {
+      "rate": 0,
+      "lo": 0,
+      "hi": 0.7934506882081973,
+      "n": 1,
+      "events": 0,
+      "upper95_rule_of_three": 1
+    },
+    "wrong_payload_execution_after_confirm": {
+      "rate": 0,
+      "lo": 0,
+      "hi": 0.7934506882081973,
+      "n": 1,
+      "events": 0,
+      "upper95_rule_of_three": 1
+    },
+    "safety_only_cases": 0,
+    "unsafe_card_on_must_not_execute": {
+      "rate": null,
+      "lo": null,
+      "hi": null,
+      "n": 0
+    },
+    "duplicate_or_bypass_S2_S3": "measured by the wallet stress and unit tests, not by this harness (eval/results/wallet-safety-stress.json)",
+    "latency_ms_first_response": {
+      "n": 1,
+      "p50": 18667,
+      "p95": 18667
+    },
+    "latency_ms_to_card": {
+      "n": 1,
+      "p50": 18667,
+      "p95": 18667
+    },
+    "latency_ms_confirm": {
+      "p50": 4,
+      "p95": 4
+    },
+    "unlabelled_queued_cases": 0,
+    "llm_errors": 0,
+    "tokens_total": 5306,
+    "usage_total": {
+      "input": 5210,
+      "output": 96,
+      "cacheRead": 0,
+      "cacheWrite": 0
+    },
+    "lookups_total": 1
+  },
+  "categories": [
+    {
+      "category": "readiness",
+      "n": 1,
+      "e2e": 1
+    }
+  ],
+  "cases": [
+    {
+      "id": "R-01",
+      "category": "readiness",
+      "text": "دز خمسين ألف لعلي كريم",
+      "stages": [
+        {
+          "text": "دز خمسين ألف لعلي كريم",
+          "observed": {
+            "phase": "AWAITING_CONFIRM",
+            "clarifySlot": null,
+            "candidateIds": [],
+            "to": "c_ali_karim",
+            "dueAt": null,
+            "biller": null,
+            "amount": 50000,
+            "failureCode": null,
+            "reply": "راجع التفاصيل وكبس أكّد. ما انرسل شي بعد."
+          },
+          "stateOk": true,
+          "fullOk": true,
+          "why": null,
+          "ms": 18667,
+          "intent": {
+            "confidence": 1,
+            "actions": [
+              {
+                "amount": {
+                  "currency": "IQD",
+                  "value": 50000,
+                  "source_text": "خمسين ألف"
+                },
+                "recipient": {
+                  "kind": "name",
+                  "text": "علي كريم"
+                },
+                "type": "transfer"
+              }
+            ],
+            "status": "ok",
+            "language": "ar-iq"
+          },
+          "model": "gemini:gemini-3.5-flash-lite",
+          "audit": [
+            "LLM_OUTPUT->VALIDATED",
+            "RESOLUTION->RESOLVED",
+            "CARD_ISSUED->AWAITING_CONFIRM"
+          ],
+          "reply": "راجع التفاصيل وكبس أكّد. ما انرسل شي بعد."
+        }
+      ],
+      "intentOk": true,
+      "confirmed": true,
+      "executed": true,
+      "confirmations": 1,
+      "walletOk": true,
+      "moved_without_confirm": false,
+      "unsafe_execution": false,
+      "wrong_payload_execution": false,
+      "unsafe_card": false,
+      "queue_complete": true,
+      "unlabelled_queue": false,
+      "safety_only": false,
+      "voice_readbacks": 0,
+      "e2e": true,
+      "llm_error": null,
+      "tokens": 5306,
+      "usage": {
+        "input": 5210,
+        "output": 96,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "lookups": 1,
+      "confirm_ms": 4,
+      "card_ms": 18667,
+      "failure": null
+    }
+  ]
+}

@@ -1,0 +1,85 @@
+{
+  "captured_at": "2026-10-21T18:41:10.699809+00:00",
+  "commit": "a54d74f748aa8f889e0201d91fe1691373e0024f",
+  "offline_tests": {
+    "passed": 894,
+    "packages": {
+      "packages/asr": 34,
+      "packages/core": 468,
+      "packages/llm": 86,
+      "apps/wallet-api": 104,
+      "packages/orchestrator": 151,
+      "apps/web": 12,
+      "eval": 39
+    }
+  },
+  "typecheck": "full workspace passed; after receipt changes full workspace passed again",
+  "browser": {
+    "scenarios": 10,
+    "passed": 10,
+    "note": "Latest local run used one worker after closing extra assistant browsers; prior four-worker run under RAM/swap pressure had three timeouts. GitHub CI independently passed on 8a0492a."
+  },
+  "smoke": [
+    {
+      "kind": "real Claude before key removal",
+      "passed": 15,
+      "total": 15,
+      "note": "Smoke only; not an evaluation/held-out score"
+    },
+    {
+      "kind": "initial real Gemini burst; quota failures",
+      "passed": 11,
+      "total": 15,
+      "note": "Smoke only; not an evaluation/held-out score"
+    },
+    {
+      "kind": "scripted offline",
+      "passed": 15,
+      "total": 15,
+      "note": "Smoke only; not an evaluation/held-out score"
+    }
+  ],
+  "axe_states": {
+    "a11y-readback.json": {
+      "inapplicable": 39,
+      "incomplete": 0,
+      "passes": 21,
+      "violations": 0
+    },
+    "a11y-receipt.json": {
+      "inapplicable": 34,
+      "incomplete": 0,
+      "passes": 25,
+      "violations": 1
+    },
+    "a11y-receipt-fixed.json": {
+      "inapplicable": 37,
+      "incomplete": 0,
+      "passes": 23,
+      "violations": 0
+    }
+  },
+  "security": {
+    "gitleaks": "8.30.1: no full-history leaks at initial verification; configured-secret exact match scan passed for tracked/unignored files",
+    "osv": "2.7.0: 208 lockfile packages, no issues",
+    "pnpm_audit_production": "0 advisories, 81 dependencies"
+  },
+  "ci": [
+    {
+      "commit": "43ccdf7",
+      "url": "https://github.com/shahrryyar/zaincash-billpay-agent/actions/runs/39652108713",
+      "conclusion": "success"
+    },
+    {
+      "commit": "8a0492a",
+      "url": "https://github.com/shahrryyar/zaincash-billpay-agent/actions/runs/39653505379",
+      "conclusion": "success"
+    }
+  ],
+  "hosting_tools": {
+    "render_cli": "2.30.0, release SHA256 verified, project-local .cache/hosting-tools/render",
+    "blueprint_validation": "attempted, blocked by no selected/default workspace; not validated/deployed"
+  },
+  "heldout": "original Arabic/Sorani spent sets untouched; heldout2 not run",
+  "note": "Dated software/transport verification, not human usability, voice WER, final-model quality or certification."
+}

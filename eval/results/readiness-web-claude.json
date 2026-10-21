@@ -1,0 +1,55 @@
+{
+  "date": "2026-10-21T18:02:55.297Z",
+  "base": "http://localhost:3000",
+  "models": [
+    "anthropic:claude-haiku-5-5"
+  ],
+  "checks": [
+    {
+      "name": "two Ahmeds ask; typed yes does not pay; confirmation and replay debit once",
+      "pass": true,
+      "ms": 299
+    },
+    {
+      "name": "editing a pending amount invalidates the old card",
+      "pass": true,
+      "ms": 95
+    },
+    {
+      "name": "timeout after commit returns one debit and one stable receipt",
+      "pass": true,
+      "ms": 2883
+    },
+    {
+      "name": "biller down and insufficient funds keep the wallet unchanged",
+      "pass": true,
+      "ms": 65
+    },
+    {
+      "name": "two actions require two approvals with independent amounts",
+      "pass": true,
+      "ms": 55
+    },
+    {
+      "name": "scheduled transfer: approval moves nothing; due runner pays once",
+      "pass": true,
+      "ms": 73
+    },
+    {
+      "name": "vague scheduled time asks for an hour",
+      "pass": true,
+      "ms": 18
+    },
+    {
+      "name": "bad WAV fails without affecting the typed-text path",
+      "pass": true,
+      "ms": 86
+    },
+    {
+      "name": "real ASR upload is read back before the model; accepting non-payment speech sends nothing",
+      "pass": true,
+      "ms": 4289
+    }
+  ],
+  "note": "Live local-web transport/behaviour checks; public audio is not a consented payment-accuracy set. Screenshots/rehearsal video live in .cache/readiness."
+}
