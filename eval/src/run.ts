@@ -7,7 +7,8 @@ import { execSync } from "node:child_process";
 import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { chatFromEnv, createUnderstander } from "@zc/llm";
+import { chatFromEnv, createUnderstander, fileStore } from "@zc/llm";
+import { cacheOnlyClient } from "./cache-only";
 import { runCase, type EvalCase as Case, type CaseResult, type Stage } from "./case";
 import { safetyMetrics } from "./safety-metrics";
 import { localToMs } from "./score";
@@ -37,6 +38,7 @@ if (args.get("limit")) cases = cases.slice(0, Number(args.get("limit")));
 
 const isHeldout = split.startsWith("heldout"); // heldout (spent, commit 1445bff) and heldout2 (fresh, 2026-10-19)
 if (isHeldout) {
+  if (args.has("cache-only")) { console.error("Refusing: offline cache replay is for development, never held-out."); process.exit(3); }
   const shaFile = resolve(root, `eval/data/${split}.sha256`);
   if (!args.has("allow-heldout")) { console.error("Refusing: held-out is run once. Pass --allow-heldout (and see docs/12)."); process.exit(3); }
   if (!existsSync(shaFile) || !readFileSync(shaFile, "utf8").startsWith(datasetSha)) { console.error(`Refusing: held-out file does not match eval/data/${split}.sha256 (frozen hash).`); process.exit(3); }
@@ -51,7 +53,9 @@ if (isHeldout) {
 
 const hashFiles = (paths: string[]): string => { const h = createHash("sha256"); for (const p of [...paths].sort()) h.update(p).update("\0").update(readFileSync(resolve(root, p))).update("\0"); return h.digest("hex"); };
 const git = (c: string) => { try { return execSync(c, { cwd: root, encoding: "utf8" }).trim(); } catch { return "unknown"; } };
-const { chat, description } = chatFromEnv(process.env, { cacheDir: resolve(root, ".cache/llm") });
+const { chat, description } = args.has("cache-only")
+  ? { chat: cacheOnlyClient(args.get("cache-client-id") ?? `anthropic:${process.env.LLM_MODEL || "claude-haiku-5-5"}`, fileStore(resolve(root, ".cache/llm"))), description: ["OFFLINE CACHE REPLAY ONLY: no provider calls; a missing response fails closed."] }
+  : chatFromEnv(process.env, { cacheDir: resolve(root, ".cache/llm") });
 console.log(description.join("\n"));
 
 async function main() {
@@ -112,12 +116,13 @@ async function main() {
     usage_total: results.reduce((a, r) => ({ input: a.input + r.usage.input, output: a.output + r.usage.output, cacheRead: a.cacheRead + r.usage.cacheRead, cacheWrite: a.cacheWrite + r.usage.cacheWrite }), { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }), lookups_total: results.reduce((a, r) => a + r.lookups, 0),
   };
   const cats = [...new Set(results.map((r) => r.category))].sort().map((cat) => { const rs = results.filter((r) => r.category === cat); return { category: cat, n: rs.length, e2e: rs.filter((r) => r.e2e).length }; });
-  const meta = { split, mode, model: chat.id, commit: git("git rev-parse --short HEAD"), dirty: git("git status --porcelain -- . ':!eval/results' ':!.cache'") !== "", dataset: dataPath.replace(root + "/", ""), dataset_sha256: datasetSha, n, date: new Date().toISOString(), scorer_version: 2, seed_sha256: hashFiles(["apps/wallet-api/src/seed.ts", "apps/wallet-api/src/db.ts", "apps/wallet-api/src/fees.ts"]), prompt_sha256: hashFiles(["packages/llm/src/prompt.ts", "packages/llm/src/kurdish.ts", "packages/llm/src/tools.ts", "packages/core/src/schema.ts"]), scorer_sha256: hashFiles(["eval/src/run.ts", "eval/src/case.ts", "eval/src/score.ts", "eval/src/safety-metrics.ts"]), configuration: { primary: process.env.LLM_PROVIDER ?? "anthropic", fallbacks: process.env.LLM_FALLBACKS ?? "", response_cache: process.env.LLM_CACHE === "1", temperature: (process.env.LLM_PROVIDER ?? "anthropic") === "anthropic" ? "provider default (omitted)" : 0, concurrency: conc }, source_sha256: hashFiles(git("git ls-files apps packages eval/src").split("\n").filter((p) => /\.(ts|tsx|json)$/.test(p))) };
+  const meta = { split, mode, model: chat.id, commit: git("git rev-parse --short HEAD"), dirty: git("git status --porcelain -- . ':!eval/results' ':!.cache'") !== "", dataset: dataPath.replace(root + "/", ""), dataset_sha256: datasetSha, n, date: new Date().toISOString(), scorer_version: 2, seed_sha256: hashFiles(["apps/wallet-api/src/seed.ts", "apps/wallet-api/src/db.ts", "apps/wallet-api/src/fees.ts"]), prompt_sha256: hashFiles(["packages/llm/src/prompt.ts", "packages/llm/src/kurdish.ts", "packages/llm/src/tools.ts", "packages/core/src/schema.ts"]), scorer_sha256: hashFiles(["eval/src/run.ts", "eval/src/case.ts", "eval/src/score.ts", "eval/src/safety-metrics.ts", "eval/src/cache-only.ts"]), configuration: { primary: process.env.LLM_PROVIDER ?? "anthropic", fallbacks: process.env.LLM_FALLBACKS ?? "", request_interval_ms: Number(process.env.LLM_REQUEST_INTERVAL_MS ?? 0), response_cache: args.has("cache-only") || process.env.LLM_CACHE === "1", cache_only: args.has("cache-only"), temperature: (process.env.LLM_PROVIDER ?? "anthropic") === "anthropic" ? "provider default (omitted)" : 0, concurrency: conc }, source_sha256: hashFiles(git("git ls-files apps packages eval/src").split("\n").filter((p) => /\.(ts|tsx|json)$/.test(p))) };
   mkdirSync(resolve(root, "eval/results"), { recursive: true });
   writeFileSync(resolve(root, `eval/results/${tag}.json`), JSON.stringify({ meta, metrics, categories: cats, cases: results }, null, 2));
   const failures = results.filter((r) => !r.e2e);
   const md = [
     `# Eval ${tag}`, "", `model \`${meta.model}\` · mode \`${mode}\` · split \`${split}\` · n=${n} · commit \`${meta.commit}\`${meta.dirty ? " (dirty)" : ""} · dataset sha256 \`${datasetSha.slice(0, 16)}…\``, "",
+    `Run kind: ${args.has("cache-only") ? "OFFLINE CACHE REPLAY — no new model-quality, availability or provider-latency claim" : process.env.LLM_CACHE === "1" ? "cache enabled; may reuse stored model responses" : "fresh provider requests; no local response cache"}. Request pacing: ${process.env.LLM_REQUEST_INTERVAL_MS ?? "0"} ms per provider/process.`, "",
     `Labels: ${split === "readiness-dev" ? "AI-authored developer fixtures against seed, including subsequent actions" : split.endsWith("-ku") ? "three Claude labellers (opus, sonnet, haiku), adjudicated" : split === "heldout2" ? "three Claude labellers (fable, sonnet, haiku), adjudicated" : "three LLM labellers (agy, fable, haiku), adjudicated"}; no human labeller (docs/19).`, "",
     "| Metric | Value (Wilson 95% CI) |", "|---|---|",
     `| State accuracy, first turn | ${fmtRate(metrics.state_accuracy_first_turn)} |`, `| State and payload accuracy, first turn (composite) | ${fmtRate(metrics.state_and_payload_accuracy_first_turn)} |`,

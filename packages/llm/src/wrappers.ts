@@ -9,6 +9,26 @@ export const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export class BudgetExceededError extends Error {}
 
+/** Space provider request starts, including retries. Process-local, not a cross-process quota guarantee. */
+export function withPacing(inner: ChatClient, o: { intervalMs: number; now?: () => number; sleep?: (ms: number) => Promise<void> }): ChatClient {
+  if (!Number.isFinite(o.intervalMs) || o.intervalMs < 0 || o.intervalMs > 60000) throw new Error("request interval must be in 0..60000 ms");
+  const now = o.now ?? Date.now, nap = o.sleep ?? sleep;
+  let gate = Promise.resolve(), nextAt = 0;
+  return {
+    id: inner.id,
+    async complete(req) {
+      const slot = gate.then(async () => {
+        const delay = nextAt - now();
+        if (delay > 0) await nap(delay);
+        nextAt = now() + o.intervalMs;
+      });
+      gate = slot.catch(() => {});
+      await slot;
+      return inner.complete(req);
+    },
+  };
+}
+
 const isRetryable = (e: unknown) => {
   const s = (e as { status?: number })?.status;
   // Network-level failures carry no HTTP status. The Anthropic SDK does not set `name` on them, so look at the class
@@ -82,7 +102,7 @@ export function fileStore(dir: string): CacheStore {
 
 export const cacheKey = (id: string, req: CompleteRequest) => createHash("sha256").update(JSON.stringify({ id, req })).digest("hex");
 
-/** Dev/eval cache: identical (model, request) is answered from disk and costs no tokens. temperature is 0, so this is sound. */
+/** Dev/eval replay: identical (model, request) is answered from disk and costs no tokens. A replay is not a fresh model sample. */
 export function withCache(inner: ChatClient, store: CacheStore): ChatClient & { stats: { hits: number; misses: number } } {
   const stats = { hits: 0, misses: 0 };
   return {

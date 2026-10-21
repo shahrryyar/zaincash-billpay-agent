@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { withBudget, withCache, withFallback, withRetry, memoryStore, fileStore, cacheKey, BudgetExceededError } from "../src/wrappers";
+import { withBudget, withCache, withFallback, withRetry, withPacing, memoryStore, fileStore, cacheKey, BudgetExceededError } from "../src/wrappers";
 import { ProviderError } from "../src/openai";
 import type { ChatClient, CompleteRequest } from "../src/types";
 import { mkdtempSync, rmSync } from "node:fs";
@@ -16,6 +16,21 @@ const failing = (id: string, status: number): ChatClient & { n: number } => {
   return c;
 };
 const noSleep = async () => {};
+
+describe("withPacing: process-local free-tier request spacing", () => {
+  it("spaces concurrent starts and counts retried failures too", async () => {
+    let now = 0;
+    const starts: number[] = [];
+    const inner: ChatClient = { id: "x", async complete() { starts.push(now); if (starts.length === 1) throw new ProviderError("quota", 429); return ok("x").complete(REQ); } };
+    const paced = withPacing(inner, { intervalMs: 5000, now: () => now, sleep: async (ms) => { now += ms; } });
+    await withRetry(paced, { retries: 1, sleep: noSleep }).complete(REQ);
+    await Promise.all([paced.complete(REQ), paced.complete(REQ)]);
+    expect(starts).toEqual([0, 5000, 10000, 15000]);
+  });
+  it("rejects invalid intervals rather than silently disabling the guard", () => {
+    for (const intervalMs of [-1, NaN, Infinity, 60001]) expect(() => withPacing(ok("x"), { intervalMs })).toThrow(/interval/);
+  });
+});
 
 describe("withRetry: exponential backoff on 429/5xx only", () => {
   it("retries a 429 then succeeds", async () => {

@@ -1,13 +1,16 @@
 // Opt-in checks against the running REAL web app. Only synthetic per-session wallets are touched.
-// pnpm --filter @zc/eval check:web -- --base http://localhost:3000 [--audio /public/sample.wav]
+// pnpm --filter @zc/eval check:web -- --base http://localhost:3000 [--audio /public/sample.wav] [--tag unique-name]
 import assert from "node:assert/strict";
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const av = process.argv.slice(2), arg = (name: string) => av[av.indexOf(`--${name}`) + 1];
 const base = av.includes("--base") ? arg("base")! : "http://localhost:3000";
+const resultsDir = fileURLToPath(new URL("../results/", import.meta.url));
+const tag = av.includes("--tag") ? arg("tag")! : `readiness-web-${new Date().toISOString().replace(/[:.]/g, "-")}`;
+if (!/^[a-z0-9._-]+$/i.test(tag) || existsSync(resolve(resultsDir, `${tag}.json`))) throw new Error("Use a new plain result tag; existing evidence is never overwritten");
 const checks: { name: string; pass: boolean; ms: number; error?: string }[] = [];
 const models = new Set<string>();
 const post = async (path: string, body: unknown) => {
@@ -93,7 +96,6 @@ if (av.includes("--audio")) await check("real ASR upload is read back before the
   const accepted = await post("/api/turn", { session_id: s, lang: "ku", readback: "accept" });
   assert.equal(accepted.reply.card, null); assert.equal(accepted.wallet.balance_iqd, 200000);
 });
-const resultsDir = fileURLToPath(new URL("../results/", import.meta.url));
 mkdirSync(resultsDir, { recursive: true });
-writeFileSync(resolve(resultsDir, "readiness-web.json"), JSON.stringify({ date: new Date().toISOString(), base, models: [...models], checks, note: "Live local-web transport/behaviour checks; public audio is not a consented payment-accuracy set. Screenshots/rehearsal video live in .cache/readiness." }, null, 2));
+writeFileSync(resolve(resultsDir, `${tag}.json`), JSON.stringify({ date: new Date().toISOString(), base, models: [...models], checks, note: "Live local-web transport/behaviour checks; public audio is not a consented payment-accuracy set. Screenshots/rehearsal video live in .cache/readiness." }, null, 2));
 process.exitCode = checks.every((c) => c.pass) ? 0 : 1;
