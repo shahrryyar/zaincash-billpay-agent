@@ -41,9 +41,11 @@ jobs:
         run: docker build -t zc-billpay .
       - name: Run it with the scripted model and check health + one turn
         run: |
-          docker run -d --name zc -p 3000:3000 -e LLM_PROVIDER=fake zc-billpay
+          docker run -d --name zc --health-interval=2s -p 3000:3100 -e PORT=3100 -e LLM_PROVIDER=fake zc-billpay
           for i in $(seq 1 30); do curl -sf localhost:3000/api/health && break; sleep 1; done
           curl -sf -X POST localhost:3000/api/turn -H 'content-type: application/json' -d '{"session_id":"ci","text":"ادفع المولدة"}' | grep -q AWAITING_CONFIRM
+          for i in $(seq 1 15); do test "$(docker inspect -f '{{.State.Health.Status}}' zc)" = healthy && break; sleep 1; done
+          test "$(docker inspect -f '{{.State.Health.Status}}' zc)" = healthy
 
   dependencies:
     runs-on: ubuntu-latest
