@@ -62,6 +62,15 @@ describe("parseWhen: incomplete answers become a question, never a guess", () =>
       expect(parseWhen(t, NOW), t).toMatchObject({ kind: "need_time", prior: { date: { y: 2026, m: 10, d: 17 } } });
     ok("باچر الظهر", at(2026, 10, 17, 12));
     ok("باچر الساعة 3 بعد الظهر", at(2026, 10, 17, 15));
+    expect(parseWhen("بعد يومين بعد الظهر", NOW)).toMatchObject({ kind: "need_time", prior: { date: { y: 2026, m: 10, d: 18 } } });
+  });
+  it("an invalid explicit date cannot fall back to the next occurrence of its clock", () => {
+    for (const text of ["31/2 الساعة 9 الصبح", "32/10/2026 الساعة 9 الصبح", "25/13 الساعة 9 الصبح", "يوم 32 الساعة 9 الصبح"])
+      expect(parseWhen(text, NOW), text).toEqual({ kind: "unparsed" });
+  });
+  it("24-hour boundary notation is asked again rather than moved to the start of the wrong date", () => {
+    expect(parseWhen("باچر 24:30", NOW).kind).toBe("need_time");
+    expect(parseWhen("باچر 24:00", NOW).kind).toBe("need_time");
   });
   it("a date without an hour needs the hour", () => {
     const r = parseWhen("باچر", NOW);

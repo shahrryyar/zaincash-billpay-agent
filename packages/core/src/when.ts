@@ -98,8 +98,7 @@ function parseClock(s: string, bareHour = false): Clock | null {
   } else if (NOON.test(s) && !/(?:^| )بعد (?:ال)?ظهر(?: |$)/.test(s) && !/\d/.test(s)) {
     return { hour: 12, minute: 0, meridiem: "noon", clear: true };
   }
-  if (h === undefined || h < 0 || h > 24 || mi < 0 || mi > 59) return null;
-  if (h === 24) h = 0;
+  if (h === undefined || h < 0 || h >= 24 || mi < 0 || mi > 59) return null;
   return { hour: h, minute: mi, ...(mer ? { meridiem: mer } : {}), clear: h === 0 || h >= 13 };
 }
 
@@ -115,7 +114,7 @@ function to24(hour: number, meridiem: Meridiem | undefined, clear: boolean): num
   }
 }
 
-function parseDate(s: string, now: number): { date?: DateParts; weekday?: number; dom?: number; edge?: "end" | "start" } {
+function parseDate(s: string, now: number): { date?: DateParts; weekday?: number; dom?: number; edge?: "end" | "start"; invalid?: boolean } {
   const t = local(now);
   const today: DateParts = { y: t.y, m: t.m, d: t.d };
   if (/(?:^| )بعد (?:باجر|باكر|بكره|بكرا|غد|غدا)(?: |$)/.test(s)) return { date: addDays(today, 2) };
@@ -125,14 +124,14 @@ function parseDate(s: string, now: number): { date?: DateParts; weekday?: number
   if ((m = /(?:^| )(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})(?: |$)/.exec(s))) {
     const y = Number(m[3]) < 100 ? 2000 + Number(m[3]) : Number(m[3]);
     const p = { y, m: Number(m[2]), d: Number(m[1]) };
-    return validDate(p) ? { date: p } : {};
+    return validDate(p) ? { date: p } : { invalid: true };
   }
   if ((m = /(?:^| )(\d{1,2})[/-](\d{1,2})(?: |$)/.exec(s))) {
     const d = Number(m[1]), mo = Number(m[2]);
     let p = { y: t.y, m: mo, d };
-    if (!validDate(p)) return {};
+    if (!validDate(p)) return { invalid: true };
     if (toUtc(p, 23, 59) < now) p = { y: t.y + 1, m: mo, d };
-    return validDate(p) ? { date: p } : {};
+    return validDate(p) ? { date: p } : { invalid: true };
   }
   if (/(?:^| )(?:اخر|نهايه|اخر يوم من) (?:ال)?شهر(?: |$)/.test(s)) return { edge: "end" };
   if (/(?:^| )(?:اول|بدايه) (?:يوم من )?(?:ال)?شهر(?: |$)/.test(s)) return { edge: "start" };
@@ -141,7 +140,7 @@ function parseDate(s: string, now: number): { date?: DateParts; weekday?: number
   }
   if ((m = /(?:^| )(?:يوم|بتاريخ|تاريخ|ليوم) ?(\d{1,2})(?![\d:/])/.exec(s)) || (m = /(?:^| )(\d{1,2}) من (?:هذا |ها)?(?:ال)?شهر/.exec(s))) {
     const d = Number(m[1]);
-    return d >= 1 && d <= 31 ? { dom: d } : {};
+    return d >= 1 && d <= 31 ? { dom: d } : { invalid: true };
   }
   return {};
 }
@@ -168,12 +167,13 @@ export function parseWhen(text: string, now: number, prior: WhenPrior = {}, opts
     const rel = parseRelative(s);
     if (rel !== null) {
       // «بعد ساعة» / «بعد 10 دقايق»: an exact delay. «بعد يومين الساعة 9»: a date plus a clock.
-      if (!(rel >= DAY && clock)) return check(now + rel, now);
+      if (!(rel >= DAY && (clock || meridiemOf(s)))) return check(now + rel, now);
       relDate = addDays(today, Math.round(rel / DAY));
     }
   }
 
   const d = parseDate(s, now);
+  if (d.invalid) return { kind: "unparsed" }; // never discard an explicit impossible date and pay at the next clock time
   let hour: number | null = null, minute = prior.minute ?? 0, hourHint = prior.hour;
   if (clock) {
     minute = clock.minute;
