@@ -13,11 +13,13 @@ const tag = av.includes("--tag") ? arg("tag")! : `readiness-web-${new Date().toI
 if (!/^[a-z0-9._-]+$/i.test(tag) || existsSync(resolve(resultsDir, `${tag}.json`))) throw new Error("Use a new plain result tag; existing evidence is never overwritten");
 const checks: { name: string; pass: boolean; ms: number; error?: string }[] = [];
 const models = new Set<string>();
+let diagnoses: unknown[] = [];
 const post = async (path: string, body: unknown) => {
   const r = await fetch(`${base}${path}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body), signal: AbortSignal.timeout(60_000) });
   assert.equal(r.status, 200, `${path} HTTP ${r.status}`);
   const d = await r.json() as any;
   if (d.reply?.trace?.model) models.add(d.reply.trace.model);
+  if (d.reply?.trace?.llm_error || d.reply?.phase === "NEEDS_REPHRASE") diagnoses.push({ path, phase: d.reply.phase, llm_error: d.reply.trace?.llm_error, intent: d.reply.trace?.intent });
   return d;
 };
 const sid = () => `readiness-${randomUUID()}`;
@@ -26,8 +28,9 @@ const confirm = (session_id: string, card_id: string) => post("/api/confirm", { 
 const admin = (session_id: string, body: object) => post("/api/admin", { session_id, ...body });
 const check = async (name: string, fn: () => Promise<void>) => {
   const start = Date.now();
+  diagnoses = [];
   try { await fn(); checks.push({ name, pass: true, ms: Date.now() - start }); console.log(`PASS ${name}`); }
-  catch (e) { checks.push({ name, pass: false, ms: Date.now() - start, error: (e as Error).message.slice(0, 300) }); console.log(`FAIL ${name}: ${(e as Error).message.slice(0, 150)}`); }
+  catch (e) { const error = `${(e as Error).message.slice(0, 300)}${diagnoses.length ? `; diagnoses=${JSON.stringify(diagnoses)}` : ""}`; checks.push({ name, pass: false, ms: Date.now() - start, error }); console.log(`FAIL ${name}: ${error}`); }
 };
 
 await check("two Ahmeds ask; typed yes does not pay; confirmation and replay debit once", async () => {
