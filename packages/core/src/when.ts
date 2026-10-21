@@ -95,7 +95,7 @@ function parseClock(s: string, bareHour = false): Clock | null {
     // the question was «الساعة شكد؟», so a bare «9» or «9 ونص» is the hour
     h = Number(m[1]);
     if (m[2]) mi = m[2] === "ربع" ? 15 : 30;
-  } else if (NOON.test(s) && !/\d/.test(s)) {
+  } else if (NOON.test(s) && !/(?:^| )بعد (?:ال)?ظهر(?: |$)/.test(s) && !/\d/.test(s)) {
     return { hour: 12, minute: 0, meridiem: "noon", clear: true };
   }
   if (h === undefined || h < 0 || h > 24 || mi < 0 || mi > 59) return null;

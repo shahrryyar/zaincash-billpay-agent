@@ -190,6 +190,11 @@ describe("resolveContact for Kurdish mentions (ask, never guess)", () => {
     expect(r("کەڕار")).toMatchObject({ status: "resolved", contact: { id: "c_karrar" } });
   });
   it("a near-miss only proposes (fuzzy), never resolves", () => {
+    const vowelVariant = r("حەسێن");
+    expect(vowelVariant.status).toBe("ambiguous");
+    expect(vowelVariant.candidates?.map((c) => c.id).sort()).toEqual(["c_hasan", "c_husain"]);
+    const shilan = resolveContact({ kind: "name", text: "شێلان" }, [C("s", "شیلان", "07700002004")], { lang: "ku" });
+    expect(shilan).toMatchObject({ status: "fuzzy", candidates: [{ id: "s" }] });
     const x = r("ڕێبا");
     expect(["fuzzy", "ambiguous", "none"]).toContain(x.status);
     expect(r("حوسێن").status).not.toBe("resolved");

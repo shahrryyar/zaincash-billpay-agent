@@ -57,6 +57,12 @@ describe("parseWhen: dates and clock times", () => {
 });
 
 describe("parseWhen: incomplete answers become a question, never a guess", () => {
+  it("afternoon is a time range, not an implicit noon appointment", () => {
+    for (const t of ["باچر بعد الظهر", "باچر بعد ظهر", "باچر العصر", "باچر المساء"])
+      expect(parseWhen(t, NOW), t).toMatchObject({ kind: "need_time", prior: { date: { y: 2026, m: 10, d: 17 } } });
+    ok("باچر الظهر", at(2026, 10, 17, 12));
+    ok("باچر الساعة 3 بعد الظهر", at(2026, 10, 17, 15));
+  });
   it("a date without an hour needs the hour", () => {
     const r = parseWhen("باچر", NOW);
     expect(r).toMatchObject({ kind: "need_time", prior: { date: { y: 2026, m: 10, d: 17 } } });

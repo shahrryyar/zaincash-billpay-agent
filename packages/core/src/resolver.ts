@@ -171,7 +171,17 @@ function resolveKurdish(text: string, qualifier: string | undefined, all: Contac
   if ((words[0] as string).length > 3 && /[یيی]$/.test(words[0] as string)) variants.push([(words[0] as string).slice(0, -1), ...words.slice(1)].join(" ")); // izafe «ئاراسی کەریم»
   for (const v of variants) {
     const cands = matchName(v, all, kurdishNameKey);
-    if (cands.length) return finish(cands, qualifier, false, kurdishNameKey);
+    if (cands.length) {
+      // ێ and ی are different vowels. Folding them can make a typo appear exact («حەسێن» -> حسين),
+      // hiding another plausible person (حسن). Keep literal names fast; ask about a vowel substitution.
+      if (/ێ/.test(v) && matchName(v, cands).length === 0) {
+        const sk = skeleton(kurdishNameKey(v).split(" ")[0] as string);
+        const alternatives = all.filter((c) => cands.includes(c) || (sk.length >= 3 && skeleton(firstName(c, kurdishNameKey)) === sk));
+        const proposed = finish(alternatives, qualifier, true, kurdishNameKey);
+        return proposed.status === "fuzzy" && proposed.candidates.length > 1 ? { status: "ambiguous", candidates: proposed.candidates } : proposed;
+      }
+      return finish(cands, qualifier, false, kurdishNameKey);
+    }
   }
   const m = kurdishNameKey(variants[0] as string);
   const near = nearMisses(m, all, kurdishNameKey);
