@@ -43,6 +43,13 @@ test("hero: two Ahmeds is a question, the pick gives a card, confirm sends once"
   await expect(page.getByRole("region", { name: "الإيصال" })).toContainText("أحمد علي");
   await expect(page.getByRole("region", { name: "الإيصال" })).toContainText("وقت العملية (بغداد)");
   await expect(balance(page)).toHaveText("149,700 د.ع");
+  const conversation = page.getByRole("log", { name: "المحادثة" });
+  await conversation.focus();
+  await expect(conversation).toBeFocused();
+  await conversation.press("Home");
+  await expect.poll(() => conversation.evaluate((e) => e.scrollTop)).toBe(0);
+  await conversation.press("End");
+  await expect.poll(() => conversation.evaluate((e) => e.scrollTop)).toBeGreaterThan(0);
 });
 
 test("cancel on the card: nothing is sent", async ({ page }) => {

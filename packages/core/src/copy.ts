@@ -108,6 +108,8 @@ export const COPY = {
   ui_receipt_scheduled: { ar: "🕒 انجدولت العملية", en: "🕒 Scheduled", ku: "🕒 مامەڵەکە خشتە کرا" },
   ui_receipt: { ar: "الإيصال", en: "Receipt", ku: "پسوولەی وەرگرتن" },
   // <!-- VERIFY-DIALECT -->
+  ui_chat_log: { ar: "المحادثة", en: "Conversation", ku: "گفتوگۆ" },
+  // <!-- VERIFY-DIALECT -->
   ui_receipt_time: { ar: "وقت العملية (بغداد)", en: "Time (Baghdad)", ku: "کاتی مامەڵە (بەغدا)" },
   ui_amount: { ar: "المبلغ", en: "Amount", ku: "بڕ" },
   ui_when: { ar: "الموعد", en: "When", ku: "کات" },

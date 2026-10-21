@@ -270,7 +270,7 @@ export function PhoneApp() {
           </section>
         )}
 
-        <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2.5" role="log" aria-live="polite">
+        <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2.5 focus-visible:outline-2 focus-visible:outline-[var(--accent)]" role="log" tabIndex={0} aria-label={tt("ui_chat_log")} aria-live="polite">
           {bubbles.length === 0 && (
             <div className="rise text-center text-[var(--muted)] pt-6 px-4">
               <p className="text-xl font-semibold text-[var(--ink)]">{tt("ui_empty_title")}</p>
