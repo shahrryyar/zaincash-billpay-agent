@@ -78,4 +78,21 @@ describe("scheduled payments in the state machine", () => {
     expect(r.state.schedule).toBeNull();
     expect(r.state.when).toBeNull();
   });
+  it("explicit 'now' in the model's time field remains an ordinary pending payment", () => {
+    for (const when_text of ["هسه", "هالحين", "فوراً", "الآن", "now"]) {
+      const text = `دز خمسين ألف لأحمد علي ${when_text}`;
+      const r = run([{ type: "LLM_OUTPUT", raw: intent([transfer({ when_text })]), input: text }]);
+      expect(r.state.phase, when_text).toBe("VALIDATED");
+      expect(r.state.schedule).toBeNull();
+      expect(r.effects.some((e) => e.type === "EXECUTE")).toBe(false);
+    }
+  });
+  it("invented 'now' still fails its source check; future/mixed time words never bypass scheduling", () => {
+    const r = run([{ type: "LLM_OUTPUT", raw: intent([transfer({ when_text: "هسه" })]), input: "دز خمسين ألف لأحمد علي" }]);
+    expect(r.state.phase).toBe("NEEDS_REPHRASE");
+    for (const when_text of ["اليوم", "هسه باچر", "بعد ساعة", "باچر بعد الظهر"]) {
+      const future = run([{ type: "LLM_OUTPUT", raw: intent([transfer({ when_text })]), input: `دز خمسين ألف لأحمد علي ${when_text}` }]);
+      expect(future.state.schedule !== null || future.state.clarifySlot === "time", when_text).toBe(true);
+    }
+  });
 });

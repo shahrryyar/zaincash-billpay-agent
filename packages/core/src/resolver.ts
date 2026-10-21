@@ -25,13 +25,13 @@ type KeyFn = (s: string) => string;
 
 // canonical relation forms (after normaliseArabic) from user words
 const RELATION_WORDS: Record<string, string> = {
-  ام: "ام", امي: "ام", ماما: "ام", والدتي: "ام",
+  ام: "ام", امي: "ام", لامي: "ام", ماما: "ام", والدتي: "ام", // attached ل in «لأمي» <!-- VERIFY-DIALECT -->
   اب: "اب", ابوي: "اب", بابا: "اب", ابي: "اب", والدي: "اب",
   اخ: "اخ", اخوي: "اخ", اخي: "اخ", خوي: "اخ", // «خوي» = short spoken form of أخوي <!-- VERIFY-DIALECT -->
   اخت: "اخت", اختي: "اخت",
   خال: "خال", خالي: "خال",
   عم: "عم", عمي: "عم",
-  زوجتي: "زوجه", مرتي: "زوجه", زوجه: "زوجه",
+  زوجتي: "زوجه", مرتي: "زوجه", مراتي: "زوجه", زوجه: "زوجه", // <!-- VERIFY-DIALECT -->
   زوجي: "زوج", زوج: "زوج",
   ابني: "ابن", ابن: "ابن",
   بنتي: "بنت", بنت: "بنت",
@@ -226,6 +226,19 @@ export function resolveContact(mention: Mention, contacts: readonly Contact[], o
   // «لأحمد»: drop the preposition ل only if the literal form matched nobody
   const k = key(text);
   if (cands.length === 0 && k.startsWith("ل") && k.length > 2) cands = matchName(k.slice(1), all);
+  // «خوي كرار» and «أخوي كرار»: preserve both the explicit kinship and name.
+  // Collect every matching family contact; a shorter stored name must not hide a second brother.
+  if (cands.length === 0) {
+    const [title, ...rest] = k.split(" ");
+    const family = title ? relationOf(title) : undefined;
+    const wanted = rest.join(" ");
+    if (family && wanted) cands = all.filter((c) => {
+      if (!c.relation || relationOf(c.relation) !== family) return false;
+      const words = key(c.display_name).split(" ");
+      const bare = relationOf(words[0] ?? "") === family ? words.slice(1).join(" ") : words.join(" ");
+      return bare === wanted || bare.startsWith(`${wanted} `);
+    });
+  }
   const kurdish = opts.lang === "ku" || hasKurdishLetters(text);
   if (cands.length) {
     const res = finish(cands, mention.qualifier);

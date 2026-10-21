@@ -66,6 +66,19 @@ describe("resolveContact: relations", () => {
     expect(resolveContact({ kind: "relation", text: "أمي" }, book)).toMatchObject({ status: "resolved", contact: { id: "c_mama" } }));
   it("relation word typed as a name still resolves", () =>
     expect(resolveContact(name("امي"), book)).toMatchObject({ status: "resolved", contact: { id: "c_mama" } }));
+  it("attached 'to my mother' and the spoken wife variant use stored relations", () => {
+    const rb = [...book, C("wife", "زوجتي زينب", "07700000899", "زوجه")];
+    expect(resolveContact({ kind: "relation", text: "لامي" }, rb)).toMatchObject({ status: "resolved", contact: { id: "c_mama" } });
+    expect(resolveContact({ kind: "relation", text: "مراتي" }, rb)).toMatchObject({ status: "resolved", contact: { id: "wife" } });
+  });
+  it("a short relation prefix preserves the explicit name and never chooses another brother", () => {
+    const rb = [...book, C("other", "أخوي سجاد", "07700000898", "اخ")];
+    expect(resolveContact({ kind: "relation", text: "خوي كرار" }, rb)).toMatchObject({ status: "resolved", contact: { id: "c_karrar" } });
+    expect(resolveContact({ kind: "relation", text: "خوي" }, rb).status).toBe("ambiguous");
+    expect(resolveContact({ kind: "relation", text: "خوي مصطفى" }, rb).status).not.toBe("resolved");
+    const duplicate = [...rb, C("same", "كرار محمد", "07700000897", "اخ")];
+    expect(resolveContact({ kind: "relation", text: "خوي كرار" }, duplicate).status).toBe("ambiguous");
+  });
   it("two brothers is ambiguous", () => {
     const two = [...book, C("c_brother2", "أخوي سجاد", "07700000703", "اخ")];
     const r = resolveContact({ kind: "relation", text: "اخوي" }, two);

@@ -5,6 +5,7 @@ import { crossCheck, validateIntent, type Action } from "./schema";
 import { TOKEN_TTL_MS } from "./token";
 import type { CopyKey } from "./copy";
 import { parseWhen, type When, type WhenPrior } from "./when";
+import { normaliseArabic } from "./normalise";
 
 export type Phase =
   | "IDLE" | "VALIDATED" | "CLARIFYING" | "RESOLVED" | "AWAITING_CONFIRM" | "EXECUTING" | "UNKNOWN_OUTCOME"
@@ -104,7 +105,12 @@ function ask(state: MachineState, slot: Slot, key: CopyKey, vars: Vars, cfg: Con
 
 const resolveSlot = (a: Action | null): "recipient" | "biller" => (a?.type === "bill_pay" ? "biller" : "recipient");
 
-const whenTextOf = (a: Action | null): string | undefined => (a && a.type !== "info" ? a.when_text : undefined);
+const whenTextOf = (a: Action | null): string | undefined => {
+  const text = a && a.type !== "info" ? a.when_text : undefined;
+  // "Now" is not a future schedule. Source validation still checks the original field,
+  // and exact matching prevents mixed/future time phrases from taking this path.
+  return text && /^(?:هسه|هسا|هالحين|الان|حالا|فورا|now|right now)$/.test(normaliseArabic(text)) ? undefined : text;
+};
 
 /** The question to ask when a scheduled action still has no exact time. */
 function timeQuestion(w: When | null): { key: CopyKey; vars: Vars; prior: WhenPrior | null } {
