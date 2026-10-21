@@ -22,7 +22,12 @@ for (const l of existsSync(resolve(root, ".env")) ? readFileSync(resolve(root, "
   const m = /^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/.exec(l);
   if (m && !l.trim().startsWith("#") && process.env[m[1] as string] === undefined) process.env[m[1] as string] = (m[2] as string).replace(/\s+#.*$/, "").replace(/^["']|["']$/g, "");
 }
-if (args.get("model")) process.env.LLM_MODEL = args.get("model") as string;
+if (args.get("model")) {
+  const modelVar: Record<string, string> = { anthropic: "LLM_MODEL", gemini: "GEMINI_MODEL", groq: "GROQ_MODEL", openrouter: "OPENROUTER_MODEL", local: "LOCAL_MODEL" };
+  const key = modelVar[process.env.LLM_PROVIDER ?? "anthropic"];
+  if (!key) throw new Error("--model requires a configured supported LLM_PROVIDER");
+  process.env[key] = args.get("model") as string;
+}
 
 const split = args.get("split") ?? "dev";
 const mode = (args.get("mode") ?? process.env.LLM_MODE ?? "tools") as "tools" | "workflow";
@@ -119,7 +124,7 @@ async function main() {
     usage_total: results.reduce((a, r) => ({ input: a.input + r.usage.input, output: a.output + r.usage.output, cacheRead: a.cacheRead + r.usage.cacheRead, cacheWrite: a.cacheWrite + r.usage.cacheWrite }), { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }), lookups_total: results.reduce((a, r) => a + r.lookups, 0),
   };
   const cats = [...new Set(results.map((r) => r.category))].sort().map((cat) => { const rs = results.filter((r) => r.category === cat); return { category: cat, n: rs.length, e2e: rs.filter((r) => r.e2e).length }; });
-  const meta = { split, mode, model: chat.id, commit: start.commit, dirty: start.dirty, started_at: start.date, dataset: dataPath.replace(root + "/", ""), dataset_sha256: datasetSha, n, date: new Date().toISOString(), scorer_version: 2, seed_sha256: start.seed_sha256, prompt_sha256: start.prompt_sha256, scorer_sha256: start.scorer_sha256, source_sha256: start.source_sha256, source_changed_during_run: sourceHash() !== start.source_sha256, configuration: { primary: process.env.LLM_PROVIDER ?? "anthropic", fallbacks: process.env.LLM_FALLBACKS ?? "", request_interval_ms: Number(process.env.LLM_REQUEST_INTERVAL_MS ?? 0), response_cache: args.has("cache-only") || process.env.LLM_CACHE === "1", cache_only: args.has("cache-only"), temperature: (process.env.LLM_PROVIDER ?? "anthropic") === "anthropic" ? "provider default (omitted)" : 0, concurrency: conc } };
+  const meta = { split, mode, model: chat.id, commit: start.commit, dirty: start.dirty, started_at: start.date, dataset: dataPath.replace(root + "/", ""), dataset_sha256: datasetSha, n, date: new Date().toISOString(), scorer_version: "2.1", seed_sha256: start.seed_sha256, prompt_sha256: start.prompt_sha256, scorer_sha256: start.scorer_sha256, source_sha256: start.source_sha256, source_changed_during_run: sourceHash() !== start.source_sha256, configuration: { primary: process.env.LLM_PROVIDER ?? "anthropic", fallbacks: process.env.LLM_FALLBACKS ?? "", request_interval_ms: Number(process.env.LLM_REQUEST_INTERVAL_MS ?? 0), response_cache: args.has("cache-only") || process.env.LLM_CACHE === "1", cache_only: args.has("cache-only"), temperature: (process.env.LLM_PROVIDER ?? "anthropic") === "anthropic" ? "provider default (omitted)" : 0, concurrency: conc } };
   mkdirSync(resolve(root, "eval/results"), { recursive: true });
   writeFileSync(resolve(root, `eval/results/${tag}.json`), JSON.stringify({ meta, metrics, categories: cats, cases: results }, null, 2));
   const failures = results.filter((r) => !r.e2e);

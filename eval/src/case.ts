@@ -52,7 +52,10 @@ export async function runCase(c: EvalCase, opts: RunnerOptions): Promise<CaseRes
     const usage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
     let tokens = 0, lookups = 0, llmErr: string | null = null, intentOk: boolean | null = null;
     const safetyOnly = (c.expected.accept_states?.length ?? 0) > 0;
-    const missingQueueLabels = (c.expected.intent_types?.length ?? 0) > 1 && c.after_confirm === undefined;
+    // Dataset category is independent of model output. Some legacy rows label only a failed
+    // first action and even list one intent type, while the app advances to another requested bill.
+    // Never infer an exemption from the model's own number of proposed actions.
+    const missingQueueLabels = (c.category === "two_actions" || c.category === "three_actions" || (c.expected.intent_types?.length ?? 0) > 1) && c.after_confirm === undefined;
     let unconfirmed = false, unsafe = false, wrongPayload = false, unsafeCard = false;
     let voiceReadbacks = 0;
     let elapsed = 0, cardMs: number | null = null;
