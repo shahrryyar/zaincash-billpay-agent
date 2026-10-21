@@ -15,9 +15,9 @@ Using AI is expected; this file lists every model, tool, library and data source
 ## Models
 | Purpose | Model | Where |
 |---|---|---|
-| Intent understanding, live (paid, author's key) | Anthropic Claude Haiku 5.5 (`claude-haiku-5-5`), temperature 0, prompt caching on the stable prefix | `packages/llm` |
+| Historical intent understanding (paid key, now removed) | Anthropic Claude Haiku 5.5 (`claude-haiku-5-5`), provider-default temperature (parameter omitted), prompt caching on the stable prefix | `packages/llm` |
 | Comparison on dev only | Anthropic Claude Sonnet 5.5 (`claude-sonnet-5-5`) | `eval/results/dev-sonnet-tools.md` |
-| Fallbacks wired, **not used for any reported number** (no keys) | Groq, Gemini, OpenRouter, local (OpenAI-compatible endpoints) | `packages/llm` |
+| Other adapters wired, not currently benchmarked | Groq, OpenRouter, local (OpenAI-compatible endpoints) | `packages/llm` |
 | Test sentence candidates (300) and primary labels | Gemini 3.8 Flash via the `agy` (Antigravity) CLI | `eval/gen`, `eval/data` |
 | Independent blind labellers | Anthropic Claude Fable and Claude Haiku 5.5 (Claude Code subagents) | `eval/data/independent` |
 | Fresh test set `heldout2` (2026-10-19): 180 candidate sentences | Anthropic Claude Opus (Claude Code subagent) | `eval/gen/heldout2.candidates.jsonl` |
@@ -26,7 +26,7 @@ Using AI is expected; this file lists every model, tool, library and data source
 | Kurdish labels: three blind labellers | Anthropic Claude Opus, Claude Sonnet 5.5, Claude Haiku 5.5 (Claude Code subagents) | `eval/data/independent/*-ku.jsonl` |
 | Kurdish copy, parsers, prompt block and retrieval bank | written by Claude (Claude Code), not yet checked by a native Sorani speaker | `packages/core/src/{copy,kurdish}.ts`, `packages/llm/src/kurdish.ts` |
 | Speech to text (optional) | RegaLabs ASR, Iraqi Arabic (`acm`), via its developer API | `packages/asr` |
-| Local speech-to-text testing (2026-10-21) | Author's Stage-11 model on laptop CPU behind a loopback OpenAI-compatible API; exact checkpoint/provenance to record before accuracy reporting | external `rega-asr-work/local-asr/server.py`, configured through `packages/asr` |
+| Local speech-to-text testing (2026-10-21) | Author's Stage-11 model on laptop CPU behind a loopback OpenAI-compatible API; checkpoint stage11-avg3-36k44k48k.nemo (hash/settings below); training-data provenance still requires author disclosure | external `rega-asr-work/local-asr/server.py`, configured through `packages/asr` |
 
 The model only understands. It has read-only tools (search contacts, bills, balance, history, quote) and `propose`
 (a pending card). It has no tool that pays, confirms, schedules or cancels.
@@ -53,13 +53,13 @@ voice and dropped: push-to-talk over one HTTPS call is simpler and needs no medi
 | Tool | Use |
 |---|---|
 | Claude Code (Anthropic) | planning docs, code, tests, review, browser testing of the web app (author's `bsk` CLI) |
-| OpenAI Codex (2026-10-21) | requirements/documentation and evaluation-harness audit; offline verification and nine browser E2E scenarios; test-readiness report in `docs/29-test-readiness-audit.md` |
+| OpenAI Codex (2026-10-21) | requirements audit; test-first safety fixes; evaluator strengthening; phone zoom fix; Gemini signatures/pacing; API/browser verification and hosting preparation (docs/29–32) |
 | DeepSeek Harness running Claude (claude-opus-5-5) | voice path, eval WER/CER, CI hardening, docs refresh (2026-10-17) |
 | `agy` (Antigravity CLI, Gemini 3.8 Flash) | generated the 300 test candidates and the primary labels; never ran our system |
 | Claude Code (Anthropic, cloud session, 2026-10-19) | gap review and plan; no-key demo mode; honest unknown-outcome recheck; accuracy fixes from the held-out error analysis; per-session sandboxes, Docker image, Playwright tests; built the `heldout2` set with the subagents listed above |
 
 ## Data
-- **100% synthetic.** Wallet seed written for this project; contacts, numbers and balances are fictional.
+- **Wallet and task requests are synthetic.** Wallet seed written for this project; contacts, numbers and balances are fictional.
 - **No human labelled the test set.** Three LLM families labelled every row independently against the seed; a script
   adjudicated (2 of 3, else the safest state). Details: `eval/data/README.md`. **No native-speaker review yet.**
 - **Kurdish sets** (2026-10-19): 150 Claude-written Sorani sentences split 40/60 by category **before** labelling
@@ -98,3 +98,12 @@ not ZainCash's system.
 Architecture and safety design: the author. Code, tests, harness and web app: written with AI assistants under the
 author's direction and review. Test sentences and labels: LLMs, as listed. Dialect copy: not yet reviewed by a native
 Iraqi speaker (marked `VERIFY-DIALECT`).
+
+## Readiness work and model switch (2026-10-21)
+
+- The author removed the Claude key during testing; later Claude 401 runs are retained as infrastructure failures. A supplied Google AI Studio key is now configured server-side for Gemini 3.5 Flash-Lite. Development checks and quota failures are preserved in eval/results/readiness-gemini*. These are not a fresh held-out comparison. Gemini 3.1 Flash-Lite/3.8 Flash returned overload/timeouts in probes; 2.5 Flash-Lite returned unavailable (404). No model ID or availability is assumed from old guides.
+- Local Stage-11 checkpoint SHA-256: e9de02a14d531d79c531d442e6d7294d175cda55d118cf34fa4ab6efb052b02c; avg3-36k44k48k, CPU context [56,13], blank penalty .9. The author reports 80/320/400 ms streaming chunk modes; the current laptop HTTP wrapper returns final text only. Its code/model are external pre-existing RegaLabs work, not newly copied into this repo. Training-data provenance remains to disclose before accuracy comparisons.
+- One pre-existing public FLEURS-labelled Sorani benchmark clip was used locally for client/upload and simulated browser-microphone transport. It is not synthetic task speech, not a consented payment corpus, and not a WER/quality result; audio is not committed. Browser capture used fake-device input to test MediaRecorder/conversion/ASR/read-back, not a physical phone mic.
+- 21 readiness fixtures and their labels were written by Codex against the synthetic seed, including complete queued actions. They are developer regressions, not independently human-labelled evaluation. One unknown-number expected state was corrected to CLARIFYING to match the saved-contact policy; the original failed run is retained.
+- Gemini development-only prompt corrections specify the existing strict info schema and JSON null for missing bill amounts. Zod/source checks remain strict; invalid model output is not repaired into a payment. Scorer v2 and cache replay limitations are documented in docs/12.
+- Tools used for this work: local shell/TypeScript/Vitest/Playwright, agent-browser with Google Chrome, GitHub CLI, Docker, gitleaks 8.30.1, OSV-Scanner 2.7.0, Render CLI 2.30.0 (local preparation only; no workspace selected), official documentation/web research. No external messages, public tunnel, hosting account or deployment were created. Human review/recordings/consent and author delivery rehearsal were not invented.

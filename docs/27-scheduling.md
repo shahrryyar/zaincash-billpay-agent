@@ -15,7 +15,7 @@ Added 2026-10-16 (not in the original brief; the author asked for it). Scope rul
 - **Checked again when it runs:** balance, monthly limit, biller up, bill unpaid and **same amount** (a changed bill amount fails instead of paying more), contact still a wallet user. The stored approval hash is recomputed and must match (a tampered row does not run). A schedule more than 24 h late fails as `SCHEDULE_MISSED`, never paid stale. No automatic retries: a failed run is reported honestly.
 - **Money is not reserved.** The card says so. Today's balance and this month's limit do not block scheduling (card warns), but an amount above the monthly limit itself is refused now because it could never run.
 - **Cancel is a button, not a model tool.** The model has no tool that creates, cancels or runs schedules (still: read-only lookups + `propose`).
-- **Demo:** the demo panel has «قدّم الوقت ساعة / يوم» which moves the shared clock forward so a schedule runs in seconds; «إعادة ضبط» resets it. The web server also runs `runDueSchedules()` every 3 s.
+- **Demo:** the demo panel has «قدّم الوقت ساعة / يوم» which moves only the caller’s sandbox clock forward so a schedule runs in seconds; «إعادة ضبط» resets it. The web server also runs `runDueSchedules()` every 3 s.
 
 ## Files
 `packages/core/src/when.ts`, `machine.ts` (slot `time`, `SCHEDULE_THIS`), `apps/wallet-api/src/app.ts` (`/scheduled`, `/users/:id/scheduled`, cancel, `runDueSchedules`, `/admin/run-due`), `schedule.ts`, `packages/orchestrator` (card, execute, `scheduleCard`, `listSchedules`, `cancelSchedule`), `apps/web` (panel, buttons, notices).
@@ -27,3 +27,7 @@ Added 2026-10-16 (not in the original brief; the author asked for it). Scope rul
 
 ## Known limits
 No recurring payments («كل شهر» asks for a single time). Latin-letter time words («ba3d sa3a») are not parsed (it asks again in Arabic). «12 بالليل» and «10:00» without AM/PM are asked, on purpose.
+
+## 2026-10-21 readiness update
+
+Scheduling is retained. Vague afternoon/day-part requests, invalid dates and unsupported 24:00 boundaries ask for clarification instead of inventing a time. Valid exact/relative schedules remain token-bound and separately approved. New developer cases cover scheduled transfers as well as bills. Current Gemini development evidence is in docs/30; historical Haiku scores above are not Gemini scores. Schedules live only as long as their in-memory hosted sandbox; a process restart/idle eviction discards them (docs/04).

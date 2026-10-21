@@ -43,14 +43,14 @@ Rules:
 
 **Added from review mining (docs/research/01):**
 - **First-time recipient** badge on the card when the recipient is not in history: «أول مرة تدز له» (users complain wallets leave them alone with scammers).
-- **Reference id on every outcome**, including failures, so the user can quote it to support (support is a top complaint).
+- **Reference on completed payments/schedules** is implemented. Some failures have a short diagnostic reference; a uniform support reference on every validation/provider failure remains a follow-up, not a fabricated wallet transaction.
 - **Receipt must be screenshot-able** and show amount, recipient name, reference, time.
 - **Large type + font scaling**; one digit style plus amount in words (digits flipping between sets is a reported annoyance).
 
 ## Candidate picker (ambiguity)
-Cards with name, masked number, relation label, last transfer date («آخر تحويل: قبل أسبوعين»). Tap or say «الأول» / «اللي ينتهي 4471».
+Cards show saved name, masked number and relation label when present. Last-transfer-date display is not implemented. Tap or say «الأول» / «اللي ينتهي 4471».
 
-## Copy table (single source: `packages/core/copy.ts`) <!-- VERIFY-DIALECT all -->
+## Copy table (single source: `packages/core/src/copy.ts`) <!-- VERIFY-DIALECT all -->
 
 | Key | ar-IQ | English |
 |---|---|---|
@@ -86,6 +86,12 @@ The mic sits next to the send button (only when voice is configured and the text
 
 ## Accessibility checklist
 - [ ] Screen reader labels in Arabic.
-- [ ] Works at 200% zoom on a phone viewport.
+- [x] Phone 390×844 at 200%: controls/card/input fit; browser regression.
 - [ ] Voice and text reach identical cards.
 - [ ] No colour-only meaning (✅/⛔ icons + text).
+
+## Readiness checks (2026-10-21)
+
+The completed receipt now includes the wallet-provided counterparty, fee and creation time in Baghdad time, so a receipt screenshot identifies the payment without relying on a preceding chat bubble. Automated browser coverage checks recipient and timestamp labels. Arabic/Sorani copy still needs native review; no screen-reader user study is claimed. An axe scan of the real-ASR read-back page found zero WCAG 2 A/AA rule violations (21 passed rules); that is one automated state, not full accessibility certification.
+
+Provider requests can exceed the old 25-second browser deadline when free-tier pacing and multiple read-only calls apply; the browser now allows 60 seconds and retains existing honest error/recheck handling. This is an availability allowance, not a claim that the latency target is met.

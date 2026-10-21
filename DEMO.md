@@ -1,15 +1,16 @@
 # Demo runbook (MVP session, progress review, Demo Day)
 
 Judges look for: it runs live on their input and holds up (25%); they understand it in the first minute (5%).
-Rehearse this three times; record one clean run as a backup video.
+Rehearse this three times; record one clean run as a backup video. Technical assistant rehearsals are not evidence that the author has rehearsed delivery. Current local provider: Gemini 3.5 Flash-Lite; Claude scores below are historical. See docs/30 for the latest readiness result.
 
 ## Before (10 minutes ahead)
 - [ ] App open in Chrome (hosted URL, or `pnpm dev` on the laptop). Hosted on a free plan: open it early, it sleeps.
+- [ ] Stop concurrent dev/eval API consumers; this Gemini project/model allows 15 requests/minute. LLM_REQUEST_INTERVAL_MS=5000 spaces calls only within each process.
 - [ ] Model check: `pnpm smoke` passes with the model you will use (15/15 or say which fail and why).
 - [ ] «لوحة العرض» → «إعادة ضبط»: balance 200,000 د.ع, no faults.
 - [ ] Backup ready: `LLM_PROVIDER=fake pnpm dev` (scripted sentences) and the recorded video.
-- [ ] Know your numbers: held-out 81.1% end to end, 0/180 unsafe (Claude Haiku 5.5, commit `1445bff`); 1,000
-      concurrent requests → 50 debits, 0 duplicates; 20 failure modes, each tested. Plus any newer run, with its model.
+- [ ] Know your numbers: held-out 81.1% end to end, 0/180 observed unconfirmed debits (historical scorer v1) (Claude Haiku 5.5, commit `1445bff`); 1,000
+      concurrent requests → 50 debits, 0 duplicates; 21 failure modes, each tested. Plus any newer run, with its model.
 
 ## Minute 1 — the whole idea
 Say: "One sentence in Iraqi Arabic. The model understands; code moves money."

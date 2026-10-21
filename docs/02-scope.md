@@ -1,11 +1,11 @@
 # 02 — Scope Control
 
 ## In scope
-- **P2P transfers** to existing contacts or a valid Iraqi mobile number.
+- **P2P transfers** to existing contacts, including a saved contact selected by a valid Iraqi mobile number. Unsaved numbers are refused with an explanation; the demo never creates contacts.
 - **Bill payments** to billers in the mock catalogue.
 - Read-only helpers: balance, bill amount, last transfer.
 - Text input (first-class, never cut).
-- Voice input via the RegaLabs Iraqi-Arabic ASR developer API (stretch; built, waits for a key: docs/09).
+- Voice input via the RegaLabs Iraqi-Arabic ASR developer API (stretch; built, local Stage-11 API configured for laptop tests: docs/09).
 - One-off **scheduled** transfers and bill payments (added 2026-10-16 at the author's request: docs/27).
 - Mock ZainCash wallet API.
 - Evaluation harness and held-out test set.

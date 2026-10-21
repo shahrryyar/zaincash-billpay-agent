@@ -20,7 +20,7 @@ The agent:
 3. **Asks** when anything is unclear — two Ahmeds is a question, never a coin flip.
 4. **Shows a confirmation card** — nothing moves without an explicit tap.
 5. **Executes once** — confirmation token + idempotency key, so retries never double-debit.
-6. **Reports honestly** — success with a reference, or «ما انرسل شي، رصيدك نفسه ما تغيّر» ("Nothing was sent, your balance is unchanged").
+6. **Reports honestly** — confirmed success with a reference, a definitive rejection, or an unresolved outcome with a safe recheck using the same key.
 
 Scope: **P2P transfers + bill payments**, now or at a scheduled time (one-off, not recurring). Typed or spoken (optional RegaLabs voice). Nothing else.
 
@@ -29,16 +29,16 @@ top bar. Kurdish amounts, time words, relation words and names are read by the s
 Arabic ones (`packages/core/src/kurdish.ts`); the model gets a Kurdish rules block plus local retrieval from a small
 example bank and glossary (`packages/llm/src/kurdish.ts`). No fine-tuning, no vector DB.
 
-**Public evidence in this repo:** [DISCLOSURE.md](DISCLOSURE.md) (models, tools, data, conflict of interest) · [FAILURE_MODES.md](FAILURE_MODES.md) (20 failure modes, each tested) · [eval/results/](eval/results/) (every measured run).
+**Public evidence in this repo:** [DISCLOSURE.md](DISCLOSURE.md) (models, tools, data, conflict of interest) · [FAILURE_MODES.md](FAILURE_MODES.md) (21 documented failure modes with handling and test references) · [eval/results/](eval/results/) (every measured run).
 
 | Measured (Claude Haiku 5.5, tool mode) | Value |
 |---|---|
 | Held-out, run once (n=180, commit `1445bff`): end-to-end completion | 81.1% [74.8, 86.2] |
-| Held-out: unsafe executions on must-not-execute cases | 0/180 (upper 95% bound 1.7%) |
+| Held-out: observed debits without confirmation, all cases | 0/180 (upper 95% bound 1.7%) |
 | Held-out: ambiguity recall / precision | 100% (n=42) / 73.7% (n=57) |
 | Held-out: p50 / p95 time to card | 2.3 s / 3.7 s |
 | **Kurdish (Sorani)** held-out, run once (n=90, commit `49319bd`): end-to-end completion | 92.2% [84.8, 96.2] |
-| Kurdish held-out: unsafe executions | 0/90 (upper 95% bound 3.3%) |
+| Kurdish held-out: observed debits without confirmation | 0/90 (upper 95% bound 3.3%) |
 | Wallet stress: 1,000 concurrent requests on 50 keys, 4 processes | 50 debits, 0 duplicates |
 
 Labels are LLM-made (three model families, adjudicated), not human-checked. Dev numbers are higher but were tuned on.
@@ -47,7 +47,7 @@ not been read by a native Sorani speaker yet; see [eval/data/README.md](eval/dat
 
 The held-out number describes commit `1445bff`. Fixes made since (listed in [FAILURE_MODES.md](FAILURE_MODES.md)) are
 **not** measured by it: a fresh frozen set, `heldout2` (180 new cases, [eval/data/README.md](eval/data/README.md)), is
-waiting for its one run. No number is claimed for it until the harness prints one.
+waiting for human sample/copy review, dataset and code/scorer freeze, then its one run. No number is claimed for it until the harness prints one.
 
 ---
 
@@ -55,26 +55,26 @@ waiting for its one run. No number is claimed for it until the harness prints on
 
 ```bash
 pnpm install
-cp .env.example .env        # add ANTHROPIC_API_KEY (never commit .env)
-pnpm test && pnpm typecheck # 775 unit tests, offline, no key needed
+cp .env.example .env        # select provider, add its key/model (never commit .env)
+pnpm test && pnpm typecheck # offline invariant and integration tests; no key needed
 pnpm dev                    # web app on http://localhost:3000 (mock wallet, real model)
 LLM_PROVIDER=fake pnpm dev  # same app with no key: scripted demo sentences only
 pnpm cli                    # same agent in the terminal (add -- --fake for no key)
 pnpm smoke -- --fake        # whole pipeline on the demo sentences (15 checks, no key)
-pnpm --filter @zc/web e2e   # 8 browser tests in Chromium (scripted model)
+pnpm --filter @zc/web e2e   # browser scenarios in Chromium (scripted model)
 pnpm eval -- --split dev --mode tools   # evaluation harness on the dev set
 ```
 
 **No Anthropic key?** Use a free provider from the organisers' guide (no payment card): set `LLM_PROVIDER=groq` (or
 `gemini`), its key and its exact model id in `.env` (see `.env.example`), then run `pnpm smoke` to check the model drives
-the agent. Free tiers may train on prompts (all data here is synthetic) and have rate limits: keep a fallback in
-`LLM_FALLBACKS`. Any number reported must name the model it was measured with.
+the agent. Free tiers may train on prompts (all data here is synthetic) and have rate limits: configure only available fallbacks in
+`LLM_FALLBACKS`. The current laptop uses Gemini 3.5 Flash-Lite with LLM_REQUEST_INTERVAL_MS=5000 for its observed 15 RPM quota. Pacing is per process; avoid concurrent web/eval API consumers. Any number reported must name the model it was measured with.
 
 ### Run it for judges
 
-- **Hosted URL (Docker).** One image holds the web app and the in-process mock wallet. Every browser tab gets its own
-  sandbox (own seeded wallet, clock and fault switches, dropped after 30 idle minutes), so judges trying it at the same
-  time never see each other's balance and the demo panel only affects the caller.
+- **Hosted URL (Docker).** One image holds the web app and the in-process mock wallet. Every browser session gets its own
+  sandbox (own seeded wallet, clock and fault switches, dropped after 30 idle minutes), with all sandbox balances, tokens, receipts and schedules lost on process restart or sandbox eviction, so judges trying it at the same
+  time have independent balances and the demo panel only affects the caller.
   ```bash
   docker build -t zc-billpay .
   docker run -p 3000:3000 -e ANTHROPIC_API_KEY=... zc-billpay    # put the key in the host's secret store, not the image
@@ -88,18 +88,15 @@ the agent. Free tiers may train on prompts (all data here is synthetic) and have
 - **Laptop backup.** `pnpm install && pnpm dev` with the key in `.env`, or `docker run` as above. If the network or the
   model is down, `LLM_PROVIDER=fake` still shows the full flow on the demo sentences.
 
-**Voice (optional):** set `REGALABS_API_KEY` in `.env`, check it with `pnpm --filter @zc/asr check`, then hold the 🎤 button. Without a key the mic is hidden. To try the voice flow with no key: `ASR_PROVIDER=fake pnpm dev` and use the simulator in «لوحة العرض». Voice eval: [eval/voice/README.md](eval/voice/README.md).
+**Voice (optional):** the laptop Stage-11 server works through the same client (`REGALABS_BASE_URL=http://127.0.0.1:8790/v1`, separate local key). It requires manual startup and cannot be reached through loopback from a hosted server/container. For the hosted RegaLabs service, set `REGALABS_API_KEY` in `.env`, check it with `pnpm --filter @zc/asr check`, then hold the 🎤 button. Without a key the mic is hidden. To try the voice flow with no key: `ASR_PROVIDER=fake pnpm dev` and use the simulator in «لوحة العرض». Voice eval: [eval/voice/README.md](eval/voice/README.md).
 
-Held-out is frozen (`eval/data/heldout.sha256`) and runs once, only with `--allow-heldout`. Labels are LLM-made, not human-checked: see [eval/data/README.md](eval/data/README.md). Note: `docs/` is kept local, so the links below only work on the author's machine.
+Held-out is frozen (`eval/data/heldout.sha256`) and runs once, only with `--allow-heldout`. Labels are LLM-made, not human-checked: see [eval/data/README.md](eval/data/README.md). The initial audit is historical; current checks are in [docs/30](docs/30-readiness-execution.md). Historical reports use scorer v1: their S1 counts unconfirmed debits across all cases and their latency mixes response states. Current evaluation separates those metrics; see [current readiness](docs/30-readiness-execution.md).
 
 ---
 
 ## Document map
 
-> The numbered planning docs (`docs/00`–`28`) are the author's working spec and are **kept local** (not in this public
-> repo), so those links do not resolve on GitHub. Everything a judge needs is in the files that are committed:
-> this README, [AGENTS.md](AGENTS.md), [MEMORY.md](MEMORY.md), [DISCLOSURE.md](DISCLOSURE.md),
-> [FAILURE_MODES.md](FAILURE_MODES.md) and [eval/](eval/).
+The numbered docs, brief and evidence are committed. Initial audit: [docs/29](docs/29-test-readiness-audit.md). Fixes, current verification and remaining evidence: [docs/30](docs/30-readiness-execution.md). Free API/hosting/CLI/MCP choices: [docs/31](docs/31-free-api-hosting-and-local-asr.md).
 
 | # | File | What it answers |
 |---|------|-----------------|
@@ -115,7 +112,7 @@ Held-out is frozen (`eval/data/heldout.sha256`) and runs once, only with `--allo
 | 07 | [docs/07-confirmation-and-idempotency.md](docs/07-confirmation-and-idempotency.md) | How "0 unconfirmed" and "0 duplicates" are guaranteed |
 | 08 | [docs/08-iraqi-dialect-nlu.md](docs/08-iraqi-dialect-nlu.md) | Iraqi Arabic: verbs, numbers, money slang, names, normalisation |
 | 09 | [docs/09-voice-asr-regalabs.md](docs/09-voice-asr-regalabs.md) | RegaLabs Iraqi-Arabic ASR (developer API), push-to-talk, confidence gate and read-back |
-| 10 | [docs/10-llm-strategy.md](docs/10-llm-strategy.md) | Claude primary + free fallbacks, tool-loop vs workflow, prompts, fine-tune only if needed |
+| 10 | [docs/10-llm-strategy.md](docs/10-llm-strategy.md) | Current Gemini setup, historical Claude comparisons, tool-loop contract and quota pacing |
 | 11 | [docs/11-synthetic-data.md](docs/11-synthetic-data.md) | Generating the wallet + test set with an LLM |
 | 12 | [docs/12-evaluation.md](docs/12-evaluation.md) | Metrics, harness, hard gates, results tables |
 | 13 | [docs/13-failure-modes.md](docs/13-failure-modes.md) | Documented failure modes and handling (gate needs ≥3) |

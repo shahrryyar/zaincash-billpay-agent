@@ -1,47 +1,32 @@
 # MVP update — Topic 04: Bill Pay & Transfer Agent
 
-Shahryar Sabir Muhammed (RegaLabs) · repo: github.com/shahrryyar/zaincash-billpay-agent · <!-- date of submission -->
+Shahryar Sabir Muhammed (RegaLabs), solo · updated 21/10/2026 · [repository](https://github.com/shahrryyar/zaincash-billpay-agent)
 
-**One sentence in Iraqi Arabic → one confirmed transaction, sent exactly once. The model understands; code moves money.**
+**One Iraqi-Arabic sentence → an explicit, readable approval → one mock payment. The model understands; deterministic code moves money.**
 
-## What works (end to end, in the repo)
-- **The flow:** «دز خمسين ألف لأحمد» → the model fills a strict JSON intent (Zod-checked) → code resolves it against the
-  mock wallet → **two Ahmeds is a question, not a guess** → confirmation card (who, amount in digits and words, fee,
-  balance before → after, 120 s timer, "nothing sent yet") → one tap → receipt with a reference.
-- **No double payment:** server-issued, single-use token bound to the exact payload, plus an idempotency key per card.
-  Stress test: 1,000 concurrent requests on 50 keys, 4 processes → **50 debits, 0 duplicates**.
-- **Fails safe and says so:** insufficient balance, unknown contact, paid bill, biller down, timeouts, unknown outcome
-  («ما متأكدين… لا تعيد الإرسال», rechecked by the same key), prompt injection, two requests in one sentence.
-  **20 documented failure modes, each with an automated test** (FAILURE_MODES.md).
-- **Also:** scheduled payments ("pay the generator tomorrow 9 AM"), optional voice (read-back before anything happens),
-  a demo panel to break it on purpose, one sandboxed wallet per browser session, a Docker image.
-- **Tests:** 775 unit/property tests + 8 browser tests, run in CI on every push.
+## What works
 
-- **Kurdish (Sorani) version:** an عربي / کوردی switch in the top bar. Same safety path; Kurdish amounts, times,
-  relations and names are read by deterministic code; prompt rules + local retrieval (example bank, glossary).
+Transfers, bills, balance/history questions and one-off scheduled payments; Iraqi Arabic by default and a Sorani switch. Duplicate names ask a question. Up to three ordered actions are announced and each needs its own confirmation. The card shows saved recipient, masked number, amount in words/digits, fee and balances from wallet data.
 
-## First results (measured by the harness; labels LLM-made, not human-checked)
-| Set | Model | End-to-end | Unsafe executions |
-|---|---|---|---|
-| Held-out, 180 cases, run once (commit `1445bff`) | Claude Haiku 5.5 | **81.1%** [74.8, 86.2] | **0/180** |
-| Dev, 120 cases (tuned on) | Claude Haiku 5.5 | 92.5% (97.5% after later fixes) | 0/120 |
-| **Kurdish** held-out, 90 cases, run once (commit `49319bd`) | Claude Haiku 5.5 | **92.2%** [84.8, 96.2] | **0/90** |
-| Kurdish dev, 60 cases (tuned on) | Claude Haiku 5.5 | 96.7% | 0/60 |
+The LLM has read-only tools and proposes JSON; Zod and the state machine validate it. The Confirm button supplies a payload/session-bound, single-use 120-second token; idempotency prevents duplicate debit. Typed/spoken yes cannot pay. Fault controls demonstrate insufficient funds, biller failure and recovery after the wallet commits but the response is lost. **Synthetic wallet only; no real payment rails.**
 
-Ambiguity recall 100% (n=42), p50 / p95 time to card 2.3 s / 3.7 s. Every miss was safe (it asked or refused).
+Optional voice uses the author's pre-existing Stage-11 ASR on the laptop, with read-back before the model and a separate payment confirmation. Its current HTTP wrapper returns a final transcript; the model's streaming capability is not yet connected to an editable live composer. Voice task accuracy remains unmeasured.
 
-## Users
-**5 user interviews** (Sulaymaniyah, 19–22): all want sending automated and scheduled, prefer typing; 2/5 had sent to the wrong person; 3/5 would use it, 2/5 would not (reason not recorded). All 5 are native Kurdish speakers and ZainCash serves the Kurdistan Region, so we built a Kurdish (Sorani) version (language picker in the top bar). Whether they prefer it over Arabic was not asked: next interviews ask it. Tiny, one-city sample.
+## Evidence and its limits
 
-## What does not work yet
-- Fixes made after the held-out run (same-amount-as-last-time, words after names, «ورقة/دفتر», chatter) are **not
-  measured yet**. A fresh frozen set (`heldout2`, 180 new cases) waits for its single run.
-- No human has checked the test labels. Voice needs its ASR key and real recordings.
-- Known miss: «بعد الظهر» is read as 12:00 instead of asking the hour.
+| Check | Measured result |
+|---|---|
+| Historical Arabic held-out, Claude Haiku 5.5, commit 1445bff, n=180, run once | E2E 81.1% [74.8,86.2]; observed unconfirmed debits 0/180 |
+| Historical Sorani held-out, Claude Haiku 5.5, commit 49319bd, n=90, run once | E2E 92.2% [84.8,96.2]; observed unconfirmed debits 0/90 |
+| Wallet concurrency stress, four processes | 1,000 requests / 50 keys → 50 debits, zero duplicates |
+| Current software checks | 894 offline tests; typecheck; production build and 10 browser scenarios |
 
-## Next (to the progress review)
-1. Free model key → dev run → **`heldout2` run once** with the model we will demo; publish the numbers as measured.
-2. Hand review of a 58-row sample of the test set; fix wording, re-freeze, disclose.
-3. More interviews: older users, other cities; ask why people say no and which language they want.
-4. Voice: record 40–60 consented utterances, measure WER and name/amount survival.
-5. Host the demo (Render / VPS) and rehearse with unexpected judge input.
+Historical labels are LLM-made, not human-reviewed. Scorer v1 did not fully check later queued actions or recipient-side effects, and mixed response states into card latency. Scorer v2 now checks these and separates must-not-execute safety from confirmation bypass. Current development/provider checks, failures and result links are in [docs/30](docs/30-readiness-execution.md). They are not fresh held-out evidence. Original held-out sets are spent; heldout2 remains unspent.
+
+**Five real interviews:** Sulaymaniyah, ages 19–22, all native Kurdish speakers. All wanted automation/scheduling and preferred typing; 2/5 had sent to the wrong person; 3/5 would use this, 2/5 would not (reason not recorded). Language preference was not asked. Small, one-city sample; no invented quotes or broader impact claim.
+
+## Remaining before submission
+
+Native-speaker review/editing of requests and copy; observed usability tasks; consented task recordings for WER/CER and name/amount survival; hosting account and reachable laptop-ASR route if deployed remotely. The Claude key was removed; the supplied Google AI Studio key is configured for Gemini 3.5 Flash-Lite, with process-local pacing for the observed 15 RPM quota. Availability and latency remain demo constraints.
+
+Review fresh labels → freeze dataset/prompt/code/scorer → run heldout2 once with the selected model. Rehearse the author's delivery with unseen human input, retain a backup recording, and confirm organiser/judge run permission under the proprietary licence. [Disclosure](DISCLOSURE.md) · [21 failure modes](FAILURE_MODES.md) · [hosting/API guide](docs/31-free-api-hosting-and-local-asr.md).

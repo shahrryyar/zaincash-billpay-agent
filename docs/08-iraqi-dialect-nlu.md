@@ -76,4 +76,4 @@ KRG users may say «پارە بنێرە بۆ ئەحمەد» (send money to Ahmed
 
 ## 7. Speech-specific (from ASR)
 - ASR may output numbers as words or digits, so feed both to `parseAmount`.
-- Names are the most error-prone ASR tokens (WER ~33%), so the resolver plus confirmation card are the safety net.
+- Names and numbers need task-specific measurement. No task WER is established yet; the resolver, read-back and confirmation card provide separate safeguards.

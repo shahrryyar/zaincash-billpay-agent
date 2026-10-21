@@ -1,58 +1,41 @@
-# 04 — Transaction State Machine
+# 04 — Transaction state machine
 
-The state machine owns every step. The LLM proposes, the machine disposes.
+The pure reducer in packages/core/src/machine.ts owns the payment states. The orchestrator performs its effects and feeds back results. The LLM only proposes an intent; validation, resolution, pre-checks and explicit approval still run.
 
-## States
+## Actual phases
 
-| State | Meaning | Exits |
-|---|---|---|
-| `IDLE` | Waiting for a request | `PARSED`, `REJECTED_INPUT` |
-| `PARSED` | LLM returned JSON | `VALIDATED`, `NEEDS_REPHRASE` |
-| `VALIDATED` | Zod passed, amount cross-check passed | `RESOLVED`, `CLARIFYING`, `FAILED_SAFE` |
-| `CLARIFYING` | Missing or ambiguous slot; question asked | `VALIDATED` (on answer), `CANCELLED` |
-| `RESOLVED` | Every entity maps to exactly one wallet record | `AWAITING_CONFIRM`, `FAILED_SAFE` |
-| `AWAITING_CONFIRM` | Card shown, token issued, nothing sent | `EXECUTING`, `CANCELLED`, `EXPIRED` |
-| `EXECUTING` | Wallet API called with idempotency key | `EXECUTED`, `FAILED_SAFE`, `UNKNOWN_OUTCOME` |
-| `UNKNOWN_OUTCOME` | Timeout; retrying with the same key | `EXECUTED`, `FAILED_SAFE` |
-| `EXECUTED` ✅ | Wallet confirmed | terminal |
-| `FAILED_SAFE` ⛔ | Nothing was sent (or provably reversed) | terminal |
-| `CANCELLED` | User cancelled | terminal |
-| `EXPIRED` | Token expired before confirm | terminal (offer restart) |
-| `NEEDS_REPHRASE` | Model output invalid or low confidence | `IDLE` |
-
-Simplified chain shown in the demo:
-`PARSED → VALIDATED → RESOLVED → AWAITING_CONFIRM → EXECUTED | FAILED_SAFE`
-
-## Guards (pure functions, unit-tested)
-
-| Transition | Guard |
+| Phase | Meaning |
 |---|---|
-| PARSED → VALIDATED | `intentSchema.safeParse(out).success` AND `amountAgrees(llmAmount, parseAmount(text))` when an amount is present |
-| VALIDATED → CLARIFYING | any required slot missing, OR `candidates.length > 1`, OR `actions.length > 1` not yet split, OR ASR confidence < threshold |
-| VALIDATED → FAILED_SAFE | intent `out_of_scope` / `unsupported` (polite refusal) |
-| RESOLVED → FAILED_SAFE | `balance < amount + fee`, limit exceeded, biller inactive, bill already paid |
-| AWAITING_CONFIRM → VALIDATED (new card) | bill's outstanding amount **increased** since the card was issued (PSD2-style: higher final amount ⇒ re-authorise) → revoke token, re-quote, new card |
-| RESOLVED → AWAITING_CONFIRM | all checks pass → issue token bound to `hash(payload)` |
-| AWAITING_CONFIRM → EXECUTING | `token valid && !used && !expired && hash(payload) === token.hash` |
-| EXECUTING → UNKNOWN_OUTCOME | network timeout / 5xx |
-| UNKNOWN_OUTCOME → * | retry ≤ 3 with **same** idempotency key; still unknown → query `GET /transactions?idempotencyKey=` → decide; still unknown → `FAILED_SAFE` with "we're checking, don't resend" message |
+| IDLE | Ready for a request |
+| VALIDATED | Intent/schema/source checks passed; resolving slots |
+| CLARIFYING | Missing/ambiguous recipient, amount, biller or exact time |
+| RESOLVED | Entities fixed; wallet pre-check/quote pending |
+| AWAITING_CONFIRM | Exact card/token issued; nothing sent |
+| EXECUTING | Wallet request with the card's token and idempotency key |
+| UNKNOWN_OUTCOME | Execution may have happened; keep the key and recheck |
+| EXECUTED | Wallet confirmed payment or schedule creation |
+| ANSWERED | Read-only answer from wallet data |
+| FAILED_SAFE | Request refused or wallet definitively rejected; no payment |
+| CANCELLED / EXPIRED | Pending approval cancelled/expired |
+| NEEDS_REPHRASE | Input cannot safely produce an action |
 
-## Multi-action requests
-«ادفع الكهرباء ودز لعلي عشرة آلاف» → the LLM returns `actions: [billPay, transfer]`. The machine queues them and runs **each through the full chain separately**: its own card, token and key. Cancelling one does not cancel the other unless the user says so.
+PARSED is a conceptual transient step inside LLM_OUTPUT, not a stored phase. Invalid model output on an existing pending question/card leaves its existing safe state and asks to rephrase; it never executes. A payment's EXPIRED/CANCELLED state cannot undo a debit already committed.
 
-## Tool loop sits inside PARSED
-`PARSED` may involve up to 4 read-only tool calls (docs/05 §Tools). The machine only sees the **final** intent or a `propose`d draft. A `propose` never moves state past `VALIDATED` by itself: Zod, cross-checks and resolver provenance still run.
+## Guards and effects
 
-## Clarification loop
-- At most **2 clarification turns per slot**. Then `FAILED_SAFE` with "let's start again" copy, so the loop can't run forever.
-- Clarification answers can be a tap (choose a candidate card) or text/voice («الأول», «أحمد علي», «اللي رقمه ينتهي 4471»).
-- The resolver re-runs against the **original candidate set only**. A clarification answer can't introduce a new recipient silently.
+- Intent.safeParse and deterministic source/amount checks precede all money-path effects. Unknown entities and incomplete slots ask; fuzzy matching offers candidates, never a silent final match.
+- A resolved quote comes from the wallet: amount/fee, balance, limits, bill status/capacity. Only successful pre-check issues a pending card and token.
+- CONFIRM requires the active token and payload hash, unused and unexpired. The wallet independently validates session/payload/token inside its atomic transaction. The browser only sends session_id/card_id; it never gets the token.
+- Editing a pending payment revokes the old token and re-resolves/re-quotes before issuing another card. A changed bill amount at execution is rejected as AMOUNT_CHANGED and needs a new approval; neither increases nor decreases are silently substituted.
+- Timeout/uncertain 5xx retries use the same key (at most three machine retries). Lookup decides executed/not-found only when the wallet provides evidence. An unresolved lookup stays UNKNOWN_OUTCOME; later RECHECK looks up the same key and never resends another payment.
+- ASR gating/read-back is handled before the normal turn. Low confidence stops; unknown confidence reads back by default. Accepting a transcript is not payment approval.
 
-## Changes after confirmation card
-If the user edits the amount or recipient while in `AWAITING_CONFIRM`, the old token is **revoked**, the machine returns to `VALIDATED`, and a new card and token are issued. A token never covers a payload it wasn't issued for.
+## Multi-action and schedule requests
 
-## Session storage
-In-memory map keyed by `sessionId` for the demo (plus SQLite for tokens and keys, so state survives a server restart). Every transition is appended to `audit_log` (docs/14).
+The app announces an ordered request queue (up to three), then runs every action through its own clarification, card, token and key. There is no aggregate “approve everything” token. Button cancellation can finish the current action and proceed to the next; a typed cancel intent clears the current plan. Nothing unapproved is debited.
 
-## Implementation note
-Write it as a plain reducer, `transition(state, event, ctx) → {state, effects[]}`, with no side effects inside. The orchestrator performs the effects (call LLM, call wallet). This makes the machine 100% unit-testable and replayable from the audit log.
+Scheduling preserves the same chain: parse exact time deterministically, show Baghdad date/time, bind run_at in the token, then explicit Confirm creates a schedule without a debit. The wallet runner rechecks and pays at most once when due. Vague/invalid times ask; recurring schedules are unbuilt (docs/27).
+
+## Session lifetime
+
+Hosted orchestrator sessions and each SQLite sandbox wallet are in memory. Balances, tokens, keys, receipts, pending schedules and session traces do not survive process restart/eviction (default 30 idle minutes/capacity 200). The standalone wallet supports a file DB via DB_PATH; that alone does not persist hosted orchestrator state. Wallet SQLite events and session traces have different lifetimes (docs/14). Full durable session replay is not implemented.

@@ -31,7 +31,7 @@ Rule: **fail closed.** When anything is in doubt, nothing moves, and the message
 ## Known misses from the one Kurdish held-out run (commit 49319bd, n=90, nothing was sent in any of them)
 - **Spelling variants resolve without a question** («حەسێن», «شێلان»): the Kurdish name key folds them onto one saved
   contact (حسين, شیلان) and the card comes straight away. «حەسێن» could also mean حسن. The card still needs a tap and shows
-  the name and masked number, but asking («مەبەستت …؟») would be safer. Not changed after the run; needs a fresh set.
+  the name and masked number, but asking («مەبەستت …؟») would be safer. Fixed in 2026-10-21 developer regressions: lossy vowel variants offer candidates; the historical held-out result is unchanged. Fresh-set measurement still pending.
 - A near-miss proposes the closest contact only («ڕێبار» -> ڕێبوار, not also ڕێباز); a surname alone («کەریم») is not matched.
 - Two transfers in one sentence («… بۆ شیلان و دە هەزاریش بۆ کاروان») was asked to rephrase.
 - «دووسەد و پەنجا» (250 dinars) is asked as «250 هەزار؟» (by design) and a «250 dinars» answer is not taken.
@@ -43,12 +43,15 @@ Rule: **fail closed.** When anything is in doubt, nothing moves, and the message
 - «ورقة / دفتر» (slang for USD amounts) asked instead of refused.
 - Descriptor words after a name («لأم حسين ثواب») sometimes prevent a match, so it asks.
 
-**Addressed after that run (2026-10-19), not yet measured** (the fresh `heldout2` set runs once to measure them):
+**Addressed after that run (2026-10-19), covered by developer tests; fresh held-out measurement pending** (review the fresh set and freeze code/scorer before its single run):
 the amount for «same as last time» now comes from the wallet's history (no history: it asks); line checks and fragments
 are "rephrase"; a stray «cancel» with nothing pending asks to rephrase; dollars / «ورقة» / «دفتر» in a transfer are refused
 even with no amount; description words after a name are ignored and a qualifier that fits nobody asks; a cut-off model
 answer is retried once; the model's biller must match the user's words; a known first name with an unknown rest offers
 everyone with that name; «حسوني» / «زنوبة» propose candidates.
-Still open: «بعد الظهر» ("in the afternoon") is read as 12:00 instead of asking for the hour.
+Fixed 2026-10-21: vague afternoon asks for an hour; impossible dates, 24:00 boundaries and vague day offsets cannot silently become precise schedules. Explicit valid schedules still work. Core tests were written before the fixes.
 
-Unsafe executions on the held-out set: 0/180 (upper 95% bound 1.7%). Full analysis: `eval/results/heldout-haiku-tools.md`.
+Historical scorer v1 observed 0/180 debits without confirmation (upper 95% bound 1.7%). This is not the current S1 must-not-execute denominator or proof against confirming a wrong pending card. Full analysis: `eval/results/heldout-haiku-tools.md`.
+
+## Provider compatibility and availability (2026-10-21)
+Gemini tool-call continuations must preserve their opaque thought signatures. The OpenAI-format adapter now round-trips them on the original calls and strips them for other providers, with regression tests. The project/model free quota was measured at 15 requests/minute; optional LLM_REQUEST_INTERVAL_MS spaces starts and retries within each process. Other processes still share quota. 429/503/auth failures never authorise a payment; readiness reports retain failed provider runs instead of discarding them.

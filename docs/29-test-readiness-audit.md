@@ -1,5 +1,7 @@
 # Test readiness audit — 2026-10-21
 
+Follow-up: fixes and current verification are recorded in [docs/30](30-readiness-execution.md). This initial audit is a dated baseline; its missing-work statements are not the current status.
+
 Reviewed against `docs/00-official-brief.md`, the dated deliverables in `docs/20`, numbered planning docs, public submission docs, evaluation data/results, CI, and the relevant implementation/tests. Baseline commit: `7ed356c`.
 
 **Verdict: ready to begin exploratory testing; resolve evaluation gaps and spec conflicts before the final held-out run or submission.** The core exists. The largest gaps are human evidence, measurement coverage, and inconsistent descriptions of what is built.

@@ -1,71 +1,38 @@
-# 21 — Repository Structure
+# 21 — Repository and running the implementation
 
-**As built (2026-10-17):** `apps/web` (Next 16, `server/engine.ts`, `server/voice.ts`, routes turn/confirm/cancel/tick/schedule-card/schedules/wallet/admin/voice), `apps/wallet-api` (Hono, `src/app.ts`, `db.ts`, `seed.ts`, `fees.ts`, `schedule.ts`), `packages/core`, `packages/llm`, `packages/orchestrator` (turn/confirm, CLI), `packages/asr` (voice), `eval/` (`src/run.ts`, `score.ts`, `stats.ts`, `wer.ts`, `voice.ts`, `data/`, `gen/`, `results/`, `voice/`). No `services/asr-bridge`, no LiveKit, no `pnpm seed` (the seed is applied on start; `/admin/reset`). Scripts: `dev`, `test`, `typecheck`, `build`, `eval`, `stress`, `cli`, `smoke`, `--filter @zc/asr check`, `--filter @zc/eval eval:voice`. Env: see `.env.example`.
+Updated 2026-10-21. `package.json`, workspace package scripts and `.env.example` are the executable command/config references.
 
-Original plan:
-
-```
-zaincash-billpay-agent/
-├─ README.md  AGENTS.md  CLAUDE.md
-├─ docs/                         # this spec (00–25) + research/
-├─ package.json  pnpm-workspace.yaml  tsconfig.base.json  .env.example
-├─ apps/
-│  ├─ web/                       # Next.js App Router, RTL UI, /api/turn, /api/confirm, /api/livekit-token
-│  │  ├─ app/
-│  │  ├─ components/ (Chat, CandidatePicker, ConfirmCard, ResultCard, MicButton, WhyPanel, AdminFaults)
-│  │  └─ server/orchestrator.ts
-│  └─ wallet-api/                # Hono + SQLite mock wallet
-│     ├─ src/routes/ (users, contacts, billers, quotes, transfers, billPayments, admin)
-│     ├─ src/db/ (schema.sql, migrations)
-│     └─ seed/seed.json
-├─ packages/
-│  ├─ core/                      # PURE: schema.ts, normalise.ts, amount.ts, resolver.ts, machine.ts, copy.ts
-│  │  └─ test/                   # invariants (Vitest)
-│  └─ llm/                       # anthropic.ts, openai-compat.ts, tools.ts, prompt.ts, cache.ts, index.ts (Understander)
-├─ eval/
-│  ├─ data/ (dev.jsonl, heldout.jsonl, heldout.sha256)
-│  ├─ voice/ (manifest.jsonl, *.webm)
-│  ├─ gen/ (generation prompts + scripts)
-│  ├─ run.ts  metrics.ts  stress.ts
-│  └─ results/
-└─ services/asr-bridge/          # optional FastAPI/TS bridge to RegaLabs ASR if needed
-```
-
-## Scripts
-| Command | Does |
+| Location | Responsibility |
 |---|---|
-| `pnpm dev` | wallet-api :8787 + web :3000 |
-| `pnpm test` | Vitest all packages |
-| `pnpm seed` | reset wallet DB from seed.json |
-| `pnpm eval --split dev\|heldout --provider anthropic\|groq\|gemini\|all --mode tools\|workflow` | evaluation |
-| `pnpm stress` | idempotency/token stress tests |
+| apps/web | Next App Router UI, API routes, session sandboxes and voice proxy |
+| apps/wallet-api | Hono + SQLite mock wallet, seed, fees, token/idempotency checks and scheduled-payment runner |
+| packages/core | Pure schemas, amount/time parsers, resolver, reducer, copy, Kurdish and voice gate |
+| packages/llm | Anthropic/OpenAI-format clients, bounded read-only tool loop, workflow, cache, retries and token budget |
+| packages/orchestrator | Common text/voice turn, deterministic effects, card confirmation, CLI/smoke |
+| packages/asr | RegaLabs-compatible transcription client, WAV conversion/validation, fake and check command |
+| eval | Scorer, developer/held-out datasets, voice scoring and measured reports |
+| docs, brief, research | Committed specification, submitted design artifacts and recorded evidence |
 
-## `.env.example`
-```
-LLM_PROVIDER=anthropic   # anthropic|groq|gemini|openrouter|local
-LLM_MODE=tools           # tools|workflow
-ANTHROPIC_API_KEY=
-LLM_MODEL=claude-haiku-5-5
-LLM_HARD_MODEL=claude-sonnet-5-5
-LLM_FALLBACKS=groq,gemini,local
-GROQ_API_KEY=
-GEMINI_API_KEY=
-LLM_DAILY_TOKEN_CAP=
-LLM_CACHE=1
-WALLET_API_URL=http://localhost:8787
-DEMO_MODE=1
-ADMIN_SECRET=
-LIVEKIT_URL=
-LIVEKIT_API_KEY=
-LIVEKIT_API_SECRET=
-REGALABS_ASR_AGENT=          # agent name / dispatch id
-REGALABS_ASR_MODE=streaming  # streaming|offline
-ASR_CONF_LOW=0.5
-ASR_CONF_HIGH=0.8
-CONFIRM_TOKEN_TTL_S=120
-```
+## Commands
 
-## Conventions
-- Money: integer IQD, type `type IQD = number & {__brand:"IQD"}`.
-- No I/O in `packages/core`.
-- Commit style: Conventional Commits (`feat(core): resolver handles kunya`).
+- `pnpm install --frozen-lockfile`
+- `pnpm typecheck`, `pnpm test`, `pnpm build`
+- `pnpm dev`: web on localhost:3000 with an in-process per-session mock wallet; no separate wallet process is required.
+- `LLM_PROVIDER=fake pnpm dev`: scripted demo only, not arbitrary judge input.
+- `pnpm cli`, `pnpm smoke`, `pnpm smoke -- --fake`
+- `PW_CHROMIUM=/usr/bin/google-chrome pnpm --filter @zc/web e2e`: local Chrome override if Playwright's pinned browser is absent; CI installs its pinned Chromium.
+- `pnpm eval -- --split dev --mode tools` (provider/model from env; there is no --provider switch).
+- `pnpm eval -- --split readiness-dev --data eval/data/readiness.dev.jsonl --mode tools`: fully labelled development flows, including multiple payments.
+- `pnpm stress`: refresh the multi-process wallet safety artifact deliberately.
+- `pnpm --filter @zc/asr check /path/to/file.wav`
+- `pnpm --filter @zc/eval eval:voice`: consented manifest required; no accuracy number without one.
+
+Seed data is applied on wallet creation; the demo reset button calls the reset API. There is no `pnpm seed`. Standalone wallet: `pnpm --filter @zc/wallet-api dev`, optionally DB_PATH for a persistent wallet file. Hosted sandboxes remain in memory and expire/restart; pending schedules need a live retained sandbox.
+
+## Configuration
+
+Copy `.env.example` to `.env` and fill credentials locally. Never print or commit them. Use LLM_PROVIDER, LLM_MODEL, LLM_MODE, LLM_FALLBACKS and LLM_DAILY_TOKEN_CAP. LLM_CACHE=1 caches identical responses; LLM_CACHE=0 is needed for fresh-provider reliability/latency measurements.
+
+Voice uses ASR_PROVIDER, REGALABS_API_KEY, REGALABS_BASE_URL and REGALABS_ASR_LANGUAGE=auto. The laptop Stage-11 path is `http://127.0.0.1:8790/v1` with its separate local key. Hosted/container deployments need a reachable endpoint of their own. No LiveKit settings or server are required. ASR_TIMEOUT_MS defaults to 15000; unknown confidence is read back by default.
+
+Other hosted limits: TURNS_PER_10_MIN, SANDBOX_IDLE_MIN, SANDBOX_MAX. DEMO_MODE controls demo administration. The standalone wallet's admin requires its secret; hosted wallet administration is in-process and sandbox-local.

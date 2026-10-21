@@ -1,59 +1,34 @@
-# 25 — Open Questions
+# 25 — Open questions and remaining external decisions
 
-Update with answer + date.
+Updated 2026-10-21. Resolved implementation details are in docs/02–15 and docs/21; current automated evidence is in the readiness report.
 
-## Answered (organiser pack, 11/10/2026)
-- [x] Dates: brief 22/10, MVP 08/11 fixed; rest tentative → docs/20.
-- [x] Pre-work allowed: repo link due with brief, commit history expected.
-- [x] Repo required on GitHub with real history; keys must stay out (scanned).
-- [x] Demo includes one unexpected judge input; finalists demo live on a judge-given input.
-- [x] LLM: author has Anthropic key → Claude Haiku/Sonnet 5.5 primary (paid, capped); Groq/Gemini free fallbacks → docs/10. (2026-10-15)
-- [x] Agentic design: read-only tools + `propose`, no payment tool (docs/05). (2026-10-15)
-- [x] Voice: author implements + tests ASR personally; ships before MVP only if good. Organisers did not answer the email. (2026-10-15)
-- [x] Submission: PDF/PPTX, EN or AR, `Name_Topic`, Typeform.
+## Decided / available
 
-## Research (docs/research/02 TODO)
-- [ ] Install ZainCash/Qi/FIB; record flows, taps, PIN/OTP, wrong-recipient policy
-- [x] ZainCash Fees & Limits (read 2026-10-16, in fees.ts) · [ ] CBI Regulation No. 2 of 2024
-- [ ] Google Play reviews; Facebook/Telegram threads
-- [ ] Does ZainCash really pay electricity bills? (one source only)
+- Text is first-class; Arabic default; Sorani implemented. Five real interviews are recorded in docs/17 and research/interview-log.csv.
+- Transfers use saved contacts only, also selectable by their saved Iraqi number. Unknown numbers ask/refuse; no contact creation.
+- Up to three ordered actions, announced and independently clarified/confirmed. No combined approval.
+- One-off scheduled transfers and bills are implemented; recurring payments are not.
+- Confirm button only for both text and voice. No alternate spoken-yes payment path.
+- Public GitHub repo and real history; docs/brief are tracked. Licence is proprietary, with no general run grant.
+- Google AI Studio key configured; Gemini 3.5 Flash-Lite is under dev verification (docs/30). The author removed the Claude key. Groq/OpenRouter remain unconfigured.
+- Voice: local Stage-11 CPU API at laptop loopback, compatible client configured; auto language. The old forced-acm cloud gateway issue is not a laptop blocker. No LiveKit.
+- Hosted demo uses per-session in-memory wallets. Restart/eviction loses tokens, receipts and pending schedules. Laptop ASR loopback is not a hosted endpoint.
 
-## Open-source follow-ups (docs/research/03)
-- [ ] CAMeL Tools: install weight and whether it helps dialect analysis
-- [x] Kept better-sqlite3 (works on CI Node 22)
-- [ ] Iraqi quality of Whisper dialectal fine-tunes vs RegaLabs ASR (needs our audio set)
-- [ ] Read the 340 Mizan items; mine money/name phrasing for the dev set (attribute CC-BY)
-- [x] gitleaks + OSV-Scanner in CI (2026-10-17)
+## Organiser / author decisions still requiring an answer
 
-## Organisers (ask)
-- [x] Repo public (author decided); license proprietary — ask whether judges may run it
-- [ ] Is a self-owned pre-existing service (RegaLabs ASR) OK with disclosure?
-- [ ] Judge input: text only or voice too?
-- [ ] Demo format: time, device, internet?
-- [ ] Is the Topic 04 brief changed from the 17/09 draft?
-- [ ] Branding rules for ZainCash in the UI?
-- [ ] Team size: confirm solo submission.
+- Is the September draft still the authoritative Topic 04 brief?
+- Is the author's pre-existing RegaLabs/Stage-11 ASR acceptable with disclosure?
+- Judge input text only or voice too; demo duration/device/internet; branding rules; final review/Demo Day dates and booking link.
+- Narrow permission for organisers/judges to run the proprietary repo for evaluation.
+- Deployment account/host and reachable ASR endpoint if voice is demonstrated remotely.
 
-## Technical
-- [ ] Groq model chosen on dev (id, daily cap) — not needed unless a fallback is demoed
-- [ ] Gemini 3 Flash-Lite id + daily cap in console
-- [x] RegaLabs ASR: developer HTTP API, no LiveKit, no confidence field (docs/09) · [ ] add `acm` to the gateway's SUPPORTED_ASR_LANGUAGES · [ ] API key with paid credit
-- [ ] ASR capacity for judges live
-- [ ] Hosting: laptop vs Vercel/Cloudflare + wallet host (HF Spaces/Render sleep when idle)
-- [ ] Digit style on cards: Western vs Arabic-Indic
+## Human evidence still needed
 
-## Language (from the 5 interviews, 19/10)
-- All 5 interviewees (Sulaymaniyah) are native Kurdish speakers; ZainCash serves the Kurdistan Region. Would KRG users
-  type to the agent in Arabic, or do they need Kurdish (Sorani)? Ask it directly next time. If Kurdish: intent prompt +
-  Sorani numerals/amount words + copy + a Kurdish test set; the deterministic core does not change.
+- Native Iraqi-Arabic hand review/editing of fresh requests and copy; Sorani review if shipped. Mark unresolved dialect with VERIFY-DIALECT, not invented sign-off.
+- More interviews: older/assisted users, Arabic-speaking cities; ask language preference, why not use, trust requirements, number style and exact phrasings.
+- Observe 3–5 usability tasks and record outcomes, not just opinions.
+- Consented task recordings with listener-typed references for actual WER/CER and voice-payment completion.
 
-## Dialect (native review)
-- [ ] All `VERIFY-DIALECT` markers
-- [ ] Slang amounts (ورقة, دفتر, dropped ألف) with ≥2 speakers
-- [ ] Copy read aloud by an Iraqi speaker from outside KRG
+## Optional research, not release gates
 
-## Personal
-- [ ] ≥5 interviews (≥2 before 22/10)
-- [ ] ≥5 voice volunteers
-- [ ] 1–2 native dialect reviewers
-- [x] GitHub repo created (github.com/shahrryyar/zaincash-billpay-agent)
+Real app teardown/tap counts, more public-review sources, dialect corpora and ASR comparisons can strengthen the problem story. Do not claim “fewer taps”/elderly voice benefits without measurements. No regulatory-compliance claim is made by this synthetic mock.

@@ -16,7 +16,9 @@ The service does not auto-start and needs about 85 s to load. From `local-asr/`:
 `nohup /home/jackal/Desktop/idk/nemo-venv/bin/python server.py > server.log 2>&1 &`.
 Check readiness before the demo. Laptop loopback is unavailable to a remotely hosted web server or an ordinary Docker
 container; configure their ASR endpoint separately. The remaining hosted-service notes below describe the cloud path.
-Record the exact Stage-11 checkpoint and provenance before any reported comparison. See docs/29 for remaining tests.
+Exact local checkpoint: stage11-avg3-36k44k48k.nemo, SHA-256 e9de02a14d531d79c531d442e6d7294d175cda55d118cf34fa4ab6efb052b02c; CPU context [56,13], blank penalty 0.9. Training-data provenance still needs an author disclosure before comparison. Independent client/web upload checks are in docs/30; no task WER/CER is claimed.
+
+The author confirms the underlying model supports streaming at 80/320/400 ms chunks. The current local server.py exposes final HTTP transcription only. Connecting a streaming transport and editable partials is captured for later in docs/32; these chunk sizes are not measured end-to-end latency.
 
 ## Decision: the developer HTTP API, not LiveKit
 RegaLabs exposes an OpenAI-compatible developer API (RegaLabs repo: `server/gateway/src/routes/developer-audio.ts`):
@@ -67,7 +69,7 @@ hold 🎤 ─► MediaRecorder (webm/opus) ─► decode in browser ─► downm
 `apps/web/components/MicButton.tsx`, `recorder.ts` · `eval/src/voice.ts`, `eval/src/wer.ts`, `eval/voice/README.md`.
 
 ## Turning it on (author, 2 minutes)
-1. `.env`: `REGALABS_API_KEY=rega_live_…` (paid credit; free-plan credit does not cover the API).
+1. `.env`: use the laptop endpoint/key above, or a hosted `REGALABS_API_KEY` with API credit. The laptop key does not need hosted-service credit.
 2. `pnpm --filter @zc/asr check [some.wav]` → prints OK + transcript, or the exact problem (auth, quota, language,
    service down / outside the daily public window).
 3. `pnpm dev`, hold 🎤. Without a key: `ASR_PROVIDER=fake pnpm dev` and use «محاكاة صوت» in «لوحة العرض».

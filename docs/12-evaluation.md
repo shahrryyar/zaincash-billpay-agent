@@ -1,6 +1,6 @@
 # 12 — Evaluation Plan
 
-> "A demo without numbers is a demo, not evidence." Every number is reported **as measured** on the held-out set.
+Every number is reported as measured, with split, model and run kind. Developer tests and cached replays are not held-out evidence.
 
 ## Splits
 - `eval/data/dev.jsonl` (~120): prompt engineering, threshold tuning, few-shots.
@@ -8,11 +8,13 @@
 - `eval/voice/` (40–60 utterances): ASR + end-to-end voice metrics.
 
 ## Harness
-`pnpm eval --split dev|heldout --provider anthropic|groq|gemini|all --mode tools|workflow`
+`pnpm eval -- --split dev --mode tools --concurrency 1 --tag unique-name`
 
-For each case: reset the wallet to the seed → send `text` (and `followups`) through the **real orchestrator** (same code as the demo, not a copy) → auto-confirm only when the case says the user confirms → record final state, payload, wallet diff, latency, tokens.
+Provider/model come from LLM_PROVIDER and the corresponding key/model variables in the environment. Use --data for another development case file. Held-out requires --allow-heldout, a matching frozen hash, no prior result and no subset flags. Keep heldout2 unspent until human review and code/scorer freeze.
 
-Writes `eval/results/<date>-<provider>.json` and a markdown table `eval/results/<date>-<provider>.md`.
+For each case: reset the wallet to the seed → send `text` (and `followups`) through the **real orchestrator** (same code as the demo, not a copy) → in the synthetic evaluator, deliberately confirm labelled pending cards (even wrong ones) to detect wrong-payload debits; never expose this evaluator approval path in the product → record final state, payload, wallet diff, latency, tokens.
+
+Writes eval/results/<tag>.json and .md; existing tags are refused. Scorer v2 also verifies sender debit, recipient credit, ledger counterparty/amount/fee and labelled subsequent actions. Legacy rows missing later-action labels cannot count as complete multi-action success. Alternative-state injection rows specify no approved payload and are safety-only. Voice-derived cases traverse the confidence/read-back gate.
 
 ## Metrics
 
@@ -64,7 +66,7 @@ Labels are LLM-adjudicated (no human). Dev was tuned on, so dev is optimistic. H
 | Ambiguity recall | 100% [91.6, 100] n=42 | 96.3% [81.7, 99.3] | 92.6% [76.6, 97.9] | 96.3% [81.7, 99.3] | ≥ 95% |
 | Ambiguity precision | 73.7% [61.0, 83.4] n=57 | 92.9% [77.4, 98.0] | 96.2% [81.1, 99.3] | 81.3% [64.7, 91.1] | ≥ 85% |
 | E2E task completion | **81.1% [74.8, 86.2]** | 92.5% [86.4, 96.0] | 94.2% [88.4, 97.1] | 90.0% [83.3, 94.2] | ≥ 90% |
-| S1 unsafe execution | **0/180 (≤ 1.7%)** | 0/120 (≤ 2.5%) | 0/120 | 0/120 | 0 |
+| Historical v1 unconfirmed debit, all cases | **0/180 (≤ 1.7%)** | 0/120 (≤ 2.5%) | 0/120 | 0/120 | 0 |
 | Card on must-not-execute case | 1.0% [0.2, 5.4] n=100 | 1.5% n=67 | 1.5% n=67 | 1.5% n=67 | report |
 | p50 / p95 latency to card | 2.3 / 3.7 s | 2.2 / 4.5 s | 2.3 / 7.1 s | 1.3 / 2.6 s | ≤ 3 s p50 |
 | Voice WER / CER, voice E2E | not measured (no recordings yet) | | | | report |
@@ -75,7 +77,7 @@ Labels are LLM-adjudicated (no human). Dev was tuned on, so dev is optimistic. H
   950 replays, 0 duplicates, money conserved.
 - **Targets missed on held-out** (said openly): slots 79.4% (< 90), ambiguity precision 73.7% (< 85), E2E 81.1%
   (< 90). Every miss was a safe state (asked or refused); none moved money. Analysis: `eval/results/heldout-haiku-tools.md`.
-- Groq/Gemini columns: not run (no keys). Not claimed.
+- These are historical Claude comparisons. Current Gemini setup/development checks, including quota failures, are in docs/30 and eval/results/readiness-gemini*. Groq remains unmeasured.
 - Code changed after the held-out run (resolver kunya fix 2026-10-17, voice path): the held-out number describes
   `1445bff`. A new number needs a fresh set.
 
@@ -85,4 +87,11 @@ Labels are LLM-adjudicated (no human). Dev was tuned on, so dev is optimistic. H
 - What changed between dev iterations (prompt v1 → v2) and its effect **on dev only**.
 
 ## Reproducibility
-- Pinned model ids + dates, temperature 0, seed DB hash, held-out hash, commit SHA in every results file.
+- Current reports record model/date, commit and dirty state, dataset/seed/prompt/scorer/source hashes, cache mode, pacing, concurrency and provider settings. Anthropic temperature is omitted by default; OpenAI-compatible adapters use 0. Historical artifacts have fewer metadata fields.
+
+## Scorer v2 correction (2026-10-21)
+Historical scorer v1 called all-case unconfirmed debits “S1” and mixed all response states into time-to-card. Its zero count does not demonstrate that confirming a wrong card cannot debit. Historical E2E did not verify all recipient-side ledger effects or later queued actions. Preserve the original artifacts and interpret them with these limitations; do not silently relabel the old denominator as must-not-execute.
+
+Current S1 uses only eligible labelled must-not-execute rows; no-confirm bypass spans all rows; wrong-payload-after-confirm has its own count. Each has its denominator. Slot metrics use only applicable labelled payment cards. Actual-card latency and all-state first-response latency are separate; user think-time is excluded. Safety-only and incompletely labelled queues are explicitly counted.
+
+`--cache-only --cache-client-id provider:model` is offline developer replay only: no provider requests, zero new token usage, and no new model quality/availability/latency claim. Fresh calls use LLM_CACHE=0; normal cache-enabled runs can mix new calls and reuse. Development fixtures in readiness.dev.jsonl include independently expected later actions, but remain AI-authored and not human-reviewed.

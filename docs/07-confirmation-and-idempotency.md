@@ -8,7 +8,7 @@ Two hard safety gates, both targeting **0**:
 
 **Issued** when the machine enters `AWAITING_CONFIRM`:
 ```
-payload = canonicalJSON({kind, from, to_id, biller_id?, account_ref?, amount_iqd, fee_iqd})
+payload = canonicalJSON({kind, from, to_id, biller_id?, account_ref?, amount_iqd, fee_iqd, run_at?})
 token   = "ct_" + random(128 bit)
 store   { token, session_id, payload_hash: sha256(payload), expires_at: now + 120s, used_at: null }
 ```
@@ -20,7 +20,7 @@ store   { token, session_id, payload_hash: sha256(payload), expires_at: now + 12
 - **Single-use.** `used_at` is set inside the execute transaction.
 - **Short-lived.** 120 s. The card shows a countdown. Expiry → «انتهى الوقت، نعيد؟» ("time ran out, try again?").
 - **Never produced by the LLM.** The model has no path to read or mint tokens.
-- **Delivered only by an explicit user act:** the Confirm button (web) or, in voice/WhatsApp, an explicit confirm reply while that exact card is the active one. Confirm reply must be unambiguous («أكد» / «اي دز» / button tap). Vague replies («زين», «يمكن») → re-ask.
+- **Redeemed only by the Confirm button.** Web text and voice both require a tap on the exact active card. Typed/spoken yes, including «أكد», never executes. The browser sends only session_id and card_id; the token and idempotency key remain on the server. WhatsApp is unbuilt and adds no alternate confirmation path.
 
 **Why not just a boolean "confirmed"?** A boolean can be set by a bug, a replayed request, or a model hallucinating «تم». A payload-bound token turns "the user saw *this exact* card and pressed confirm" into something the server can check.
 
@@ -54,7 +54,7 @@ The Confirm button disables on first tap, but **don't rely on UI**. The server k
 - Same key twice → 1 transaction, identical responses.
 - Same key, different payload → **422** (IETF idempotency-key draft-07; it is a draft, not an RFC).
 - Same key while the first request is in flight: **not an error state in our design**. Check+execute is one atomic transaction, so duplicates are serialised and replayed (no 409 is ever emitted). Proved by the multi-process stress test.
-- Idempotency keys expire after 24 h (published in the API notes).
+- Idempotency keys are retained for the lifetime of the wallet database; there is no 24-hour expiry/cleanup. Hosted in-memory wallets disappear at sandbox eviction/restart. Do not delete keys while their payments can be retried.
 - Bill amount rises between card and execute → `AMOUNT_CHANGED`, nothing debited, new card.
 - 20 concurrent requests with the same key → exactly 1 transaction.
 - `timeout_after_commit` + retry → 1 transaction.

@@ -8,7 +8,7 @@ Rule: every claim needs a check that **someone or something other than the autho
 |---|---|---|---|
 | **S**poofing | Replay another session's token | Token bound to session + payload hash | Execute with token from session B → 403 |
 | **T**ampering | Edit amount after card shown | Payload-hash binding; new card on change | Tamper → 403 |
-| **R**epudiation | "I never confirmed" | Append-only `audit_log` with card id, token id, key | Replay a transaction from the log |
+| **R**epudiation | "I never confirmed" | Wallet SQLite events and in-memory orchestrator trace (docs/14) | Check events and references; full durable session replay is not implemented |
 | **I**nfo disclosure | Full phones/balances to LLM provider; PII in logs | Masked handles; redacted logs; synthetic data | Grep prompts/logs for full numbers |
 | **D**oS | Burn LLM budget / free-tier quota | Per-session rate limit, daily budget cap, fallback chain | Flood test; budget trips → honest "busy" |
 | **E**levation | Model calls execute; injection via contact name or note | No execute tool; downstream token check; tool results wrapped as data | Injection set (docs/11) + tool-result injection cases |
@@ -40,7 +40,7 @@ Rule: every claim needs a check that **someone or something other than the autho
 
 ## 5. External references as oracles
 - PSD2 RTS Art. 5 (dynamic linking) → token tests mirror Art. 5(1)(a)–(d).
-- IETF idempotency draft-07 → status codes 422/409.
+- IETF idempotency draft-07 → design reference; this mock stores/replays results but does not implement every draft status (for example, no in-progress 409).
 - OWASP LLM06 → checklist.
 - Judges' surprise input at the demo is the final unseen test.
 

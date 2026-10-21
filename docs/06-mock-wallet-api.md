@@ -51,7 +51,7 @@ Server, inside **one SQLite transaction** (`BEGIN IMMEDIATE`):
 1. Look up `idempotency_keys[key]`.
    - Exists and `request_hash` matches → return stored response (**HTTP 200, same body, header `Idempotent-Replay: true`**). No debit.
    - Exists and hash differs → **422 `IDEMPOTENCY_KEY_REUSED`** (IETF draft-ietf-httpapi-idempotency-key-header-07 §2.7).
-   - First request with this key still in flight → **409 `IDEMPOTENCY_IN_PROGRESS`** (same draft).
+   - A concurrent request waits for the atomic transaction, then replays the stored result; no in-progress response is emitted.
 2. Validate token: exists, unused, not expired, `payload_hash === hash(body)`. Otherwise **403 `CONFIRMATION_INVALID`**.
 3. Check balance + limit + biller status. On failure → 422 with a code. Store the failure response under the key too, so the outcome stays stable.
 4. Debit/credit, insert transaction, mark token used, store response under key.
@@ -68,7 +68,6 @@ Server, inside **one SQLite transaction** (`BEGIN IMMEDIATE`):
 | `BILL_ALREADY_PAID` | 409 | |
 | `CONFIRMATION_INVALID` | 403 | missing/expired/used/mismatch |
 | `IDEMPOTENCY_KEY_REUSED` | 422 | same key, different payload |
-| `IDEMPOTENCY_IN_PROGRESS` | 409 | same key, original still running; client waits and retries |
 | `AMOUNT_CHANGED` | 409 | bill amount differs from the quoted card amount → new card |
 | `SERVICE_UNAVAILABLE` | 503 | injected outage |
 
