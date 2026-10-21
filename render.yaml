@@ -10,20 +10,16 @@ services:
     healthCheckPath: /api/health
     autoDeploy: false
     envVars:
-      - key: LLM_PROVIDER        # groq | gemini | anthropic | fake (fake = scripted demo sentences, no key)
-        sync: false
-      - key: GROQ_API_KEY
-        sync: false
-      - key: GROQ_MODEL          # the exact model id from console.groq.com
-        sync: false
+      - key: LLM_PROVIDER        # change for another provider; fake is scripted backup only
+        value: gemini
       - key: GEMINI_API_KEY
         sync: false
-      - key: GEMINI_MODEL        # the exact Gemini 3 model id from aistudio.google.com
-        sync: false
-      - key: ANTHROPIC_API_KEY
-        sync: false
-      - key: LLM_FALLBACKS       # e.g. "gemini" when Groq is primary; free limits can run out mid-demo
-        value: gemini
+      - key: GEMINI_MODEL        # re-check availability/quotas in the target AI Studio project
+        value: gemini-3.5-flash-lite
+      - key: LLM_FALLBACKS       # add only providers whose keys/models are configured in host secrets
+        value: ""
+      - key: LLM_REQUEST_INTERVAL_MS # process-local only; multiple processes still share upstream quota
+        value: "5000"
       - key: LLM_DAILY_TOKEN_CAP
         value: "2000000"
       - key: TURNS_PER_10_MIN    # per browser session
