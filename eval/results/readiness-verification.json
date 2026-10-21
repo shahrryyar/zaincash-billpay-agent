@@ -94,6 +94,12 @@
     "complete_flow_fixtures": "19/21 E2E; source changed during run; two safe failures",
     "heldout2": "not run"
   },
+  "final_live_web_check": {
+    "artifact": "readiness-final-gemini35-live.json",
+    "passed": 5,
+    "total": 9,
+    "note": "Includes real ASR upload/read-back/no-payment pass. Four failures were Gemini HTTP 429 quota errors; no payment was made on failed turns."
+  },
   "heldout": "original Arabic/Sorani spent sets untouched; heldout2 not run",
   "note": "Dated software/transport and synthetic development verification, not human usability, voice WER, final-model quality or certification."
 }

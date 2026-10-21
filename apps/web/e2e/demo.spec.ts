@@ -97,8 +97,10 @@ test("schedule: approved now, paid at the time, by the wallet's own runner", asy
   await expect(page.getByRole("region", { name: "الإيصال" })).toContainText("انجدولت");
   await expect(balance(page)).toHaveText("200,000 د.ع");
   await openPanel(page);
+  // “Tomorrow at 9 a.m.” can be over 25 hours away when this test starts late
+  // in the day. Advance two full days so the assertion is independent of CI timezone/start time.
   await page.getByRole("button", { name: "قدّم الوقت يوم" }).click();
-  if ((await balance(page).textContent()) === "200,000 د.ع") await page.getByRole("button", { name: "قدّم الوقت ساعة" }).click();
+  await page.getByRole("button", { name: "قدّم الوقت يوم" }).click();
   await expect(balance(page)).toHaveText("140,000 د.ع");
   await expect(page.getByText(/اندفعت الفاتورة المجدولة/)).toBeVisible();
 });
