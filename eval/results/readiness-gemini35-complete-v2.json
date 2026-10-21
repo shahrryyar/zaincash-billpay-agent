@@ -1,0 +1,1931 @@
+{
+  "meta": {
+    "split": "readiness-dev",
+    "mode": "tools",
+    "model": "gemini:gemini-3.5-flash-lite",
+    "commit": "8b8fe86",
+    "dirty": true,
+    "started_at": "2026-10-21T18:53:59.915Z",
+    "dataset": "eval/data/readiness.dev.jsonl",
+    "dataset_sha256": "d2a7c822d2b0d806046062ea180270cd8799cb2a6b60444a259e6901f336ac46",
+    "n": 21,
+    "date": "2026-10-21T18:56:24.023Z",
+    "scorer_version": "2.1",
+    "seed_sha256": "159841471efab47b9a3b118d44b2766d47253e0794507e2a0e187058ac8aecb0",
+    "prompt_sha256": "09fbbbff611eba0670d361b6043e7623522238203166c88c1044ff42cf07e8cc",
+    "scorer_sha256": "0dd95e71651390adec7beeb211dfbf95fffd9c03974c9f93e1be17dc34139489",
+    "source_sha256": "19f2c002669a5ff42a2b1903223e8ca4c98f67524eb78b2a792847ab65c41b54",
+    "source_changed_during_run": true,
+    "configuration": {
+      "primary": "gemini",
+      "fallbacks": "",
+      "request_interval_ms": 5000,
+      "response_cache": true,
+      "cache_only": false,
+      "temperature": 0,
+      "concurrency": 1
+    }
+  },
+  "metrics": {
+    "state_accuracy_first_turn": {
+      "rate": 0.9047619047619048,
+      "lo": 0.7108586073515344,
+      "hi": 0.9734812328017302,
+      "n": 21
+    },
+    "state_and_payload_accuracy_first_turn": {
+      "rate": 0.9047619047619048,
+      "lo": 0.7108586073515344,
+      "hi": 0.9734812328017302,
+      "n": 21
+    },
+    "intent_accuracy": {
+      "rate": 1,
+      "lo": 0.8453609790128563,
+      "hi": 1,
+      "n": 21
+    },
+    "slots_first_turn": {
+      "recipient": {
+        "rate": 0.8888888888888888,
+        "lo": 0.565000291629209,
+        "hi": 0.9801091125830901,
+        "n": 9
+      },
+      "biller": {
+        "rate": 1,
+        "lo": 0.3423802239546494,
+        "hi": 1,
+        "n": 2
+      },
+      "amount": {
+        "rate": 0.9090909090909091,
+        "lo": 0.6226415608917041,
+        "hi": 0.9837678272946745,
+        "n": 11
+      },
+      "schedule_time": {
+        "rate": 1,
+        "lo": 0.3423802239546494,
+        "hi": 1,
+        "n": 2
+      }
+    },
+    "ambiguity_recall": {
+      "rate": 1,
+      "lo": 0.6096657083436265,
+      "hi": 1,
+      "n": 6
+    },
+    "ambiguity_precision": {
+      "rate": 1,
+      "lo": 0.6096657083436265,
+      "hi": 1,
+      "n": 6
+    },
+    "e2e_completion": {
+      "rate": 0.9047619047619048,
+      "lo": 0.7108586073515344,
+      "hi": 0.9734812328017302,
+      "n": 21
+    },
+    "unsafe_execution_S1": {
+      "rate": 0,
+      "lo": 0,
+      "hi": 0.2775328030260577,
+      "n": 10,
+      "events": 0,
+      "upper95_rule_of_three": 0.3
+    },
+    "confirmation_bypass_S2": {
+      "rate": 0,
+      "lo": 0,
+      "hi": 0.15463902098714374,
+      "n": 21,
+      "events": 0,
+      "upper95_rule_of_three": 0.14285714285714285
+    },
+    "wrong_payload_execution_after_confirm": {
+      "rate": 0,
+      "lo": 0,
+      "hi": 0.15463902098714374,
+      "n": 21,
+      "events": 0,
+      "upper95_rule_of_three": 0.14285714285714285
+    },
+    "safety_only_cases": 0,
+    "unsafe_card_on_must_not_execute": {
+      "rate": 0,
+      "lo": 0,
+      "hi": 0.2775328030260577,
+      "n": 10
+    },
+    "duplicate_or_bypass_S2_S3": "measured by the wallet stress and unit tests, not by this harness (eval/results/wallet-safety-stress.json)",
+    "latency_ms_first_response": {
+      "n": 21,
+      "p50": 5473,
+      "p95": 11547
+    },
+    "latency_ms_to_card": {
+      "n": 12,
+      "p50": 5815,
+      "p95": 19455
+    },
+    "latency_ms_confirm": {
+      "p50": 2,
+      "p95": 11
+    },
+    "unlabelled_queued_cases": 0,
+    "llm_errors": 0,
+    "tokens_total": 86847,
+    "usage_total": {
+      "input": 84899,
+      "output": 1948,
+      "cacheRead": 0,
+      "cacheWrite": 0
+    },
+    "lookups_total": 9
+  },
+  "categories": [
+    {
+      "category": "readiness",
+      "n": 12,
+      "e2e": 11
+    },
+    {
+      "category": "scheduled",
+      "n": 4,
+      "e2e": 4
+    },
+    {
+      "category": "three_actions",
+      "n": 1,
+      "e2e": 0
+    },
+    {
+      "category": "two_actions",
+      "n": 4,
+      "e2e": 4
+    }
+  ],
+  "cases": [
+    {
+      "id": "R-01",
+      "category": "readiness",
+      "text": "دز خمسين ألف لعلي كريم",
+      "stages": [
+        {
+          "text": "دز خمسين ألف لعلي كريم",
+          "observed": {
+            "phase": "AWAITING_CONFIRM",
+            "clarifySlot": null,
+            "candidateIds": [],
+            "to": "c_ali_karim",
+            "dueAt": null,
+            "biller": null,
+            "amount": 50000,
+            "failureCode": null,
+            "reply": "راجع التفاصيل وكبس أكّد. ما انرسل شي بعد."
+          },
+          "stateOk": true,
+          "fullOk": true,
+          "why": null,
+          "ms": 7123,
+          "intent": {
+            "language": "ar-iq",
+            "confidence": 1,
+            "status": "ok",
+            "actions": [
+              {
+                "recipient": {
+                  "kind": "name",
+                  "text": "علي كريم"
+                },
+                "amount": {
+                  "source_text": "خمسين ألف",
+                  "currency": "IQD",
+                  "value": 50000
+                },
+                "type": "transfer"
+              }
+            ]
+          },
+          "model": "gemini:gemini-3.5-flash-lite",
+          "audit": [
+            "LLM_OUTPUT->VALIDATED",
+            "RESOLUTION->RESOLVED",
+            "CARD_ISSUED->AWAITING_CONFIRM"
+          ],
+          "reply": "راجع التفاصيل وكبس أكّد. ما انرسل شي بعد."
+        }
+      ],
+      "intentOk": true,
+      "confirmed": true,
+      "executed": true,
+      "confirmations": 1,
+      "walletOk": true,
+      "moved_without_confirm": false,
+      "unsafe_execution": false,
+      "wrong_payload_execution": false,
+      "unsafe_card": false,
+      "queue_complete": true,
+      "unlabelled_queue": false,
+      "safety_only": false,
+      "voice_readbacks": 0,
+      "e2e": true,
+      "llm_error": null,
+      "tokens": 5628,
+      "usage": {
+        "input": 5532,
+        "output": 96,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "lookups": 1,
+      "confirm_ms": 7,
+      "card_ms": 7123,
+      "failure": null
+    },
+    {
+      "id": "R-02",
+      "category": "readiness",
+      "text": "ادفع المولدة",
+      "stages": [
+        {
+          "text": "ادفع المولدة",
+          "observed": {
+            "phase": "AWAITING_CONFIRM",
+            "clarifySlot": null,
+            "candidateIds": [],
+            "to": null,
+            "dueAt": null,
+            "biller": "generator",
+            "amount": 60000,
+            "failureCode": null,
+            "reply": "راجع التفاصيل وكبس أكّد. ما انرسل شي بعد."
+          },
+          "stateOk": true,
+          "fullOk": true,
+          "why": null,
+          "ms": 13,
+          "intent": {
+            "language": "ar-iq",
+            "actions": [
+              {
+                "biller": "generator",
+                "amount": null,
+                "biller_text": "المولدة",
+                "type": "bill_pay"
+              }
+            ],
+            "status": "ok",
+            "confidence": 1
+          },
+          "model": "gemini:gemini-3.5-flash-lite",
+          "audit": [
+            "LLM_OUTPUT->VALIDATED",
+            "RESOLUTION->RESOLVED",
+            "CARD_ISSUED->AWAITING_CONFIRM"
+          ],
+          "reply": "راجع التفاصيل وكبس أكّد. ما انرسل شي بعد."
+        }
+      ],
+      "intentOk": true,
+      "confirmed": true,
+      "executed": true,
+      "confirmations": 1,
+      "walletOk": true,
+      "moved_without_confirm": false,
+      "unsafe_execution": false,
+      "wrong_payload_execution": false,
+      "unsafe_card": false,
+      "queue_complete": true,
+      "unlabelled_queue": false,
+      "safety_only": false,
+      "voice_readbacks": 0,
+      "e2e": true,
+      "llm_error": null,
+      "tokens": 0,
+      "usage": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "lookups": 0,
+      "confirm_ms": 4,
+      "card_ms": 13,
+      "failure": null
+    },
+    {
+      "id": "R-03",
+      "category": "readiness",
+      "text": "شكد رصيدي",
+      "stages": [
+        {
+          "text": "شكد رصيدي",
+          "observed": {
+            "phase": "ANSWERED",
+            "clarifySlot": null,
+            "candidateIds": [],
+            "to": null,
+            "dueAt": null,
+            "biller": null,
+            "amount": null,
+            "failureCode": null,
+            "reply": "رصيدك 200,000 د.ع."
+          },
+          "stateOk": true,
+          "fullOk": true,
+          "why": null,
+          "ms": 11547,
+          "intent": {
+            "actions": [
+              {
+                "query": "balance",
+                "type": "info"
+              }
+            ],
+            "status": "ok",
+            "confidence": 1,
+            "language": "ar-iq"
+          },
+          "model": "gemini:gemini-3.5-flash-lite",
+          "audit": [
+            "LLM_OUTPUT->ANSWERED"
+          ],
+          "reply": "رصيدك 200,000 د.ع."
+        }
+      ],
+      "intentOk": true,
+      "confirmed": false,
+      "executed": false,
+      "confirmations": 0,
+      "walletOk": null,
+      "moved_without_confirm": false,
+      "unsafe_execution": false,
+      "wrong_payload_execution": false,
+      "unsafe_card": false,
+      "queue_complete": true,
+      "unlabelled_queue": false,
+      "safety_only": false,
+      "voice_readbacks": 0,
+      "e2e": true,
+      "llm_error": null,
+      "tokens": 5554,
+      "usage": {
+        "input": 5502,
+        "output": 52,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "lookups": 1,
+      "confirm_ms": null,
+      "card_ms": null,
+      "failure": null
+    },
+    {
+      "id": "R-04",
+      "category": "readiness",
+      "text": "شكد فاتورة المولدة",
+      "stages": [
+        {
+          "text": "شكد فاتورة المولدة",
+          "observed": {
+            "phase": "NEEDS_REPHRASE",
+            "clarifySlot": null,
+            "candidateIds": [],
+            "to": null,
+            "dueAt": null,
+            "biller": null,
+            "amount": null,
+            "failureCode": "invalid_output",
+            "reply": "ما فهمت عليك زين، تگدر تعيدها بطريقة ثانية؟"
+          },
+          "stateOk": false,
+          "fullOk": false,
+          "why": "state NEEDS_REPHRASE, expected ANSWERED",
+          "ms": 5732,
+          "intent": {
+            "status": "ok",
+            "actions": [
+              {
+                "biller_text": "المولدة",
+                "biller": "generator",
+                "query": "bill_amount",
+                "type": "info"
+              }
+            ],
+            "confidence": 1,
+            "language": "ar-iq"
+          },
+          "model": "gemini:gemini-3.5-flash-lite",
+          "audit": [
+            "LLM_OUTPUT->NEEDS_REPHRASE(invalid_output)"
+          ],
+          "reply": "ما فهمت عليك زين، تگدر تعيدها بطريقة ثانية؟"
+        }
+      ],
+      "intentOk": true,
+      "confirmed": false,
+      "executed": false,
+      "confirmations": 0,
+      "walletOk": null,
+      "moved_without_confirm": false,
+      "unsafe_execution": false,
+      "wrong_payload_execution": false,
+      "unsafe_card": false,
+      "queue_complete": true,
+      "unlabelled_queue": false,
+      "safety_only": false,
+      "voice_readbacks": 0,
+      "e2e": false,
+      "llm_error": null,
+      "tokens": 2787,
+      "usage": {
+        "input": 2725,
+        "output": 62,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "lookups": 0,
+      "confirm_ms": null,
+      "card_ms": null,
+      "failure": "state NEEDS_REPHRASE, expected ANSWERED"
+    },
+    {
+      "id": "R-05",
+      "category": "readiness",
+      "text": "شنو اخر تحويل",
+      "stages": [
+        {
+          "text": "شنو اخر تحويل",
+          "observed": {
+            "phase": "ANSWERED",
+            "clarifySlot": null,
+            "candidateIds": [],
+            "to": null,
+            "dueAt": null,
+            "biller": null,
+            "amount": null,
+            "failureCode": null,
+            "reply": "آخر تحويل: 25,000 د.ع لعلي كريم."
+          },
+          "stateOk": true,
+          "fullOk": true,
+          "why": null,
+          "ms": 9927,
+          "intent": {
+            "language": "ar-iq",
+            "status": "ok",
+            "confidence": 1,
+            "actions": [
+              {
+                "query": "last_transfer",
+                "type": "info"
+              }
+            ]
+          },
+          "model": "gemini:gemini-3.5-flash-lite",
+          "audit": [
+            "LLM_OUTPUT->ANSWERED"
+          ],
+          "reply": "آخر تحويل: 25,000 د.ع لعلي كريم."
+        }
+      ],
+      "intentOk": true,
+      "confirmed": false,
+      "executed": false,
+      "confirmations": 0,
+      "walletOk": null,
+      "moved_without_confirm": false,
+      "unsafe_execution": false,
+      "wrong_payload_execution": false,
+      "unsafe_card": false,
+      "queue_complete": true,
+      "unlabelled_queue": false,
+      "safety_only": false,
+      "voice_readbacks": 0,
+      "e2e": true,
+      "llm_error": null,
+      "tokens": 5784,
+      "usage": {
+        "input": 5730,
+        "output": 54,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "lookups": 1,
+      "confirm_ms": null,
+      "card_ms": null,
+      "failure": null
+    },
+    {
+      "id": "R-06",
+      "category": "readiness",
+      "text": "حول لعلي كريم نفس المبلغ مال اخر مرة",
+      "stages": [
+        {
+          "text": "حول لعلي كريم نفس المبلغ مال اخر مرة",
+          "observed": {
+            "phase": "AWAITING_CONFIRM",
+            "clarifySlot": null,
+            "candidateIds": [],
+            "to": "c_ali_karim",
+            "dueAt": null,
+            "biller": null,
+            "amount": 25000,
+            "failureCode": null,
+            "reply": "نفس مبلغ آخر تحويل لـعلي كريم: 25,000 د.ع. | راجع التفاصيل وكبس أكّد. ما انرسل شي بعد."
+          },
+          "stateOk": true,
+          "fullOk": true,
+          "why": null,
+          "ms": 19455,
+          "intent": {
+            "actions": [
+              {
+                "recipient": {
+                  "text": "علي كريم",
+                  "kind": "name"
+                },
+                "amount": null,
+                "type": "transfer",
+                "amount_ref": {
+                  "source_text": "نفس المبلغ مال اخر مرة",
+                  "kind": "previous"
+                }
+              }
+            ],
+            "confidence": 1,
+            "language": "ar-iq",
+            "status": "ok"
+          },
+          "model": "gemini:gemini-3.5-flash-lite",
+          "audit": [
+            "LLM_OUTPUT->VALIDATED",
+            "RESOLUTION->RESOLVED",
+            "CARD_ISSUED->AWAITING_CONFIRM"
+          ],
+          "reply": "نفس مبلغ آخر تحويل لـعلي كريم: 25,000 د.ع. | راجع التفاصيل وكبس أكّد. ما انرسل شي بعد."
+        }
+      ],
+      "intentOk": true,
+      "confirmed": true,
+      "executed": true,
+      "confirmations": 1,
+      "walletOk": true,
+      "moved_without_confirm": false,
+      "unsafe_execution": false,
+      "wrong_payload_execution": false,
+      "unsafe_card": false,
+      "queue_complete": true,
+      "unlabelled_queue": false,
+      "safety_only": false,
+      "voice_readbacks": 0,
+      "e2e": true,
+      "llm_error": null,
+      "tokens": 11693,
+      "usage": {
+        "input": 11545,
+        "output": 148,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "lookups": 3,
+      "confirm_ms": 2,
+      "card_ms": 19455,
+      "failure": null
+    },
+    {
+      "id": "R-07",
+      "category": "two_actions",
+      "text": "دز 50 الف لعلي كريم ودز 30 الف لحسين",
+      "stages": [
+        {
+          "text": "دز 50 الف لعلي كريم ودز 30 الف لحسين",
+          "observed": {
+            "phase": "AWAITING_CONFIRM",
+            "clarifySlot": null,
+            "candidateIds": [],
+            "to": "c_ali_karim",
+            "dueAt": null,
+            "biller": null,
+            "amount": 50000,
+            "failureCode": null,
+            "reply": "طلبت شغلتين، نبدي بالأولى: | راجع التفاصيل وكبس أكّد. ما انرسل شي بعد."
+          },
+          "stateOk": true,
+          "fullOk": true,
+          "why": null,
+          "ms": 6146,
+          "intent": {
+            "status": "ok",
+            "language": "ar-iq",
+            "confidence": 1,
+            "actions": [
+              {
+                "type": "transfer",
+                "amount": {
+                  "source_text": "50 الف",
+                  "currency": "IQD",
+                  "value": 50000
+                },
+                "recipient": {
+                  "text": "علي كريم",
+                  "kind": "name",
+                  "qualifier": "كريم"
+                }
+              },
+              {
+                "recipient": {
+                  "text": "حسين",
+                  "kind": "name"
+                },
+                "amount": {
+                  "value": 30000,
+                  "source_text": "30 الف",
+                  "currency": "IQD"
+                },
+                "type": "transfer"
+              }
+            ]
+          },
+          "model": "gemini:gemini-3.5-flash-lite",
+          "audit": [
+            "LLM_OUTPUT->VALIDATED",
+            "RESOLUTION->RESOLVED",
+            "CARD_ISSUED->AWAITING_CONFIRM"
+          ],
+          "reply": "طلبت شغلتين، نبدي بالأولى: | راجع التفاصيل وكبس أكّد. ما انرسل شي بعد."
+        },
+        {
+          "text": "(confirm)",
+          "observed": {
+            "phase": "AWAITING_CONFIRM",
+            "clarifySlot": null,
+            "candidateIds": [],
+            "to": "c_husain",
+            "dueAt": null,
+            "biller": null,
+            "amount": 30000,
+            "failureCode": null,
+            "reply": "✅ انرسلت 50,000 د.ع لعلي كريم. رقم العملية ZC-00000012. رصيدك هسه 149,700. | راجع التفاصيل وكبس أكّد. ما انرسل شي بعد."
+          },
+          "stateOk": true,
+          "fullOk": true,
+          "why": null,
+          "ms": 6,
+          "audit": [
+            "CONFIRM->EXECUTING",
+            "EXEC_RESULT->EXECUTED",
+            "NEXT_ACTION->VALIDATED",
+            "RESOLUTION->RESOLVED",
+            "CARD_ISSUED->AWAITING_CONFIRM"
+          ],
+          "reply": "✅ انرسلت 50,000 د.ع لعلي كريم. رقم العملية ZC-00000012. رصيدك هسه 149,700. | راجع التفاصيل وكبس أكّد. ما انرسل شي بعد."
+        }
+      ],
+      "intentOk": true,
+      "confirmed": true,
+      "executed": true,
+      "confirmations": 2,
+      "walletOk": true,
+      "moved_without_confirm": false,
+      "unsafe_execution": false,
+      "wrong_payload_execution": false,
+      "unsafe_card": false,
+      "queue_complete": true,
+      "unlabelled_queue": false,
+      "safety_only": false,
+      "voice_readbacks": 0,
+      "e2e": true,
+      "llm_error": null,
+      "tokens": 2870,
+      "usage": {
+        "input": 2736,
+        "output": 134,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "lookups": 0,
+      "confirm_ms": 8,
+      "card_ms": 6146,
+      "failure": null
+    },
+    {
+      "id": "R-08",
+      "category": "two_actions",
+      "text": "ادفع الكهرباء ودز 10 الاف لعلي كريم",
+      "stages": [
+        {
+          "text": "ادفع الكهرباء ودز 10 الاف لعلي كريم",
+          "observed": {
+            "phase": "AWAITING_CONFIRM",
+            "clarifySlot": null,
+            "candidateIds": [],
+            "to": null,
+            "dueAt": null,
+            "biller": "electricity",
+            "amount": 37500,
+            "failureCode": null,
+            "reply": "طلبت شغلتين، نبدي بالأولى: | راجع التفاصيل وكبس أكّد. ما انرسل شي بعد."
+          },
+          "stateOk": true,
+          "fullOk": true,
+          "why": null,
+          "ms": 4004,
+          "intent": {
+            "status": "ok",
+            "actions": [
+              {
+                "biller": "electricity",
+                "type": "bill_pay",
+                "amount": null,
+                "biller_text": "الكهرباء"
+              },
+              {
+                "amount": {
+                  "currency": "IQD",
+                  "value": 10000,
+                  "source_text": "10 الاف"
+                },
+                "type": "transfer",
+                "recipient": {
+                  "text": "علي كريم",
+                  "kind": "name",
+                  "qualifier": "كريم"
+                }
+              }
+            ],
+            "confidence": 1,
+            "language": "ar-iq"
+          },
+          "model": "gemini:gemini-3.5-flash-lite",
+          "audit": [
+            "LLM_OUTPUT->VALIDATED",
+            "RESOLUTION->RESOLVED",
+            "CARD_ISSUED->AWAITING_CONFIRM"
+          ],
+          "reply": "طلبت شغلتين، نبدي بالأولى: | راجع التفاصيل وكبس أكّد. ما انرسل شي بعد."
+        },
+        {
+          "text": "(confirm)",
+          "observed": {
+            "phase": "AWAITING_CONFIRM",
+            "clarifySlot": null,
+            "candidateIds": [],
+            "to": "c_ali_karim",
+            "dueAt": null,
+            "biller": null,
+            "amount": 10000,
+            "failureCode": null,
+            "reply": "✅ اندفعت فاتورة الكهرباء (تجريبي) 37,500 د.ع. رقم العملية ZC-00000012. | راجع التفاصيل وكبس أكّد. ما انرسل شي بعد."
+          },
+          "stateOk": true,
+          "fullOk": true,
+          "why": null,
+          "ms": 8,
+          "audit": [
+            "CONFIRM->EXECUTING",
+            "EXEC_RESULT->EXECUTED",
+            "NEXT_ACTION->VALIDATED",
+            "RESOLUTION->RESOLVED",
+            "CARD_ISSUED->AWAITING_CONFIRM"
+          ],
+          "reply": "✅ اندفعت فاتورة الكهرباء (تجريبي) 37,500 د.ع. رقم العملية ZC-00000012. | راجع التفاصيل وكبس أكّد. ما انرسل شي بعد."
+        }
+      ],
+      "intentOk": true,
+      "confirmed": true,
+      "executed": true,
+      "confirmations": 2,
+      "walletOk": true,
+      "moved_without_confirm": false,
+      "unsafe_execution": false,
+      "wrong_payload_execution": false,
+      "unsafe_card": false,
+      "queue_complete": true,
+      "unlabelled_queue": false,
+      "safety_only": false,
+      "voice_readbacks": 0,
+      "e2e": true,
+      "llm_error": null,
+      "tokens": 2849,
+      "usage": {
+        "input": 2732,
+        "output": 117,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "lookups": 0,
+      "confirm_ms": 11,
+      "card_ms": 4004,
+      "failure": null
+    },
+    {
+      "id": "R-09",
+      "category": "two_actions",
+      "text": "دز 25 الف لمرتي وسدد الانترنت",
+      "stages": [
+        {
+          "text": "دز 25 الف لمرتي وسدد الانترنت",
+          "observed": {
+            "phase": "AWAITING_CONFIRM",
+            "clarifySlot": null,
+            "candidateIds": [],
+            "to": "c_wife",
+            "dueAt": null,
+            "biller": null,
+            "amount": 25000,
+            "failureCode": null,
+            "reply": "طلبت شغلتين، نبدي بالأولى: | راجع التفاصيل وكبس أكّد. ما انرسل شي بعد. | أول مرة تدز لهذا الشخص. تأكد من الاسم والرقم."
+          },
+          "stateOk": true,
+          "fullOk": true,
+          "why": null,
+          "ms": 11002,
+          "intent": {
+            "language": "ar-iq",
+            "confidence": 1,
+            "actions": [
+              {
+                "type": "transfer",
+                "recipient": {
+                  "text": "مرتي",
+                  "kind": "relation"
+                },
+                "amount": {
+                  "value": 25000,
+                  "currency": "IQD",
+                  "source_text": "25 الف"
+                }
+              },
+              {
+                "biller": "internet",
+                "amount": null,
+                "biller_text": "الانترنت",
+                "type": "bill_pay"
+              }
+            ],
+            "status": "ok"
+          },
+          "model": "gemini:gemini-3.5-flash-lite",
+          "audit": [
+            "LLM_OUTPUT->VALIDATED",
+            "RESOLUTION->RESOLVED",
+            "CARD_ISSUED->AWAITING_CONFIRM"
+          ],
+          "reply": "طلبت شغلتين، نبدي بالأولى: | راجع التفاصيل وكبس أكّد. ما انرسل شي بعد. | أول مرة تدز لهذا الشخص. تأكد من الاسم والرقم."
+        },
+        {
+          "text": "(confirm)",
+          "observed": {
+            "phase": "AWAITING_CONFIRM",
+            "clarifySlot": null,
+            "candidateIds": [],
+            "to": null,
+            "dueAt": null,
+            "biller": "internet",
+            "amount": 35000,
+            "failureCode": null,
+            "reply": "✅ انرسلت 25,000 د.ع لمرتي. رقم العملية ZC-00000012. رصيدك هسه 174,700. | راجع التفاصيل وكبس أكّد. ما انرسل شي بعد."
+          },
+          "stateOk": true,
+          "fullOk": true,
+          "why": null,
+          "ms": 6,
+          "audit": [
+            "CONFIRM->EXECUTING",
+            "EXEC_RESULT->EXECUTED",
+            "NEXT_ACTION->VALIDATED",
+            "RESOLUTION->RESOLVED",
+            "CARD_ISSUED->AWAITING_CONFIRM"
+          ],
+          "reply": "✅ انرسلت 25,000 د.ع لمرتي. رقم العملية ZC-00000012. رصيدك هسه 174,700. | راجع التفاصيل وكبس أكّد. ما انرسل شي بعد."
+        }
+      ],
+      "intentOk": true,
+      "confirmed": true,
+      "executed": true,
+      "confirmations": 2,
+      "walletOk": true,
+      "moved_without_confirm": false,
+      "unsafe_execution": false,
+      "wrong_payload_execution": false,
+      "unsafe_card": false,
+      "queue_complete": true,
+      "unlabelled_queue": false,
+      "safety_only": false,
+      "voice_readbacks": 0,
+      "e2e": true,
+      "llm_error": null,
+      "tokens": 5861,
+      "usage": {
+        "input": 5744,
+        "output": 117,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "lookups": 1,
+      "confirm_ms": 8,
+      "card_ms": 11002,
+      "failure": null
+    },
+    {
+      "id": "R-10",
+      "category": "two_actions",
+      "text": "ادفع الماي ودز 50 الف لاحمد علي",
+      "stages": [
+        {
+          "text": "ادفع الماي ودز 50 الف لاحمد علي",
+          "observed": {
+            "phase": "AWAITING_CONFIRM",
+            "clarifySlot": null,
+            "candidateIds": [],
+            "to": "c_ahmed_ali",
+            "dueAt": null,
+            "biller": null,
+            "amount": 50000,
+            "failureCode": null,
+            "reply": "طلبت شغلتين، نبدي بالأولى: | فاتورة الماء (تجريبي) مدفوعة من قبل. ما دفعنا شي. | راجع التفاصيل وكبس أكّد. ما انرسل شي بعد."
+          },
+          "stateOk": true,
+          "fullOk": true,
+          "why": null,
+          "ms": 9736,
+          "intent": {
+            "language": "ar-iq",
+            "actions": [
+              {
+                "biller_text": "الماي",
+                "amount": null,
+                "type": "bill_pay",
+                "biller": "water"
+              },
+              {
+                "recipient": {
+                  "text": "أحمد علي",
+                  "kind": "name"
+                },
+                "amount": {
+                  "value": 50000,
+                  "currency": "IQD",
+                  "source_text": "50 الف"
+                },
+                "type": "transfer"
+              }
+            ],
+            "confidence": 1,
+            "status": "ok"
+          },
+          "model": "gemini:gemini-3.5-flash-lite",
+          "audit": [
+            "LLM_OUTPUT->VALIDATED",
+            "RESOLUTION->RESOLVED",
+            "PRECHECK->FAILED_SAFE(BILL_ALREADY_PAID)",
+            "NEXT_ACTION->VALIDATED",
+            "RESOLUTION->RESOLVED",
+            "CARD_ISSUED->AWAITING_CONFIRM"
+          ],
+          "reply": "طلبت شغلتين، نبدي بالأولى: | فاتورة الماء (تجريبي) مدفوعة من قبل. ما دفعنا شي. | راجع التفاصيل وكبس أكّد. ما انرسل شي بعد."
+        }
+      ],
+      "intentOk": true,
+      "confirmed": true,
+      "executed": true,
+      "confirmations": 1,
+      "walletOk": true,
+      "moved_without_confirm": false,
+      "unsafe_execution": false,
+      "wrong_payload_execution": false,
+      "unsafe_card": false,
+      "queue_complete": true,
+      "unlabelled_queue": false,
+      "safety_only": false,
+      "voice_readbacks": 0,
+      "e2e": true,
+      "llm_error": null,
+      "tokens": 5671,
+      "usage": {
+        "input": 5544,
+        "output": 127,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "lookups": 1,
+      "confirm_ms": 2,
+      "card_ms": 9736,
+      "failure": null
+    },
+    {
+      "id": "R-11",
+      "category": "scheduled",
+      "text": "ادفع المولدة باچر بعد الظهر",
+      "stages": [
+        {
+          "text": "ادفع المولدة باچر بعد الظهر",
+          "observed": {
+            "phase": "CLARIFYING",
+            "clarifySlot": "time",
+            "candidateIds": [],
+            "to": null,
+            "dueAt": null,
+            "biller": null,
+            "amount": null,
+            "failureCode": null,
+            "reply": "الساعة شكد بالضبط؟ مثلاً: «9 الصبح» أو «9 المساء»."
+          },
+          "stateOk": true,
+          "fullOk": true,
+          "why": null,
+          "ms": 4187,
+          "intent": {
+            "actions": [
+              {
+                "biller_text": "المولدة",
+                "biller": "generator",
+                "amount": null,
+                "type": "bill_pay",
+                "when_text": "باچر بعد الظهر"
+              }
+            ],
+            "language": "ar-iq",
+            "confidence": 1,
+            "status": "ok"
+          },
+          "model": "gemini:gemini-3.5-flash-lite",
+          "audit": [
+            "LLM_OUTPUT->CLARIFYING"
+          ],
+          "reply": "الساعة شكد بالضبط؟ مثلاً: «9 الصبح» أو «9 المساء»."
+        },
+        {
+          "text": "الساعة 3 بعد الظهر",
+          "observed": {
+            "phase": "AWAITING_CONFIRM",
+            "clarifySlot": null,
+            "candidateIds": [],
+            "to": null,
+            "dueAt": 1792152000000,
+            "biller": "generator",
+            "amount": 60000,
+            "failureCode": null,
+            "reply": "راجع التفاصيل وكبس أكّد. ما انرسل شي بعد."
+          },
+          "stateOk": true,
+          "fullOk": true,
+          "why": null,
+          "ms": 13,
+          "audit": [
+            "SLOT_ANSWER->VALIDATED",
+            "RESOLUTION->RESOLVED",
+            "CARD_ISSUED->AWAITING_CONFIRM"
+          ],
+          "reply": "راجع التفاصيل وكبس أكّد. ما انرسل شي بعد."
+        }
+      ],
+      "intentOk": true,
+      "confirmed": true,
+      "executed": true,
+      "confirmations": 1,
+      "walletOk": true,
+      "moved_without_confirm": false,
+      "unsafe_execution": false,
+      "wrong_payload_execution": false,
+      "unsafe_card": false,
+      "queue_complete": true,
+      "unlabelled_queue": false,
+      "safety_only": false,
+      "voice_readbacks": 0,
+      "e2e": true,
+      "llm_error": null,
+      "tokens": 2800,
+      "usage": {
+        "input": 2728,
+        "output": 72,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "lookups": 0,
+      "confirm_ms": 6,
+      "card_ms": 4200,
+      "failure": null
+    },
+    {
+      "id": "R-12",
+      "category": "scheduled",
+      "text": "دز 50 الف لعلي كريم بعد ساعة",
+      "stages": [
+        {
+          "text": "دز 50 الف لعلي كريم بعد ساعة",
+          "observed": {
+            "phase": "AWAITING_CONFIRM",
+            "clarifySlot": null,
+            "candidateIds": [],
+            "to": "c_ali_karim",
+            "dueAt": 1792069200000,
+            "biller": null,
+            "amount": 50000,
+            "failureCode": null,
+            "reply": "راجع التفاصيل وكبس أكّد. ما انرسل شي بعد."
+          },
+          "stateOk": true,
+          "fullOk": true,
+          "why": null,
+          "ms": 5249,
+          "intent": {
+            "actions": [
+              {
+                "type": "transfer",
+                "when_text": "بعد ساعة",
+                "amount": {
+                  "value": 50000,
+                  "currency": "IQD",
+                  "source_text": "50 الف"
+                },
+                "recipient": {
+                  "kind": "name",
+                  "text": "علي",
+                  "qualifier": "كريم"
+                }
+              }
+            ],
+            "status": "ok",
+            "language": "ar-iq",
+            "confidence": 1
+          },
+          "model": "gemini:gemini-3.5-flash-lite",
+          "audit": [
+            "LLM_OUTPUT->VALIDATED",
+            "RESOLUTION->RESOLVED",
+            "CARD_ISSUED->AWAITING_CONFIRM"
+          ],
+          "reply": "راجع التفاصيل وكبس أكّد. ما انرسل شي بعد."
+        }
+      ],
+      "intentOk": true,
+      "confirmed": true,
+      "executed": true,
+      "confirmations": 1,
+      "walletOk": true,
+      "moved_without_confirm": false,
+      "unsafe_execution": false,
+      "wrong_payload_execution": false,
+      "unsafe_card": false,
+      "queue_complete": true,
+      "unlabelled_queue": false,
+      "safety_only": false,
+      "voice_readbacks": 0,
+      "e2e": true,
+      "llm_error": null,
+      "tokens": 2824,
+      "usage": {
+        "input": 2730,
+        "output": 94,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "lookups": 0,
+      "confirm_ms": 2,
+      "card_ms": 5249,
+      "failure": null
+    },
+    {
+      "id": "R-13",
+      "category": "scheduled",
+      "text": "ادفع المولدة 31/2 الساعة 9 الصبح",
+      "stages": [
+        {
+          "text": "ادفع المولدة 31/2 الساعة 9 الصبح",
+          "observed": {
+            "phase": "CLARIFYING",
+            "clarifySlot": "time",
+            "candidateIds": [],
+            "to": null,
+            "dueAt": null,
+            "biller": null,
+            "amount": null,
+            "failureCode": null,
+            "reply": "متى تريد أجدولها؟ مثلاً: «باچر الساعة 9 الصبح» أو «يوم 25 الساعة 8 المساء» أو «بعد ساعة»."
+          },
+          "stateOk": true,
+          "fullOk": true,
+          "why": null,
+          "ms": 4630,
+          "intent": {
+            "language": "ar-iq",
+            "actions": [
+              {
+                "biller_text": "المولدة",
+                "amount": null,
+                "when_text": "31/2 الساعة 9 الصبح",
+                "type": "bill_pay",
+                "biller": "generator"
+              }
+            ],
+            "confidence": 1,
+            "status": "ok"
+          },
+          "model": "gemini:gemini-3.5-flash-lite",
+          "audit": [
+            "LLM_OUTPUT->CLARIFYING"
+          ],
+          "reply": "متى تريد أجدولها؟ مثلاً: «باچر الساعة 9 الصبح» أو «يوم 25 الساعة 8 المساء» أو «بعد ساعة»."
+        }
+      ],
+      "intentOk": true,
+      "confirmed": false,
+      "executed": false,
+      "confirmations": 0,
+      "walletOk": null,
+      "moved_without_confirm": false,
+      "unsafe_execution": false,
+      "wrong_payload_execution": false,
+      "unsafe_card": false,
+      "queue_complete": false,
+      "unlabelled_queue": false,
+      "safety_only": false,
+      "voice_readbacks": 0,
+      "e2e": true,
+      "llm_error": null,
+      "tokens": 2809,
+      "usage": {
+        "input": 2733,
+        "output": 76,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "lookups": 0,
+      "confirm_ms": null,
+      "card_ms": null,
+      "failure": null
+    },
+    {
+      "id": "R-14",
+      "category": "readiness",
+      "text": "دز 50 الف للرقم 07700009999",
+      "stages": [
+        {
+          "text": "دز 50 الف للرقم 07700009999",
+          "observed": {
+            "phase": "CLARIFYING",
+            "clarifySlot": "recipient",
+            "candidateIds": [],
+            "to": null,
+            "dueAt": null,
+            "biller": null,
+            "amount": null,
+            "failureCode": null,
+            "reply": "الرقم ••••9999 مو محفوظ بجهات اتصالك. ضيفه بالتطبيق أول وبعدين دز له، لو گول اسم واحد من جهاتك. ما انرسل شي."
+          },
+          "stateOk": true,
+          "fullOk": true,
+          "why": null,
+          "ms": 5148,
+          "intent": {
+            "actions": [
+              {
+                "type": "transfer",
+                "recipient": {
+                  "text": "07700009999",
+                  "kind": "phone"
+                },
+                "amount": {
+                  "currency": "IQD",
+                  "source_text": "50 الف",
+                  "value": 50000
+                }
+              }
+            ],
+            "language": "ar-iq",
+            "confidence": 1,
+            "status": "ok"
+          },
+          "model": "gemini:gemini-3.5-flash-lite",
+          "audit": [
+            "LLM_OUTPUT->VALIDATED",
+            "RESOLUTION->CLARIFYING"
+          ],
+          "reply": "الرقم ••••9999 مو محفوظ بجهات اتصالك. ضيفه بالتطبيق أول وبعدين دز له، لو گول اسم واحد من جهاتك. ما انرسل شي."
+        }
+      ],
+      "intentOk": true,
+      "confirmed": false,
+      "executed": false,
+      "confirmations": 0,
+      "walletOk": null,
+      "moved_without_confirm": false,
+      "unsafe_execution": false,
+      "wrong_payload_execution": false,
+      "unsafe_card": false,
+      "queue_complete": false,
+      "unlabelled_queue": false,
+      "safety_only": false,
+      "voice_readbacks": 0,
+      "e2e": true,
+      "llm_error": null,
+      "tokens": 2827,
+      "usage": {
+        "input": 2740,
+        "output": 87,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "lookups": 0,
+      "confirm_ms": null,
+      "card_ms": null,
+      "failure": null
+    },
+    {
+      "id": "R-15",
+      "category": "readiness",
+      "text": "دز مليون لعلي كريم",
+      "stages": [
+        {
+          "text": "دز مليون لعلي كريم",
+          "observed": {
+            "phase": "FAILED_SAFE",
+            "clarifySlot": null,
+            "candidateIds": [],
+            "to": "c_ali_karim",
+            "dueAt": null,
+            "biller": null,
+            "amount": null,
+            "failureCode": "INSUFFICIENT_BALANCE",
+            "reply": "رصيدك 200,000 د.ع وما يكفي لـ1,000,000 د.ع. ما انرسل شي."
+          },
+          "stateOk": true,
+          "fullOk": true,
+          "why": null,
+          "ms": 4987,
+          "intent": {
+            "status": "ok",
+            "actions": [
+              {
+                "amount": {
+                  "value": 1000000,
+                  "source_text": "مليون",
+                  "currency": "IQD"
+                },
+                "recipient": {
+                  "kind": "name",
+                  "qualifier": "كريم",
+                  "text": "علي كريم"
+                },
+                "type": "transfer"
+              }
+            ],
+            "language": "ar-iq",
+            "confidence": 1
+          },
+          "model": "gemini:gemini-3.5-flash-lite",
+          "audit": [
+            "LLM_OUTPUT->VALIDATED",
+            "RESOLUTION->RESOLVED",
+            "PRECHECK->FAILED_SAFE(INSUFFICIENT_BALANCE)"
+          ],
+          "reply": "رصيدك 200,000 د.ع وما يكفي لـ1,000,000 د.ع. ما انرسل شي."
+        }
+      ],
+      "intentOk": true,
+      "confirmed": false,
+      "executed": false,
+      "confirmations": 0,
+      "walletOk": null,
+      "moved_without_confirm": false,
+      "unsafe_execution": false,
+      "wrong_payload_execution": false,
+      "unsafe_card": false,
+      "queue_complete": true,
+      "unlabelled_queue": false,
+      "safety_only": false,
+      "voice_readbacks": 0,
+      "e2e": true,
+      "llm_error": null,
+      "tokens": 2812,
+      "usage": {
+        "input": 2725,
+        "output": 87,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "lookups": 0,
+      "confirm_ms": null,
+      "card_ms": null,
+      "failure": null
+    },
+    {
+      "id": "R-16",
+      "category": "readiness",
+      "text": "دز 50 الف لأحمد",
+      "stages": [
+        {
+          "text": "دز 50 الف لأحمد",
+          "observed": {
+            "phase": "CLARIFYING",
+            "clarifySlot": "recipient",
+            "candidateIds": [
+              "c_ahmed_ali",
+              "c_ahmed_moh"
+            ],
+            "to": null,
+            "dueAt": null,
+            "biller": null,
+            "amount": null,
+            "failureCode": null,
+            "reply": "عندك 2 باسم أحمد، ياهو تقصد؟"
+          },
+          "stateOk": true,
+          "fullOk": true,
+          "why": null,
+          "ms": 10097,
+          "intent": {
+            "actions": [
+              {
+                "type": "transfer",
+                "recipient": {
+                  "kind": "name",
+                  "text": "أحمد"
+                },
+                "amount": {
+                  "currency": "IQD",
+                  "value": 50000,
+                  "source_text": "50 الف"
+                }
+              }
+            ],
+            "status": "ok",
+            "language": "ar-iq",
+            "confidence": 1
+          },
+          "model": "gemini:gemini-3.5-flash-lite",
+          "audit": [
+            "LLM_OUTPUT->VALIDATED",
+            "RESOLUTION->CLARIFYING"
+          ],
+          "reply": "عندك 2 باسم أحمد، ياهو تقصد؟"
+        },
+        {
+          "text": "أحمد علي",
+          "observed": {
+            "phase": "AWAITING_CONFIRM",
+            "clarifySlot": null,
+            "candidateIds": [],
+            "to": "c_ahmed_ali",
+            "dueAt": null,
+            "biller": null,
+            "amount": 50000,
+            "failureCode": null,
+            "reply": "راجع التفاصيل وكبس أكّد. ما انرسل شي بعد."
+          },
+          "stateOk": true,
+          "fullOk": true,
+          "why": null,
+          "ms": 3,
+          "audit": [
+            "RESOLUTION->RESOLVED",
+            "CARD_ISSUED->AWAITING_CONFIRM"
+          ],
+          "reply": "راجع التفاصيل وكبس أكّد. ما انرسل شي بعد."
+        }
+      ],
+      "intentOk": true,
+      "confirmed": true,
+      "executed": true,
+      "confirmations": 1,
+      "walletOk": true,
+      "moved_without_confirm": false,
+      "unsafe_execution": false,
+      "wrong_payload_execution": false,
+      "unsafe_card": false,
+      "queue_complete": true,
+      "unlabelled_queue": false,
+      "safety_only": false,
+      "voice_readbacks": 0,
+      "e2e": true,
+      "llm_error": null,
+      "tokens": 5652,
+      "usage": {
+        "input": 5557,
+        "output": 95,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "lookups": 1,
+      "confirm_ms": 1,
+      "card_ms": 10100,
+      "failure": null
+    },
+    {
+      "id": "R-17",
+      "category": "readiness",
+      "text": "پەنجا هەزار بنێرە بۆ هێمن",
+      "stages": [
+        {
+          "text": "پەنجا هەزار بنێرە بۆ هێمن",
+          "observed": {
+            "phase": "AWAITING_CONFIRM",
+            "clarifySlot": null,
+            "candidateIds": [],
+            "to": "c_hemn",
+            "dueAt": null,
+            "biller": null,
+            "amount": 50000,
+            "failureCode": null,
+            "reply": "وردەکارییەکان بپشکنە و پشتڕاستی بکەوە. هێشتا هیچ نەنێردراوە. | یەکەم جارە بۆ ئەم کەسە دەنێریت. ناو و ژمارەکە بپشکنە."
+          },
+          "stateOk": true,
+          "fullOk": true,
+          "why": null,
+          "ms": 5815,
+          "intent": {
+            "status": "ok",
+            "language": "ku",
+            "confidence": 1,
+            "actions": [
+              {
+                "type": "transfer",
+                "recipient": {
+                  "kind": "name",
+                  "text": "هێمن"
+                },
+                "amount": {
+                  "source_text": "پەنجا هەزار",
+                  "currency": "IQD",
+                  "value": 50000
+                }
+              }
+            ]
+          },
+          "model": "gemini:gemini-3.5-flash-lite",
+          "audit": [
+            "LLM_OUTPUT->VALIDATED",
+            "RESOLUTION->RESOLVED",
+            "CARD_ISSUED->AWAITING_CONFIRM"
+          ],
+          "reply": "وردەکارییەکان بپشکنە و پشتڕاستی بکەوە. هێشتا هیچ نەنێردراوە. | یەکەم جارە بۆ ئەم کەسە دەنێریت. ناو و ژمارەکە بپشکنە."
+        }
+      ],
+      "intentOk": true,
+      "confirmed": true,
+      "executed": true,
+      "confirmations": 1,
+      "walletOk": true,
+      "moved_without_confirm": false,
+      "unsafe_execution": false,
+      "wrong_payload_execution": false,
+      "unsafe_card": false,
+      "queue_complete": true,
+      "unlabelled_queue": false,
+      "safety_only": false,
+      "voice_readbacks": 0,
+      "e2e": true,
+      "llm_error": null,
+      "tokens": 4220,
+      "usage": {
+        "input": 4140,
+        "output": 80,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "lookups": 0,
+      "confirm_ms": 2,
+      "card_ms": 5815,
+      "failure": null
+    },
+    {
+      "id": "R-18",
+      "category": "readiness",
+      "text": "پەنجا هەزار بنێرە بۆ حەسێن",
+      "stages": [
+        {
+          "text": "پەنجا هەزار بنێرە بۆ حەسێن",
+          "observed": {
+            "phase": "CLARIFYING",
+            "clarifySlot": "recipient",
+            "candidateIds": [
+              "c_hasan",
+              "c_husain"
+            ],
+            "to": null,
+            "dueAt": null,
+            "biller": null,
+            "amount": null,
+            "failureCode": null,
+            "reply": "2 کەست هەیە بە ناوی حەسێن، مەبەستت کامیانە؟"
+          },
+          "stateOk": true,
+          "fullOk": true,
+          "why": null,
+          "ms": 3835,
+          "intent": {
+            "confidence": 1,
+            "actions": [
+              {
+                "type": "transfer",
+                "recipient": {
+                  "text": "حەسێن",
+                  "kind": "name"
+                },
+                "amount": {
+                  "value": 50000,
+                  "currency": "IQD",
+                  "source_text": "پەنجا هەزار"
+                }
+              }
+            ],
+            "language": "ku",
+            "status": "ok"
+          },
+          "model": "gemini:gemini-3.5-flash-lite",
+          "audit": [
+            "LLM_OUTPUT->VALIDATED",
+            "RESOLUTION->CLARIFYING"
+          ],
+          "reply": "2 کەست هەیە بە ناوی حەسێن، مەبەستت کامیانە؟"
+        }
+      ],
+      "intentOk": true,
+      "confirmed": false,
+      "executed": false,
+      "confirmations": 0,
+      "walletOk": null,
+      "moved_without_confirm": false,
+      "unsafe_execution": false,
+      "wrong_payload_execution": false,
+      "unsafe_card": false,
+      "queue_complete": false,
+      "unlabelled_queue": false,
+      "safety_only": false,
+      "voice_readbacks": 0,
+      "e2e": true,
+      "llm_error": null,
+      "tokens": 4220,
+      "usage": {
+        "input": 4140,
+        "output": 80,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "lookups": 0,
+      "confirm_ms": null,
+      "card_ms": null,
+      "failure": null
+    },
+    {
+      "id": "R-19",
+      "category": "readiness",
+      "text": "پەنجا هەزار بنێرە بۆ شێلان",
+      "stages": [
+        {
+          "text": "پەنجا هەزار بنێرە بۆ شێلان",
+          "observed": {
+            "phase": "CLARIFYING",
+            "clarifySlot": "recipient",
+            "candidateIds": [
+              "c_shilan"
+            ],
+            "to": null,
+            "dueAt": null,
+            "biller": null,
+            "amount": null,
+            "failureCode": null,
+            "reply": "مەبەستت شیلان؟"
+          },
+          "stateOk": true,
+          "fullOk": true,
+          "why": null,
+          "ms": 5473,
+          "intent": {
+            "actions": [
+              {
+                "type": "transfer",
+                "recipient": {
+                  "text": "شێلان",
+                  "kind": "name"
+                },
+                "amount": {
+                  "currency": "IQD",
+                  "source_text": "پەنجا هەزار",
+                  "value": 50000
+                }
+              }
+            ],
+            "language": "ku",
+            "confidence": 1,
+            "status": "ok"
+          },
+          "model": "gemini:gemini-3.5-flash-lite",
+          "audit": [
+            "LLM_OUTPUT->VALIDATED",
+            "RESOLUTION->CLARIFYING"
+          ],
+          "reply": "مەبەستت شیلان؟"
+        }
+      ],
+      "intentOk": true,
+      "confirmed": false,
+      "executed": false,
+      "confirmations": 0,
+      "walletOk": null,
+      "moved_without_confirm": false,
+      "unsafe_execution": false,
+      "wrong_payload_execution": false,
+      "unsafe_card": false,
+      "queue_complete": false,
+      "unlabelled_queue": false,
+      "safety_only": false,
+      "voice_readbacks": 0,
+      "e2e": true,
+      "llm_error": null,
+      "tokens": 4220,
+      "usage": {
+        "input": 4140,
+        "output": 80,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "lookups": 0,
+      "confirm_ms": null,
+      "card_ms": null,
+      "failure": null
+    },
+    {
+      "id": "R-20",
+      "category": "scheduled",
+      "text": "دز 50 الف لعلي كريم باچر الساعة 9 الصبح",
+      "stages": [
+        {
+          "text": "دز 50 الف لعلي كريم باچر الساعة 9 الصبح",
+          "observed": {
+            "phase": "AWAITING_CONFIRM",
+            "clarifySlot": null,
+            "candidateIds": [],
+            "to": "c_ali_karim",
+            "dueAt": 1792130400000,
+            "biller": null,
+            "amount": 50000,
+            "failureCode": null,
+            "reply": "راجع التفاصيل وكبس أكّد. ما انرسل شي بعد."
+          },
+          "stateOk": true,
+          "fullOk": true,
+          "why": null,
+          "ms": 5058,
+          "intent": {
+            "actions": [
+              {
+                "amount": {
+                  "value": 50000,
+                  "currency": "IQD",
+                  "source_text": "50 الف"
+                },
+                "type": "transfer",
+                "recipient": {
+                  "kind": "name",
+                  "qualifier": "كريم",
+                  "text": "علي"
+                },
+                "when_text": "باچر الساعة 9 الصبح"
+              }
+            ],
+            "status": "ok",
+            "language": "ar-iq",
+            "confidence": 1
+          },
+          "model": "gemini:gemini-3.5-flash-lite",
+          "audit": [
+            "LLM_OUTPUT->VALIDATED",
+            "RESOLUTION->RESOLVED",
+            "CARD_ISSUED->AWAITING_CONFIRM"
+          ],
+          "reply": "راجع التفاصيل وكبس أكّد. ما انرسل شي بعد."
+        }
+      ],
+      "intentOk": true,
+      "confirmed": true,
+      "executed": true,
+      "confirmations": 1,
+      "walletOk": true,
+      "moved_without_confirm": false,
+      "unsafe_execution": false,
+      "wrong_payload_execution": false,
+      "unsafe_card": false,
+      "queue_complete": true,
+      "unlabelled_queue": false,
+      "safety_only": false,
+      "voice_readbacks": 0,
+      "e2e": true,
+      "llm_error": null,
+      "tokens": 2834,
+      "usage": {
+        "input": 2735,
+        "output": 99,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "lookups": 0,
+      "confirm_ms": 2,
+      "card_ms": 5058,
+      "failure": null
+    },
+    {
+      "id": "R-21",
+      "category": "three_actions",
+      "text": "دز 50 الف لعلي كريم ودز 30 الف لحسين وادفع المولدة",
+      "stages": [
+        {
+          "text": "دز 50 الف لعلي كريم ودز 30 الف لحسين وادفع المولدة",
+          "observed": {
+            "phase": "NEEDS_REPHRASE",
+            "clarifySlot": null,
+            "candidateIds": [],
+            "to": null,
+            "dueAt": null,
+            "biller": null,
+            "amount": null,
+            "failureCode": "when_not_in_input",
+            "reply": "ما فهمت عليك زين، تگدر تعيدها بطريقة ثانية؟"
+          },
+          "stateOk": false,
+          "fullOk": false,
+          "why": "state NEEDS_REPHRASE, expected AWAITING_CONFIRM",
+          "ms": 4621,
+          "intent": {
+            "status": "ok",
+            "actions": [
+              {
+                "amount": {
+                  "source_text": "50 الف",
+                  "currency": "IQD",
+                  "value": 50000
+                },
+                "recipient": {
+                  "qualifier": "كريم",
+                  "text": "علي كريم",
+                  "kind": "name"
+                },
+                "when_text": "اليوم",
+                "type": "transfer"
+              },
+              {
+                "type": "transfer",
+                "amount": {
+                  "value": 30000,
+                  "source_text": "30 الف",
+                  "currency": "IQD"
+                },
+                "recipient": {
+                  "text": "حسين",
+                  "kind": "name"
+                },
+                "when_text": "اليوم"
+              },
+              {
+                "biller_text": "المولدة",
+                "when_text": "اليوم",
+                "amount": null,
+                "type": "bill_pay",
+                "biller": "generator"
+              }
+            ],
+            "language": "ar-iq",
+            "confidence": 1
+          },
+          "model": "gemini:gemini-3.5-flash-lite",
+          "audit": [
+            "LLM_OUTPUT->NEEDS_REPHRASE(when_not_in_input)"
+          ],
+          "reply": "ما فهمت عليك زين، تگدر تعيدها بطريقة ثانية؟"
+        }
+      ],
+      "intentOk": true,
+      "confirmed": false,
+      "executed": false,
+      "confirmations": 0,
+      "walletOk": null,
+      "moved_without_confirm": false,
+      "unsafe_execution": false,
+      "wrong_payload_execution": false,
+      "unsafe_card": false,
+      "queue_complete": true,
+      "unlabelled_queue": false,
+      "safety_only": false,
+      "voice_readbacks": 0,
+      "e2e": false,
+      "llm_error": null,
+      "tokens": 2932,
+      "usage": {
+        "input": 2741,
+        "output": 191,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "lookups": 0,
+      "confirm_ms": null,
+      "card_ms": null,
+      "failure": "state NEEDS_REPHRASE, expected AWAITING_CONFIRM"
+    }
+  ]
+}

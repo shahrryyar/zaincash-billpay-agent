@@ -11,11 +11,13 @@ Follow-up to the [initial requirements audit](29-test-readiness-audit.md), perfo
 - Google AI Studio adapter preserves opaque Gemini tool-call signatures on their original calls, stripping them on other-provider fallbacks. Optional per-process request pacing includes retries. Gemini development prompt clarifies strict info fields and JSON null for missing bill amounts; Zod/source checks remain strict.
 - README, scope/architecture/contracts, persistence/privacy descriptions, model strategy, disclosure, plan/checklist, one-page update and handoff now describe current behavior. docs/28 points to the canonical root MVP_UPDATE.md. The initial audit remains a dated record.
 
+Early developer runs recorded commit/source hashes at completion while work continued; their dirty metadata is not a frozen experiment. The harness now snapshots provenance at the start and flags source changes during the run. Final held-out evaluation must use reviewed, frozen code/data.
+
 ## Verification completed
 
 | Check | Evidence |
 |---|---|
-| Offline unit/property/integration suites | 894 passed: core 468, ASR 34, LLM 86, wallet 104, orchestrator 151, eval 39, web 12 |
+| Offline unit/property/integration suites | 900 passed: core 472, ASR 34, LLM 86, wallet 104, orchestrator 151, eval 41, web 12 |
 | TypeScript | Full workspace typecheck passed; receipt changes separately checked |
 | Scripted pipeline | 15/15 smoke; demonstrates mechanics, not arbitrary-input model quality |
 | Production/browser | Next production build; 10 browser scenarios with local Chrome, including phone zoom; all 10 scenarios passed again with recipient/time receipt assertions |
@@ -25,7 +27,7 @@ Follow-up to the [initial requirements audit](29-test-readiness-audit.md), perfo
 | Live web, real Claude | 9/9 transport/behavior checks before key removal: ambiguity, button-only approval/replay, edit invalidation, lost response, failure, two actions, schedule once, vague time, bad WAV/text fallback, real ASR read-back; [artifact](../eval/results/readiness-web-claude.json) |
 | Accessibility | Real-ASR read-back state: axe WCAG 2 A/AA zero violations, 21 passed rules; phone zoom regression. Not full accessibility/user certification |
 
-The later local four-worker accessibility-regression rerun encountered heavy RAM/swap pressure alongside training and the loaded ASR; 7/10 finished, three timed out. Extra assistant browsers/web processes were closed and the suite was rerun with one worker rather than changing product safety or raising test expectations. Final result is recorded below.
+The later local four-worker accessibility-regression rerun encountered heavy RAM/swap pressure alongside training and the loaded ASR; 7/10 finished, three timed out. Extra assistant browsers/web processes were closed and the suite was rerun with one worker rather than changing product safety or raising test expectations. The one-worker rerun passed all 10 scenarios, including actual Home/End scrolling. A fresh receipt-state axe scan then found zero violations (23 passed rules); the earlier finding remains in local evidence.
 
 ## Real model runs and honest failures
 
@@ -40,7 +42,9 @@ Historical Arabic and Sorani held-out sets were neither rerun nor edited. They r
 - Paced Gemini fixture run: 20/21, no provider errors; all four schedule, four two-action and one three-action cases passed. The miss was an invalid extra field on a read-only info action, safely rejected. [Result](../eval/results/readiness-gemini35-paced.md). The paced web run was 8/9: one bill-plus-transfer proposal used an invalid missing-amount object; no payment was made. These developer failures motivated the stricter prompt examples, not a schema relaxation.
 
 <!-- CURRENT-DEV-RESULTS -->
-Full current-prompt Arabic, Sorani, scheduling and complete-flow dev checks are running sequentially. This draft will be updated with the measured artifacts before work is handed back.
+Gemini 3.5 Flash-Lite development checks are complete; all are synthetic/developer evidence, not held-out results. Arabic tools mode measured 93/120 (77.5%) with two provider timeouts; a cache-only replay of the same outputs after resolver/time fixes measured 101/120 (84.2%). That replay is a code-regression comparison, not a new model or latency result. The workflow comparison measured 85.4% first-turn state accuracy (n=103), 76.7% end-to-end (n=120), 15 provider errors, and 0/8 two-action completion. Tools mode remains selected because it is the safer, better-supported multi-action path; the workflow result does not justify changing the default.
+
+Sorani tools mode measured 54/60 (90.0%) with no provider errors. The original scorer reported an apparent S1 event on KU-0093; scorer 2.1 replay identifies the legacy label defect, retains 54/60 E2E, and reports 0/25 eligible S1 events while three later-action queues remain incomplete. This correction does not establish safety on excluded cases. Gemini schedule-dev measured 23/26 (88.5% E2E); an offline replay after the bare-today fix reached 100% first-turn state accuracy (n=24), still 23/26 E2E because a bill-only fixture lacks an amount label and a two-action row lacks later-action labels. The 21-case readiness/full-flow run measured 19/21 (90.5%), with two safe failures (unsupported bill-info wording and three actions in one sentence); its run overlapped scorer changes and is explicitly marked source-changed. Full artifacts preserve row-level results and limitations: [Arabic tools](../eval/results/readiness-gemini35-ar-dev.md), [Arabic tools replay](../eval/results/readiness-gemini35-ar-corefix-replay.md), [Arabic workflow](../eval/results/readiness-gemini35-ar-workflow.md), [Sorani tools](../eval/results/readiness-gemini35-ku-dev.md), [Sorani scorer 2.1 replay](../eval/results/readiness-gemini35-ku-scorer21-replay.md), [schedule](../eval/results/readiness-gemini35-schedule.md), [schedule replay](../eval/results/readiness-gemini35-schedule-corefix-replay.md), and [full-flow fixtures](../eval/results/readiness-gemini35-complete-v2.md).
 <!-- END-CURRENT-DEV-RESULTS -->
 
 ## Local ASR and microphone
@@ -72,4 +76,10 @@ Dockerfile/health endpoint and Render Blueprint are prepared; no public demo has
 
 Technical captures now include a scripted ambiguity/card/receipt backup, direct transfer and timeout-after-commit recovery, plus the real-ASR simulated microphone clip. These are labelled technical rehearsals, not author delivery practice. Videos/screenshots remain local in .cache/readiness/.
 
+A one-page PDF draft of MVP_UPDATE.md was generated with local Chrome from reproducible print HTML (brief/build_mvp_update.py), verified with pdfinfo and visually inspected. It is labelled DRAFT and has not been submitted.
+
 Public deliverables: [MVP_UPDATE.md](../MVP_UPDATE.md), [DEMO.md](../DEMO.md), [DISCLOSURE.md](../DISCLOSURE.md), [FAILURE_MODES.md](../FAILURE_MODES.md), [checklist](22-submission-checklist.md). Never-cut safety/text/mock requirements remain intact. No held-out tuning, fabricated measurements or real payment rails were introduced.
+
+### Legacy Sorani label correction
+
+KU-0093 produced an apparent S1=1 event in the first Sorani run: the row was tagged two_actions but labelled only mobile top-up failure and a single intent type. The app correctly reported that unavailable service, then offered the separately requested generator card. The evaluator auto-approved that card against the failed-first-action label. This is retained in the original artifact and is not counted as a product defect or silently erased. Scorer 2.1 detects the independent legacy category, withholds approval for the unlabelled later action and reports incomplete coverage; its offline replay keeps 54/60 E2E but reports zero S1 events among 25 eligible rows. This does not prove safety on the excluded incomplete cases. A paired regression verifies the legitimate second payment with explicit labels and proves a model cannot get the exemption by appending an action to a single-action forbidden case.

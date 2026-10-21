@@ -1,19 +1,19 @@
 {
-  "captured_at": "2026-10-21T18:41:10.699809+00:00",
-  "commit": "a54d74f748aa8f889e0201d91fe1691373e0024f",
+  "captured_at": "2026-10-21T22:33:25+00:00",
+  "commit": "8d982a2",
   "offline_tests": {
-    "passed": 894,
+    "passed": 900,
     "packages": {
       "packages/asr": 34,
-      "packages/core": 468,
+      "packages/core": 472,
       "packages/llm": 86,
       "apps/wallet-api": 104,
       "packages/orchestrator": 151,
       "apps/web": 12,
-      "eval": 39
+      "eval": 41
     }
   },
-  "typecheck": "full workspace passed; after receipt changes full workspace passed again",
+  "typecheck": "Full workspace passed after final core fixes; browser production build also typechecks.",
   "browser": {
     "scenarios": 10,
     "passed": 10,
@@ -80,6 +80,20 @@
     "render_cli": "2.30.0, release SHA256 verified, project-local .cache/hosting-tools/render",
     "blueprint_validation": "attempted, blocked by no selected/default workspace; not validated/deployed"
   },
+  "gemini_development_runs": {
+    "provider": "Google AI Studio Gemini 3.5 Flash-Lite",
+    "selected_mode": "tools",
+    "quota_observed_for_this_project_model": "15 requests/minute; provider returned quota errors when other usage overlapped",
+    "arabic_tools_live": "93/120 E2E; 2 provider timeouts",
+    "arabic_tools_cache_only_regression_replay": "101/120 E2E; same cached model outputs, no new model quality or latency claim",
+    "arabic_workflow": "85.4% first-turn state accuracy on 103 scorable rows; 76.7% E2E on 120; 15 provider errors; 0/8 two-action E2E",
+    "sorani_tools": "54/60 E2E, zero provider errors; original apparent S1 was a legacy label/scorer issue",
+    "sorani_scorer_2_1_cache_replay": "54/60 E2E; 0 S1 / 25 eligible rows; 3 incomplete later-action queues; not evidence for excluded rows",
+    "schedule_tools": "23/26 E2E",
+    "schedule_cache_replay_after_bare_today_fix": "100% first-turn state accuracy / 24 scorable rows; 23/26 E2E; incomplete labels remain",
+    "complete_flow_fixtures": "19/21 E2E; source changed during run; two safe failures",
+    "heldout2": "not run"
+  },
   "heldout": "original Arabic/Sorani spent sets untouched; heldout2 not run",
-  "note": "Dated software/transport verification, not human usability, voice WER, final-model quality or certification."
+  "note": "Dated software/transport and synthetic development verification, not human usability, voice WER, final-model quality or certification."
 }
