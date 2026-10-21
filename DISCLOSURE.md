@@ -26,6 +26,7 @@ Using AI is expected; this file lists every model, tool, library and data source
 | Kurdish labels: three blind labellers | Anthropic Claude Opus, Claude Sonnet 5.5, Claude Haiku 5.5 (Claude Code subagents) | `eval/data/independent/*-ku.jsonl` |
 | Kurdish copy, parsers, prompt block and retrieval bank | written by Claude (Claude Code), not yet checked by a native Sorani speaker | `packages/core/src/{copy,kurdish}.ts`, `packages/llm/src/kurdish.ts` |
 | Speech to text (optional) | RegaLabs ASR, Iraqi Arabic (`acm`), via its developer API | `packages/asr` |
+| Local speech-to-text testing (2026-10-21) | Author's Stage-11 model on laptop CPU behind a loopback OpenAI-compatible API; exact checkpoint/provenance to record before accuracy reporting | external `rega-asr-work/local-asr/server.py`, configured through `packages/asr` |
 
 The model only understands. It has read-only tools (search contacts, bills, balance, history, quote) and `propose`
 (a pending card). It has no tool that pays, confirms, schedules or cancels.
@@ -52,6 +53,7 @@ voice and dropped: push-to-talk over one HTTPS call is simpler and needs no medi
 | Tool | Use |
 |---|---|
 | Claude Code (Anthropic) | planning docs, code, tests, review, browser testing of the web app (author's `bsk` CLI) |
+| OpenAI Codex (2026-10-21) | requirements/documentation and evaluation-harness audit; offline verification and nine browser E2E scenarios; test-readiness report in `docs/29-test-readiness-audit.md` |
 | DeepSeek Harness running Claude (claude-opus-5-5) | voice path, eval WER/CER, CI hardening, docs refresh (2026-10-17) |
 | `agy` (Antigravity CLI, Gemini 3.8 Flash) | generated the 300 test candidates and the primary labels; never ran our system |
 | Claude Code (Anthropic, cloud session, 2026-10-19) | gap review and plan; no-key demo mode; honest unknown-outcome recheck; accuracy fixes from the held-out error analysis; per-session sandboxes, Docker image, Playwright tests; built the `heldout2` set with the subagents listed above |

@@ -1,7 +1,22 @@
 # 09 — Voice: RegaLabs Iraqi-Arabic ASR
 
-Updated 2026-10-17: **built and tested with a fake ASR; waiting only for a RegaLabs API key.** Disclose (docs/19,
+Updated 2026-10-21: **local Stage-11 API available for laptop testing**, according to the author's client checks below; corpus voice evaluation is still pending. Disclose (docs/19,
 `DISCLOSURE.md`): RegaLabs is the author's company; the ASR predates the challenge and is called as an external API.
+
+## Local Stage-11 option (2026-10-21, author-reported checks)
+
+The laptop service in `rega-asr-work/local-asr/server.py` implements the same transcription contract at
+`http://127.0.0.1:8790/v1/audio/transcriptions`. `.env` uses `ASR_PROVIDER=regalabs`,
+`REGALABS_BASE_URL=http://127.0.0.1:8790/v1` and a separate local key; never commit or print the key.
+The author tested through ZainCash's `asrFromEnv`: correct Sorani transcript, detected `ckb`, 2.9 s;
+Iraqi-Arabic 2.4-second phone clip detected `ar`, 0.7 s; wrong key -> 401. These are spot checks, not WER/CER or voice E2E.
+
+CPU inference is about 3 s per sentence while the GPU trains a corrector. Client timeout is 15 s.
+The service does not auto-start and needs about 85 s to load. From `local-asr/`:
+`nohup /home/jackal/Desktop/idk/nemo-venv/bin/python server.py > server.log 2>&1 &`.
+Check readiness before the demo. Laptop loopback is unavailable to a remotely hosted web server or an ordinary Docker
+container; configure their ASR endpoint separately. The remaining hosted-service notes below describe the cloud path.
+Record the exact Stage-11 checkpoint and provenance before any reported comparison. See docs/29 for remaining tests.
 
 ## Decision: the developer HTTP API, not LiveKit
 RegaLabs exposes an OpenAI-compatible developer API (RegaLabs repo: `server/gateway/src/routes/developer-audio.ts`):

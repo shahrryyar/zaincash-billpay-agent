@@ -73,4 +73,6 @@ Keep this file updated **as you build**. Using AI is expected; hiding it is not.
 - Browser automation (the author's `bsk` CLI + Chrome) was used by the AI assistant to test the web app and to read the public fee page.
 
 ## Human vs AI contribution (honest summary)
+2026-10-21: OpenAI Codex reviewed the requirements, documentation, evaluation harness and test readiness; passed offline tests/typecheck/scripted smoke and nine browser E2E scenarios using local Chrome; wrote `docs/29-test-readiness-audit.md`. No new model-quality or voice accuracy result was produced. The author reports local Stage-11 ASR client spot checks (Sorani transcript, Arabic detection, invalid-key rejection); this is a separate laptop CPU model/API, not measured hosted RegaLabs accuracy. Exact checkpoint/provenance and corpus evaluation remain to record.
+
 Public copy: `DISCLOSURE.md` (repo root, committed; `docs/` is local). Draft (finalise before submission): architecture and safety design by the author; code, tests, harness and web app written with Claude Code; test sentences and labels produced by LLMs as listed above; the author reviewed decisions but did not hand-label. Dialect copy has not yet been reviewed by a native speaker.
