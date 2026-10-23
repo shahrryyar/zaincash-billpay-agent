@@ -1,0 +1,84 @@
+{
+  "date": "2026-10-23T11:17:19.105Z",
+  "base": "https://zc-billpay-agent.onrender.com",
+  "application_commit": "093c4395db720265ed2faa2f867672f0c8127a5a",
+  "health": {
+    "ok": true,
+    "model": "gemini:gemini-3.5-flash-lite",
+    "voice": false
+  },
+  "checks": [
+    {
+      "name": "fresh transfer amount",
+      "text": "دز 23000 لعلي كريم",
+      "model": "gemini:gemini-3.5-flash-lite",
+      "mode": "tools",
+      "usage": {
+        "input": 2730,
+        "output": 80
+      },
+      "phase": "AWAITING_CONFIRM",
+      "messages": [
+        {
+          "kind": "card",
+          "text": "راجع التفاصيل وكبس أكّد. ما انرسل شي بعد."
+        }
+      ],
+      "amount_iqd": 23000,
+      "candidates": 0,
+      "balance_iqd": 200000,
+      "elapsed_ms": 1158,
+      "llm_error": null,
+      "pass": true,
+      "balance_after_cancel_iqd": 200000
+    },
+    {
+      "name": "ambiguous recipient",
+      "text": "دز 17000 لأحمد",
+      "model": "gemini:gemini-3.5-flash-lite",
+      "mode": "tools",
+      "usage": {
+        "input": 2729,
+        "output": 80
+      },
+      "phase": "CLARIFYING",
+      "messages": [
+        {
+          "kind": "ask",
+          "text": "عندك 2 باسم أحمد، ياهو تقصد؟"
+        }
+      ],
+      "amount_iqd": null,
+      "candidates": 2,
+      "balance_iqd": 200000,
+      "elapsed_ms": 4644,
+      "llm_error": null,
+      "pass": true
+    },
+    {
+      "name": "grounded electricity bill",
+      "text": "ادفع الكهرباء",
+      "model": "gemini:gemini-3.5-flash-lite",
+      "mode": "tools",
+      "usage": {
+        "input": 2723,
+        "output": 61
+      },
+      "phase": "AWAITING_CONFIRM",
+      "messages": [
+        {
+          "kind": "card",
+          "text": "راجع التفاصيل وكبس أكّد. ما انرسل شي بعد."
+        }
+      ],
+      "amount_iqd": 37500,
+      "candidates": 0,
+      "balance_iqd": 200000,
+      "elapsed_ms": 5086,
+      "llm_error": null,
+      "pass": true,
+      "balance_after_cancel_iqd": 200000
+    }
+  ],
+  "note": "Fresh synthetic requests against public Render app; response traces require actual Gemini model identity and nonzero token usage. Pending cards cancelled; no execution calls. Deployment smoke evidence, not a held-out evaluation."
+}

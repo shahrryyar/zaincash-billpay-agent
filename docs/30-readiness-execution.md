@@ -91,6 +91,8 @@ Render CLI 2.31.0 authentication and workspace selection succeeded. Initially, B
 
 **Public demo: https://zc-billpay-agent.onrender.com.** Service `srv-dbdk0l7avr4c73abjdq0`; deploy `dep-dbdk0lvavr4c73abjgp0` observed `live` at application commit `093c4395db720265ed2faa2f867672f0c8127a5a`. Real-Gemini public HTTPS smoke checks passed **5/5**, including approval/replay and session isolation: [hosted artifact](../eval/results/readiness-render-hosted-gemini-2026-10-23.json). The README links the demo for judges. Free-plan sleep and in-memory state-loss behavior remain as documented; no continuous keep-awake job was added.
 
+At the author's request, a fresh live-model recheck passed **3/3** requests: a 23,000 IQD transfer to Ali Karim, a 17,000 IQD transfer to ambiguous Ahmed, and the seeded electricity bill. Every response trace identified `gemini:gemini-3.5-flash-lite` with nonzero input/output token usage and no provider error. Both pending cards were cancelled; every sandbox balance remained 200,000 IQD. This verifies actual model-backed responses rather than configuration alone; it is not a held-out accuracy estimate. [Trace evidence](../eval/results/readiness-render-gemini-live-2026-10-23T11-17-19-105Z.json).
+
 A temporary laptop/Cloudflare Quick Tunnel passed [5/5 real-model public checks](../eval/results/readiness-public-tunnel-gemini-2026-10-23.json) during the billing blocker. It was stopped after Render verification, with its Docker container stopped and automatic restart disabled. cloudflared 2026.10.3 was verified against the official release SHA-256. Optional Stage-11 ASR was not listening on port 8790; voice remains off on Render and no ASR endpoint was published.
 
 ### Legacy Sorani label correction
