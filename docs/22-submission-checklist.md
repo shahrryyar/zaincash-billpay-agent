@@ -46,7 +46,7 @@ Updated 2026-10-23. [Current verification and gaps](30-readiness-execution.md). 
 - [x] Render CLI account authenticated and workspace selected; author authorised deployment.
 - [x] Render billing requirement resolved; free Docker service live at https://zc-billpay-agent.onrender.com, with 5/5 real-model public smoke checks.
 - [ ] Author verifies the public HTTPS demo on a physical phone (desktop phone-sized browser checks passed).
-- [ ] Laptop-ASR tunnel/reachable endpoint configured if a remote web host uses it; loopback is not remote.
+- [x] Hosted voice uses the dedicated RegaLabs streaming ASR endpoint, with server-side key and mandatory read-back; 3/3 public checks and a fake-microphone browser check passed. No laptop-ASR tunnel is needed for this deployment.
 - [x] Keys kept in ignored server-side secrets, no keys in image/source/history scans.
 - [ ] Organiser/author permission for judges to run the proprietary repo resolved. Do not silently change the licence.
 - [ ] Final CI green on the submitted commit, not just an earlier run.

@@ -1,0 +1,39 @@
+{
+  "date": "2026-10-23",
+  "base": "https://zc-billpay-agent.onrender.com",
+  "application_commit": "921334514023048b99e4353c518498d37792afd4",
+  "browser_result": {
+    "success": true,
+    "data": {
+      "lifecycle": {
+        "effectiveLaunch": {
+          "browserLaunched": true,
+          "engine": "chrome",
+          "launchHash": 3427006629640095501
+        },
+        "launched": false,
+        "relaunchedBrowser": false,
+        "restartedBackground": false,
+        "restoreStatus": "not_configured",
+        "reused": true,
+        "saveStatus": "not_attempted"
+      },
+      "origin": "https://zc-billpay-agent.onrender.com/",
+      "result": {
+        "balance_iqd": 200000,
+        "language": "ckb",
+        "model": "gemini:gemini-3.5-flash-lite",
+        "voice": {
+          "enabled": true,
+          "max_seconds": 30,
+          "provider": "regalabs",
+          "simulator": false
+        }
+      }
+    },
+    "error": null
+  },
+  "fixture": "RegaLabs Deng Flash synthetic Sorani audio, padded with silence; Chrome fake microphone device",
+  "screenshot": ".cache/hosting/render-stream-voice-readback.png",
+  "note": "Actual public-page push-to-talk, MediaRecorder, browser conversion, Render upload, real ASR socket and read-back exercised. No physical microphone, WER or task-accuracy claim. No payment approved."
+}

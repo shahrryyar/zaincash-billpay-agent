@@ -1,11 +1,13 @@
 # 09 — Voice: RegaLabs Iraqi-Arabic ASR
 
-Updated 2026-10-21: **local Stage-11 API available for laptop testing**, according to the author's client checks below; corpus voice evaluation is still pending. Disclose (docs/19,
+Updated 2026-10-23: **hosted streaming ASR is live on Render**, with mandatory transcript read-back. The pre-existing local Stage-11 option remains available separately; corpus voice evaluation is still pending. Disclose (docs/19,
 `DISCLOSURE.md`): RegaLabs is the author's company; the ASR predates the challenge and is called as an external API.
 
 ## Selected demo transport — streaming ASR, 2026-10-23
 
 The author selected **`wss://api.regalabs.dev/v1/audio/transcriptions/stream`**, verified against [RegaLabs Speech API docs](https://docs.regalabs.dev/#speech-api). The earlier `/v1/audio/stream` socket combines recognition and synthesis and is not the selected demo recognizer. A real authenticated no-audio handshake returned `ready`, `done` and normal close; [evidence](../eval/results/readiness-asr-stream-handshake-2026-10-23T12-01-53-965Z.json).
+
+Application commit `9213345` is deployed on the existing free Render service. Public checks passed **3/3**, including actual socket transcription, read-back before any model call, and Gemini continuation after acceptance with unchanged balance. [Public check](../eval/results/readiness-render-stream-voice-2026-10-23.json). Chrome's fake microphone also exercised MediaRecorder/conversion/upload/read-back on the public page. The fixture was synthetic Sorani speech; this is not a physical-mic or recognition-accuracy result. Some fixture names were misrecognized and earlier requests failed; preserved results are explained in docs/19 and docs/30.
 
 Set `REGALABS_STREAM_URL` alongside the existing server-side developer key to select this adapter. Keep the current push-to-talk UI: the browser uploads its finished WAV to our server; the server authenticates to the socket, configures `language: auto` and `sample_rate: 16000`, sends raw mono PCM16 in 50 ms frames, then sends `end`. Only ordered final utterances followed by `done` form the final transcript. Ignore partials for intent understanding; timeout, close without `done`, malformed/out-of-order/duplicate finals, failed utterances or dropped audio fail closed. Do not automatically retry a charged stream. No new service or payment path is added, and the key never reaches the browser.
 
@@ -17,7 +19,7 @@ The author supplied a hosted developer key and chose to resume the hosted RegaLa
 
 The initial REST transcription check returned **HTTP 503 `SERVICE_PAUSED`** for both the supplied key and a deliberately invalid test key, before authentication. [Probe evidence](../eval/results/readiness-hosted-asr-probe-2026-10-23T11-44-55-801Z.json). The author then resumed the service and selected the dedicated streaming recognizer described above. No laptop-ASR tunnel was started.
 
-After the API resumes, check the supplied key with a synthetic WAV, set the existing Render service's `ASR_PROVIDER=regalabs`, redeploy the existing application commit, then verify the mic, upload/read-back and Gemini continuation over public HTTPS. Every transcript still requires read-back acceptance and every payment still requires its separate confirmation card. Synthetic test audio was generated with eSpeak NG and converted to 16 kHz mono PCM16 by FFmpeg; it is a transport fixture, not human task speech or WER evidence.
+After resume, the dedicated streaming adapter was implemented, configured and deployed as recorded above. Every transcript still requires read-back acceptance and every payment still requires its separate confirmation card. The initial synthetic test audio was generated with eSpeak NG and converted to 16 kHz mono PCM16 by FFmpeg; a clearer Sorani fixture was generated with RegaLabs Deng Flash. Both are transport fixtures, not human task speech or WER evidence.
 
 ## Local Stage-11 option (2026-10-21, author-reported checks)
 
@@ -36,34 +38,33 @@ Exact local checkpoint: stage11-avg3-36k44k48k.nemo, SHA-256 e9de02a14d531d79c53
 
 The author confirms the underlying model supports streaming at 80/320/400 ms chunks. The current local server.py exposes final HTTP transcription only. Connecting a streaming transport and editable partials is captured for later in docs/32; these chunk sizes are not measured end-to-end latency.
 
-## Decision: the developer HTTP API, not LiveKit
-RegaLabs exposes an OpenAI-compatible developer API (RegaLabs repo: `server/gateway/src/routes/developer-audio.ts`):
+## Decision: the developer API, not LiveKit
+RegaLabs exposes a developer API; the selected socket contract is documented at [docs.regalabs.dev](https://docs.regalabs.dev/#speech-api). The HTTP route below remains the legacy/local-compatible option:
 
 | Endpoint | Contract |
 |---|---|
 | `POST https://api.regalabs.dev/v1/audio/transcriptions` | `Authorization: Bearer rega_live_…`, multipart `file` = **WAV PCM16** (≤ 8 MB), `language`; optional `Idempotency-Key` (billing reference). Returns `{ "text": … }` only. OpenAI error envelope `{error:{message,type,code}}`: 401 `invalid_api_key`, 402 `insufficient_quota`, 400 `unsupported_format`/`unsupported_language`, 413, 429 (60/min/key), 502/503 (credits refunded). |
 | `WS /v1/audio/stream` | PCM16 16 kHz frames, `{type:"configure",language}`, `{type:"flush"}` → `{type:"transcript",text,is_final}`. Not used yet (live partials would be a later addition). |
+| **`WS /v1/audio/transcriptions/stream`** | **Selected.** Server sends key in initial `{type:"auth",token}`; waits for `ready`, configures `language:"auto", sample_rate:16000`, sends raw mono PCM16 frames, then `end`. Receives `partial`, ordered `final`, `done`. Maximum 64 KB per audio frame; up to two streams per key. |
 
-LiveKit was the original plan. For push-to-talk it adds a media server, room tokens and an agent dispatch for no gain:
-one HTTPS call per utterance is simpler, testable and keeps the key on our server. Judges reward simple and reliable.
+LiveKit was the original plan. The existing push-to-talk upload and a server-side socket adapter keep the key on our server without adding a media server, room tokens or another service.
 
-## Language: auto-detected (2026-10-19)
-The RegaLabs API detects the spoken language itself, so the app sends **no** `language` field by default
-(`REGALABS_ASR_LANGUAGE=auto`). One setting serves the Iraqi-Arabic and the Kurdish (Sorani) screen; the transcript goes
+## Language: auto-detected on the selected socket (2026-10-23)
+The selected streaming recognizer receives **`language:"auto"` explicitly** (`REGALABS_ASR_LANGUAGE=auto`). One setting serves the Iraqi-Arabic and the Kurdish (Sorani) screen; the transcript goes
 through the same read-back and the same parsers (Kurdish words are read by `packages/core/src/kurdish.ts`). The old
 `acm` blocker below only applies when a language is forced.
 
-## ⚠ (Only when a language is forced) One blocker on the RegaLabs side
+## Historical REST language blocker (does not apply to the selected socket)
 The developer endpoint only accepts `SUPPORTED_ASR_LANGUAGES = ckb, ku, en, tr, ar, es, zh` (developer-audio.ts line 89).
 Iraqi Arabic is `acm` in RegaLabs' own catalogue (`server/shared/rega-languages.json`, asrCode `acm_Arab`) and the
 recognizer supports it, but the gateway refuses it with 400 `unsupported_language`. Fix: add `'acm'` to that set.
-Stopgap: `REGALABS_ASR_LANGUAGE=ar` (MSA prompt on Iraqi speech) — disclose it if used.
+The selected socket explicitly supports `acm`, `ar`, `ckb` and `auto`; do not apply this old REST stopgap to it. Current public REST docs specify a default `ckb` language and no automatic guessing when omitted.
 
 ## How it works (as built)
 ```
 hold 🎤 ─► MediaRecorder (webm/opus) ─► decode in browser ─► downmix + resample 16 kHz + PCM16 WAV (@zc/asr, pure)
         ─► POST /api/voice (our server)  ─► checks: WAV, 0.3–30 s, size
-        ─► RegaLabs /audio/transcriptions (key server-side, Idempotency-Key per utterance, 1 retry on 5xx/timeout)
+        ─► RegaLabs /audio/transcriptions/stream (server-side key, 50 ms PCM frames, complete finals + done; no automatic retry)
         ─► voice gate ─► orchestrator.turn(text, voice: true)   ← the SAME path as typed text
 ```
 - **Voice has no execution logic.** The transcript enters the normal turn; the confirmation card and token are unchanged.
@@ -80,12 +81,12 @@ hold 🎤 ─► MediaRecorder (webm/opus) ─► decode in browser ─► downm
 - **No key → no mic.** `ASR_PROVIDER` unset and no `REGALABS_API_KEY` = voice off.
 
 ## Files
-`packages/asr` (client, WAV helpers, fake, env factory, `check` script) · `packages/core/src/asr.ts` (gate) ·
+`packages/asr` (streaming/legacy clients, WAV helpers, fake, env factory, `check` script) · `packages/core/src/asr.ts` (gate) ·
 `packages/orchestrator` (read-back in `turn`) · `apps/web/server/voice.ts` + `app/api/voice/route.ts` ·
 `apps/web/components/MicButton.tsx`, `recorder.ts` · `eval/src/voice.ts`, `eval/src/wer.ts`, `eval/voice/README.md`.
 
 ## Turning it on (author, 2 minutes)
-1. `.env`: use the laptop endpoint/key above, or a hosted `REGALABS_API_KEY` with API credit. The laptop key does not need hosted-service credit.
+1. The public demo is already configured in Render. For local development, `.env`: use the laptop endpoint/key above with no stream URL, or a hosted `REGALABS_API_KEY` plus `REGALABS_STREAM_URL=wss://api.regalabs.dev/v1/audio/transcriptions/stream`. The laptop key does not need hosted-service credit.
 2. `pnpm --filter @zc/asr check [some.wav]` → prints OK + transcript, or the exact problem (auth, quota, language,
    service down / outside the daily public window).
 3. `pnpm dev`, hold 🎤. Without a key: `ASR_PROVIDER=fake pnpm dev` and use «محاكاة صوت» in «لوحة العرض».

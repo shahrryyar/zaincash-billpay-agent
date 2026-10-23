@@ -3,7 +3,9 @@
 Judges look for: it runs live on their input and holds up (25%); they understand it in the first minute (5%).
 Rehearse this three times; record one clean run as a backup video. Technical assistant rehearsals are not evidence that the author has rehearsed delivery. Current local provider: Gemini 3.5 Flash-Lite; Claude scores below are historical. See docs/30 for the latest readiness result.
 
-**Live demo: https://zc-billpay-agent.onrender.com** — Render free plan, Gemini 3.5 Flash-Lite, Arabic/Sorani text. Voice is off until a reachable ASR endpoint is configured. Open the URL a few minutes before presenting; after 15 idle minutes the free service sleeps and waking takes about a minute. Keep the demo on the free plan as requested. Wallets and schedules reset on process restart or sandbox eviction. Public verification passed 5/5 synthetic real-model smoke checks on 2026-10-23; this is not a new accuracy evaluation or physical-phone test.
+**Live demo: https://zc-billpay-agent.onrender.com** — Render free plan, Gemini 3.5 Flash-Lite, Arabic/Sorani text and push-to-talk voice through hosted RegaLabs streaming ASR. Hold 🎤, speak, release and review the read-back. Gemini runs only after transcript acceptance; payment needs its separate button. The browser sends the finished recording; live partial text in the composer remains queued. No laptop ASR process is needed.
+
+Open the URL a few minutes before presenting; after 15 idle minutes the free service sleeps and waking takes about a minute. Keep the demo on the free plan as requested. Wallets and schedules reset on process restart or sandbox eviction. The initial text deployment passed 5/5 public checks; the streaming deployment passed 3/3 public voice checks plus a Chrome fake-microphone/read-back check. These are synthetic transport/safety checks, not physical-phone or ASR-accuracy results. Rehearse with your actual phone and speech before presenting; earlier provider errors and recognition mistakes remain recorded.
 
 ## Before (10 minutes ahead)
 - [ ] App open in Chrome (hosted URL, or `pnpm dev` on the laptop). Hosted on a free plan: open it early, it sleeps.

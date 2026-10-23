@@ -1,0 +1,29 @@
+{
+  "date": "2026-10-23T12:13:24.228Z",
+  "base": "http://127.0.0.1:3500",
+  "lang": "ku",
+  "health": {
+    "ok": true,
+    "model": "gemini:gemini-3.5-flash-lite",
+    "voice": true
+  },
+  "checks": [
+    {
+      "name": "host reports real Gemini and voice enabled",
+      "pass": true,
+      "ms": 124
+    },
+    {
+      "name": "bad audio is rejected before ASR and leaves balance intact",
+      "pass": true,
+      "ms": 41
+    },
+    {
+      "name": "real ASR returns read-back before any model call; accepting reaches Gemini without payment execution",
+      "pass": false,
+      "ms": 880,
+      "error": "{\"error\":\"asr_unavailable\",\"message\":\"الصوت ما يشتغل هسه. اكتب طلبك، وما انرسل شي.\"}\n\n502 !== 200\n"
+    }
+  ],
+  "note": "Voice transport/read-back/Gemini check using synthetic speech. No execution request. No physical-phone microphone or WER/task-accuracy claim."
+}

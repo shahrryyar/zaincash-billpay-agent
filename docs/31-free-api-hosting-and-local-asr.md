@@ -1,6 +1,6 @@
 # Free API, hosting and publishing options — APIs checked 2026-10-21; hosting updated 2026-10-23
 
-**Live demo: https://zc-billpay-agent.onrender.com.** Deployed on 2026-10-23 to one Render **free** Docker instance in Frankfurt, using Gemini 3.5 Flash-Lite and server-side secrets. The author resolved Render's initial billing-verification blocker. No paid compute upgrade was made. Voice is off until a reachable ASR endpoint is configured.
+**Live demo: https://zc-billpay-agent.onrender.com.** Deployed to one Render **free** Docker instance in Frankfurt, using Gemini 3.5 Flash-Lite and server-side secrets. Hosted voice is now enabled through `wss://api.regalabs.dev/v1/audio/transcriptions/stream`, with `auto` language and mandatory read-back. No laptop ASR is needed. The author resolved Render's initial billing-verification blocker. No paid compute upgrade was made.
 
 ## LLM API
 
@@ -24,9 +24,10 @@ Render supplies an official [CLI](https://render.com/docs/cli) and [MCP server](
 - `render whoami --output json` succeeds; the author's only workspace is selected with `render workspace set`.
 - Initially, service listing was empty, Blueprint validation returned `need_payment_info`, and explicit free-service creation returned HTTP 402 requiring payment information. The author reported rejected cards, then resolved the billing requirement. The reason for the card rejections is unknown.
 - After that account change, Blueprint validation succeeded and CLI creation used `--runtime docker --plan free --region frankfurt --num-instances 1 --auto-deploy=false --health-check-path /api/health`. Read-back confirms `serviceDetails.plan: free` and one instance.
-- Server environment comes from render.yaml, with GEMINI_API_KEY read from the ignored local .env without printing it. Voice is explicitly off: the local Stage-11 endpoint is not reachable remotely, and it was not listening during preflight.
+- Server environment comes from render.yaml, with GEMINI_API_KEY read from the ignored local .env without printing it. Voice was off initially because laptop loopback is not remote. The author later supplied a hosted RegaLabs key and selected the dedicated streaming endpoint; that key is also held only in server secrets.
 - Service: `srv-dbdk0l7avr4c73abjdq0`; initial deploy: `dep-dbdk0lvavr4c73abjgp0`, status `live`; deployed application commit: `093c4395db720265ed2faa2f867672f0c8127a5a`. [Render dashboard](https://dashboard.render.com/web/srv-dbdk0l7avr4c73abjdq0).
 - Public HTTPS checks passed **5/5** with the real Gemini model: health, invalid confirmation, clarification/approval/replay with session isolation, insufficient funds, and bill payment. [Artifact](../eval/results/readiness-render-hosted-gemini-2026-10-23.json). Desktop Chrome also loaded the public app at a phone-sized viewport; a physical-phone check remains for the author.
+- Current voice application commit: `921334514023048b99e4353c518498d37792afd4`; deploy `dep-dbdl13on74is7395mc4g` observed `live`. Public voice checks passed **3/3** and the browser fake-microphone capture reached read-back with unchanged balance. [Voice deployment evidence](../eval/results/readiness-render-stream-deployment-2026-10-23.json). This is a transport/safety check, not human ASR accuracy evidence.
 
 ### Operate the existing demo
 

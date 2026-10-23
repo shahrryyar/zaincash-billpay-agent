@@ -26,6 +26,8 @@ Using AI is expected; this file lists every model, tool, library and data source
 | Kurdish labels: three blind labellers | Anthropic Claude Opus, Claude Sonnet 5.5, Claude Haiku 5.5 (Claude Code subagents) | `eval/data/independent/*-ku.jsonl` |
 | Kurdish copy, parsers, prompt block and retrieval bank | written by Claude (Claude Code), not yet checked by a native Sorani speaker | `packages/core/src/{copy,kurdish}.ts`, `packages/llm/src/kurdish.ts` |
 | Speech to text (optional) | RegaLabs ASR, Iraqi Arabic (`acm`), via its developer API | `packages/asr` |
+| Hosted speech recognition (2026-10-23) | RegaLabs dedicated streaming recognizer at `/v1/audio/transcriptions/stream`; underlying checkpoint/version not supplied | `packages/asr/src/regalabs-stream.ts`; automatic language detection, complete finals only |
+| Synthetic speech test fixture (2026-10-23) | RegaLabs Deng Flash, stock voice `hamza`, Sorani `ckb` | local `.cache/hosting`, used only for transport checks; no product TTS or human corpus |
 | Local speech-to-text testing (2026-10-21) | Author's Stage-11 model on laptop CPU behind a loopback OpenAI-compatible API; checkpoint stage11-avg3-36k44k48k.nemo (hash/settings below); training-data provenance still requires author disclosure | external `rega-asr-work/local-asr/server.py`, configured through `packages/asr` |
 
 The model only understands. It has read-only tools (search contacts, bills, balance, history, quote) and `propose`
@@ -117,3 +119,7 @@ OpenAI Codex deployed https://zc-billpay-agent.onrender.com using Render CLI 2.3
 A temporary Cloudflare Quick Tunnel (cloudflared 2026.10.3, official release SHA-256 verified) was tested during the billing blocker and stopped after Render verification, together with its local Docker container. No ASR endpoint was exposed. GitHub CLI published the README demo link and deployment evidence. Detailed results, model IDs and operational limitations are in docs/30 and docs/31.
 
 Hosted voice preparation used Render's environment API to store the author's supplied developer key server-side. The ASR endpoint returned `SERVICE_PAUSED` before authentication, so voice remained off pending service resume. eSpeak NG and FFmpeg generated/converted synthetic speech for transport checks only; they are not product dependencies or human voice-evaluation data. See docs/09 and docs/30 for the recorded result.
+
+After resume, Codex connected the author-selected dedicated ASR socket using Node's built-in WebSocket, with no new runtime dependency or service. It is live at application commit `9213345` on the same free Render instance. The existing push-to-talk/read-back UI remains; browser live partials are queued. Public voice checks passed 3/3 and Chrome fake-microphone capture reached read-back; no physical-mic or ASR-accuracy result is claimed. Partials/incomplete streams never become intents, and every payment still needs its confirmation card.
+
+One synthetic Sorani fixture was generated with RegaLabs Deng Flash/hamza for transport testing. Its recipient name was misrecognized; the raw transcript, initial empty eSpeak result and earlier ASR failures are retained in the evidence. Mandatory read-back makes those recognition errors visible. No held-out set or human voice corpus was run. Details are in docs/19 and docs/30.

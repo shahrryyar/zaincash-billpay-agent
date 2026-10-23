@@ -3,7 +3,7 @@
 > **From one Iraqi-Arabic sentence to a safe, confirmed transaction.**
 > The model understands. Code moves money.
 
-**[Open the live demo →](https://zc-billpay-agent.onrender.com)** · Synthetic wallet only; no real money moves. Arabic and Sorani text input. The free host can take about a minute to wake after inactivity.
+**[Open the live demo →](https://zc-billpay-agent.onrender.com)** · Synthetic wallet only; no real money moves. Arabic/Sorani text and push-to-talk voice: hold 🎤, speak, release, then review the transcript. The free host can take about a minute to wake after inactivity.
 
 Solo entry by Shahryar Sabir Muhammed (RegaLabs). Status: **working end to end** (core, mock wallet, LLM layer, orchestrator, web app, eval harness). Project state: [MEMORY.md](MEMORY.md). **Deadlines: design brief 22/10, MVP 08/11.**
 
@@ -90,7 +90,9 @@ the agent. Free tiers may train on prompts (all data here is synthetic) and have
 - **Laptop backup.** `pnpm install && pnpm dev` with the key in `.env`, or `docker run` as above. If the network or the
   model is down, `LLM_PROVIDER=fake` still shows the full flow on the demo sentences.
 
-**Voice (optional):** the laptop Stage-11 server works through the same client (`REGALABS_BASE_URL=http://127.0.0.1:8790/v1`, separate local key). It requires manual startup and cannot be reached through loopback from a hosted server/container. For the hosted RegaLabs service, set `REGALABS_API_KEY` in `.env`, check it with `pnpm --filter @zc/asr check`, then hold the 🎤 button. Without a key the mic is hidden. To try the voice flow with no key: `ASR_PROVIDER=fake pnpm dev` and use the simulator in «لوحة العرض». Voice eval: [eval/voice/README.md](eval/voice/README.md).
+**Voice:** the hosted demo uses RegaLabs' dedicated `wss://api.regalabs.dev/v1/audio/transcriptions/stream` recognizer, with its key kept in Render secrets. Hold 🎤, speak and release; the transcript is read back before Gemini, and payment still requires the separate confirmation button. The browser uploads the finished recording; live partials in the composer remain queued in [docs/32](docs/32-voice-composer-follow-up.md). No laptop ASR process is needed for the hosted demo.
+
+For local use, set `REGALABS_API_KEY` and `REGALABS_STREAM_URL` as in `.env.example`, then run `pnpm --filter @zc/asr check`. The pre-existing laptop Stage-11 REST wrapper still works with `REGALABS_BASE_URL=http://127.0.0.1:8790/v1` and no stream URL; it needs manual startup and a separate local key. Without a key the mic is hidden. For the no-key simulator: `ASR_PROVIDER=fake pnpm dev`, then «لوحة العرض». Voice evaluation remains pending: [eval/voice/README.md](eval/voice/README.md).
 
 Held-out is frozen (`eval/data/heldout.sha256`) and runs once, only with `--allow-heldout`. Labels are LLM-made, not human-checked: see [eval/data/README.md](eval/data/README.md). The initial audit is historical; current checks are in [docs/30](docs/30-readiness-execution.md). Historical reports use scorer v1: their S1 counts unconfirmed debits across all cases and their latency mixes response states. Current evaluation separates those metrics; see [current readiness](docs/30-readiness-execution.md).
 

@@ -1,0 +1,73 @@
+{
+  "date": "2026-10-23T12:11:15.712Z",
+  "endpoint": "wss://api.regalabs.dev/v1/audio/transcriptions/stream",
+  "ms": 3985,
+  "events": [
+    {
+      "type": "ready",
+      "session": "3aaa64ae-222d-4631-bd8d-3930d9d26576",
+      "input": {
+        "encoding": "pcm_s16le",
+        "sample_rate": 16000,
+        "channels": 1
+      },
+      "languages": [
+        "ckb",
+        "acm",
+        "ar",
+        "en",
+        "tr",
+        "auto"
+      ]
+    },
+    {
+      "type": "partial",
+      "utterance": 1,
+      "text": "پەنجە",
+      "language": null,
+      "start_ms": 0
+    },
+    {
+      "type": "partial",
+      "utterance": 1,
+      "text": "پەنجە هەزار",
+      "language": null,
+      "start_ms": 0
+    },
+    {
+      "type": "partial",
+      "utterance": 1,
+      "text": "پەنجە هەزار بنێ",
+      "language": null,
+      "start_ms": 0
+    },
+    {
+      "type": "partial",
+      "utterance": 1,
+      "text": "پەنجە هەزار بنێرە",
+      "language": null,
+      "start_ms": 0
+    },
+    {
+      "type": "final",
+      "utterance": 1,
+      "text": "پەنجە هەزار بنێرە بۆ ئارەزوو",
+      "language": "ckb",
+      "reason": "end",
+      "start_ms": 0,
+      "end_ms": 2140,
+      "dropped_ms": 0
+    },
+    {
+      "type": "done",
+      "audio_ms": 2140,
+      "credits": 2
+    },
+    {
+      "type": "close",
+      "code": 1000,
+      "reason": "done"
+    }
+  ],
+  "note": "RegaLabs Deng Flash synthetic Sorani fixture; hosted streaming transport, not human speech or ASR quality evaluation."
+}

@@ -1,0 +1,13 @@
+{
+  "date": "2026-10-23T12:09:55.369839+00:00",
+  "endpoint": "wss://api.regalabs.dev/v1/audio/transcriptions/stream",
+  "returncode": 2,
+  "output": "\n> @zc/asr@0.0.0 check /home/jackal/storage/Desktop/ZainCash/packages/asr\n> tsx src/check.ts /home/jackal/storage/Desktop/ZainCash/.cache/hosting/synthetic-ku-regalabs-16k.wav\n\nprovider: regalabs  (RegaLabs streaming ASR (auto) at api.regalabs.dev)\naudio: 2.14 s, 16000 Hz, 1 ch\nFAILED [unavailable]: Streaming ASR unavailable\n-> the service did not answer or returned 5xx (also happens outside RegaLabs' daily public window).\n/home/jackal/storage/Desktop/ZainCash/packages/asr:\n ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @zc/asr@0.0.0 check: `tsx src/check.ts /home/jackal/storage/Desktop/ZainCash/.cache/hosting/synthetic-ku-regalabs-16k.wav`\nExit status 2\n",
+  "fixture": {
+    "model": "RegaLabs Deng Flash",
+    "voice": "hamza",
+    "language": "ckb",
+    "text": "پەنجا هەزار بنێرە بۆ ئاراس"
+  },
+  "note": "Synthetic speech used to verify the actual server adapter and transport, not a human task/voice accuracy evaluation."
+}

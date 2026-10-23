@@ -17,7 +17,9 @@ Keep this file updated **as you build**. Using AI is expected; hiding it is not.
 | Label drafting + dialect review (primary labeller) | Gemini 3.8 Flash via `agy` | 2026-10-16 | eval/data |
 | Independent blind labellers | Anthropic Claude Fable and Claude Haiku 5.5, run as Claude Code subagents | 2026-10-16 | eval/data/independent |
 | ASR (optional voice) | RegaLabs ASR, Iraqi Arabic `acm`, developer HTTP API | built 2026-10-17, local Stage-11 real-client checks available 2026-10-21; corpus evaluation still pending | packages/asr |
-| TTS | not used | | |
+| Hosted streaming ASR | RegaLabs dedicated live-call recognizer via `/v1/audio/transcriptions/stream`, automatic language detection; underlying checkpoint/version not supplied | enabled 2026-10-23; synthetic transport checks only | packages/asr/src/regalabs-stream.ts |
+| Synthetic voice test fixture | RegaLabs Deng Flash, stock voice `hamza`, Sorani `ckb` | 2026-10-23 | local .cache/hosting; not evaluation ground truth |
+| Product TTS | not used; test-fixture synthesis only as above | | |
 
 ## Libraries & tools
 | Name | Use |
@@ -101,3 +103,5 @@ For hosted voice, the author supplied a developer key. Codex saved/read back the
 The author subsequently resumed the API and selected the dedicated `wss://api.regalabs.dev/v1/audio/transcriptions/stream` recognizer. Codex read the official docs with agent-browser and implemented a server-side adapter using Node's built-in WebSocket, with no new runtime library or service. The existing push-to-talk/read-back UI is preserved; browser partials/live composer remain queued. Only complete ordered finals followed by `done` become an utterance; partial, malformed, dropped or interrupted streams fail closed and charged streams are not automatically retried.
 
 RegaLabs **Deng Flash**, stock voice **hamza**, language **ckb**, generated one synthetic Sorani transport fixture («پەنجا هەزار بنێرە بۆ ئاراس»), converted by FFmpeg. This is test-fixture TTS, not a product TTS feature or human evaluation corpus. The recognizer returned «پەنجە هەزار بنێرە بۆ ئارەزوو», including a changed recipient name; the raw output is preserved and is not claimed as correct task speech. The eSpeak Arabic fixture returned empty text; an initial adapter run also failed before a later successful recheck. No WER, held-out, native-copy or physical-phone result is claimed. Actual protocol/client/web results are preserved in eval/results/readiness-asr-stream*.json and docs/30.
+
+Streaming application commit `9213345` is live on the same free Render instance. Public voice transport/read-back/Gemini checks passed 3/3; a Chrome fake-microphone recording also reached read-back with balance unchanged, then was rejected. The key remains server-side. Local verification passed 67 ASR tests, workspace tests/typechecking, production build and 10 scripted browser scenarios; CI passed on the deployed application commit. No live partial composer or physical microphone test is claimed.

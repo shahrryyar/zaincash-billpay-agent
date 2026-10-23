@@ -19,4 +19,4 @@ The author confirms the RegaLabs model supports streaming modes at 80 ms, 320 ms
 
 Test start/stop/cancel, partial/final replacement, existing typed drafts, user edits, repeated uploads, slow/out-of-order responses, read-back expiry, grammar suggestions changing a name/amount, and both languages. Preserve the invariant that no sequence of microphone events, draft edits or grammar suggestions can move money without the final payment confirmation.
 
-This feature is queued, not claimed as implemented in the present test-readiness work.
+The hosted demo now uses the dedicated RegaLabs streaming recognizer through the server adapter (docs/09), but the browser still uploads a finished push-to-talk WAV. The live editable composer described here remains queued and is not claimed as implemented.

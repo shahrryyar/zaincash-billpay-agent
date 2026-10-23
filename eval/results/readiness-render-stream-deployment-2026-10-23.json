@@ -1,0 +1,33 @@
+{
+  "date": "2026-10-23T12:30:50.289186+00:00",
+  "service_id": "srv-dbdk0l7avr4c73abjdq0",
+  "url": "https://zc-billpay-agent.onrender.com",
+  "plan": "free",
+  "num_instances": 1,
+  "auto_deploy": "no",
+  "deploy": {
+    "commit": {
+      "createdAt": "2026-10-23T12:17:42Z",
+      "id": "921334514023048b99e4353c518498d37792afd4",
+      "message": "feat(asr): connect dedicated RegaLabs streaming recognizer"
+    },
+    "createdAt": "2026-10-23T12:18:23.985128Z",
+    "finishedAt": "2026-10-23T12:19:28.782938Z",
+    "id": "dep-dbdl13on74is7395mc4g",
+    "startedAt": "2026-10-23T12:18:23.956079Z",
+    "status": "live",
+    "trigger": "api",
+    "updatedAt": "2026-10-23T12:20:04.695823Z"
+  },
+  "asr_endpoint": "wss://api.regalabs.dev/v1/audio/transcriptions/stream",
+  "asr_key": "server-side secret; not included",
+  "health": {
+    "ok": true,
+    "model": "gemini:gemini-3.5-flash-lite",
+    "voice": true
+  },
+  "public_smoke": "3/3; readiness-render-stream-voice-2026-10-23.json",
+  "browser_check": "Actual Chrome fake-microphone capture to public read-back, balance unchanged; readiness-render-stream-browser-2026-10-23.json",
+  "tests": "Workspace unit/integration and typechecking passed; ASR expanded to 67 passing tests; 10/10 scripted browser scenarios; production build and deployed-commit CI passed.",
+  "note": "Existing hold/release microphone UI uses a server-side streaming backend; no live partial composer, physical mic, human corpus or ASR accuracy claim. Earlier failed/empty fixture runs retained separately."
+}

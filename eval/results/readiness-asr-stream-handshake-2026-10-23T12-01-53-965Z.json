@@ -1,0 +1,38 @@
+{
+  "date": "2026-10-23T12:01:53.965Z",
+  "endpoint": "wss://api.regalabs.dev/v1/audio/transcriptions/stream",
+  "events": [
+    {
+      "type": "open",
+      "ms": 418
+    },
+    {
+      "type": "ready",
+      "session": "2924a89e-72ea-4ac4-904e-381df8ef6574",
+      "input": {
+        "encoding": "pcm_s16le",
+        "sample_rate": 16000,
+        "channels": 1
+      },
+      "languages": [
+        "ckb",
+        "acm",
+        "ar",
+        "en",
+        "tr",
+        "auto"
+      ]
+    },
+    {
+      "type": "done",
+      "audio_ms": 0,
+      "credits": 0
+    },
+    {
+      "type": "close",
+      "code": 1000,
+      "reason": "done"
+    }
+  ],
+  "note": "Server-side hosted-key WebSocket probe; no audio sent, no ASR quality claim."
+}

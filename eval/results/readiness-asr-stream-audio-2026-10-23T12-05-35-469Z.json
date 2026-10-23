@@ -1,0 +1,45 @@
+{
+  "date": "2026-10-23T12:05:35.469Z",
+  "endpoint": "wss://api.regalabs.dev/v1/audio/transcriptions/stream",
+  "ms": 3891,
+  "events": [
+    {
+      "type": "ready",
+      "session": "461c3164-3f7e-4b66-bdb0-d9153e5a0a4f",
+      "input": {
+        "encoding": "pcm_s16le",
+        "sample_rate": 16000,
+        "channels": 1
+      },
+      "languages": [
+        "ckb",
+        "acm",
+        "ar",
+        "en",
+        "tr",
+        "auto"
+      ]
+    },
+    {
+      "type": "final",
+      "utterance": 1,
+      "text": "",
+      "language": null,
+      "reason": "end",
+      "start_ms": 0,
+      "end_ms": 2454,
+      "dropped_ms": 0
+    },
+    {
+      "type": "done",
+      "audio_ms": 2454,
+      "credits": 2
+    },
+    {
+      "type": "close",
+      "code": 1000,
+      "reason": "done"
+    }
+  ],
+  "note": "eSpeak NG synthetic Arabic fixture; actual hosted streaming transport, not human task speech or ASR quality evidence."
+}

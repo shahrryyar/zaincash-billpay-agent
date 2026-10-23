@@ -1,0 +1,7 @@
+{
+  "date": "2026-10-23T12:12:55.164251+00:00",
+  "endpoint": "wss://api.regalabs.dev/v1/audio/transcriptions/stream",
+  "returncode": 0,
+  "output": "\n> @zc/asr@0.0.0 check /home/jackal/storage/Desktop/ZainCash/packages/asr\n> tsx src/check.ts /home/jackal/storage/Desktop/ZainCash/.cache/hosting/synthetic-ku-regalabs-16k.wav\n\nprovider: regalabs  (RegaLabs streaming ASR (auto) at api.regalabs.dev)\naudio: 2.14 s, 16000 Hz, 1 ch\nOK in 3474 ms. text: «پەنجە هەزار بنێرە بۆ ئارەزوو»  confidence: not provided (voice will read back every transcript)\n",
+  "note": "Real adapter recheck with RegaLabs Deng Flash synthetic Sorani fixture after earlier stream error; not human ASR quality evaluation."
+}

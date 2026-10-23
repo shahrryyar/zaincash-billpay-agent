@@ -1,0 +1,34 @@
+{
+  "date": "2026-10-23T12:25:49.332Z",
+  "base": "https://zc-billpay-agent.onrender.com",
+  "lang": "ku",
+  "health": {
+    "ok": true,
+    "model": "gemini:gemini-3.5-flash-lite",
+    "voice": true
+  },
+  "checks": [
+    {
+      "name": "host reports real Gemini and voice enabled",
+      "pass": true,
+      "ms": 698
+    },
+    {
+      "name": "bad audio is rejected before ASR and leaves balance intact",
+      "pass": true,
+      "ms": 352
+    },
+    {
+      "name": "real ASR returns read-back before any model call; accepting reaches Gemini without payment execution",
+      "pass": true,
+      "ms": 5153
+    }
+  ],
+  "transcript": {
+    "text": "پەنجە هەزار بنێرە بۆ ئارەزووی",
+    "confidence": null,
+    "provider": "regalabs-stream:auto",
+    "latency_ms": 2613
+  },
+  "note": "Voice transport/read-back/Gemini check using synthetic speech. No execution request. No physical-phone microphone or WER/task-accuracy claim."
+}
