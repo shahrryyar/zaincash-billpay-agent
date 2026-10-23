@@ -3,7 +3,9 @@
 > **From one Iraqi-Arabic sentence to a safe, confirmed transaction.**
 > The model understands. Code moves money.
 
-**[Open the live demo →](https://zc-billpay-agent.onrender.com)** · Synthetic wallet only; no real money moves. Arabic/Sorani text and push-to-talk voice: hold 🎤, speak, release, then review the transcript. The free host can take about a minute to wake after inactivity.
+**[Open the live demo →](https://zc-billpay-agent.onrender.com)** · Synthetic wallet only; no real money moves. Arabic/Sorani text and push-to-talk voice: hold 🎤, speak, release, then review/edit the transcript and explicitly send the request. The free host can take about a minute to wake after inactivity.
+
+**For judges:** [3-minute walkthrough](DEMO.md) · [production safety checks and release evidence](docs/33-production-improvements.md) · [full disclosure](DISCLOSURE.md). Try an ambiguous name, edit an amount, or interrupt a payment response; the demo is designed to ask, require confirmation, and recover without duplicate debits.
 
 Solo entry by Shahryar Sabir Muhammed (RegaLabs). Status: **working end to end** (core, mock wallet, LLM layer, orchestrator, web app, eval harness). Project state: [MEMORY.md](MEMORY.md). **Deadlines: design brief 22/10, MVP 08/11.**
 
@@ -90,7 +92,7 @@ the agent. Free tiers may train on prompts (all data here is synthetic) and have
 - **Laptop backup.** `pnpm install && pnpm dev` with the key in `.env`, or `docker run` as above. If the network or the
   model is down, `LLM_PROVIDER=fake` still shows the full flow on the demo sentences.
 
-**Voice:** the hosted demo uses RegaLabs' dedicated `wss://api.regalabs.dev/v1/audio/transcriptions/stream` recognizer, with its key kept in Render secrets. Hold 🎤, speak and release; the transcript is read back before Gemini, and payment still requires the separate confirmation button. The browser uploads the finished recording; live partials in the composer remain queued in [docs/32](docs/32-voice-composer-follow-up.md). No laptop ASR process is needed for the hosted demo.
+**Voice:** the hosted demo uses RegaLabs' dedicated `wss://api.regalabs.dev/v1/audio/transcriptions/stream` recognizer, with its key kept in Render secrets. Hold 🎤, speak and release; review/edit the transcript in the composer and explicitly send the request before Gemini runs. The original transcript stays accessible. Payment still requires the separate confirmation button. The browser uploads the finished recording; words appearing while you speak remain queued in [docs/32](docs/32-voice-composer-follow-up.md). No laptop ASR process is needed for the hosted demo.
 
 For local use, set `REGALABS_API_KEY` and `REGALABS_STREAM_URL` as in `.env.example`, then run `pnpm --filter @zc/asr check`. The pre-existing laptop Stage-11 REST wrapper still works with `REGALABS_BASE_URL=http://127.0.0.1:8790/v1` and no stream URL; it needs manual startup and a separate local key. Without a key the mic is hidden. For the no-key simulator: `ASR_PROVIDER=fake pnpm dev`, then «لوحة العرض». Voice evaluation remains pending: [eval/voice/README.md](eval/voice/README.md).
 

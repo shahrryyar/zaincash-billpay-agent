@@ -84,6 +84,8 @@ Cards show saved name, masked number and relation label when present. Last-trans
 `asr_too_long` · `mic_hold` «اضغط وخليك ضاغط وتكلم» · `mic_listening` · `mic_transcribing` · `mic_denied` · `voice_off`.
 The mic sits next to the send button (only when voice is configured and the text box is empty).
 
+2026-10-23 composer update: after recording, show the transcript in the editable input with `voice_review`, an expandable `voice_raw`, `voice_discard`, and a separate `voice_send` (“أرسل الطلب”). This explicit request submission precedes the existing payment approval. Do not auto-submit high-confidence recordings. Block sending while capturing/transcribing, preserve edits against stale callbacks, and leave typing available after microphone/provider failures. New Arabic/Sorani wording is marked `VERIFY-DIALECT` in the shared copy file. Partial words while recording remain future work.
+
 ## Accessibility checklist
 - [ ] Screen reader labels in Arabic.
 - [x] Phone 390×844 at 200%: controls/card/input fit; browser regression.

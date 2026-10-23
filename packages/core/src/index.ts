@@ -9,4 +9,5 @@ export * from "./copy";
 export * from "./machine";
 export * from "./when";
 export * from "./asr";
+export * from "./voice-draft";
 export * from "./kurdish";

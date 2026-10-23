@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { engine, rateLimited, withWallet } from "../../../server/engine";
+import { asrPolicyFrom } from "@zc/core";
+import { engine, rateLimited, sessionState, withWallet } from "../../../server/engine";
 import { cleanSessionId } from "../../../server/sandboxes";
 import { createVoiceHandler } from "../../../server/voice";
 export const dynamic = "force-dynamic";
@@ -12,6 +13,7 @@ export async function POST(req: Request) {
   handler ??= createVoiceHandler({
     orch: { turn: (sid, input) => e.box(sid).orch.turn(cleanSessionId(sid), input) }, asr: e.asr, demo: e.demo, newId: () => randomUUID(),
     captureDir: e.voiceCaptureDir,
+    policy: asrPolicyFrom(process.env),
   });
   const form = await req.formData().catch(() => null);
   if (!form) return Response.json({ error: "bad_form", message: "" }, { status: 400 });
@@ -21,5 +23,6 @@ export async function POST(req: Request) {
   if (!e.allow(form.get("session_id"))) return rateLimited(lang);
   const r = await handler(form);
   if (r.status !== 200) return Response.json({ error: r.error, message: r.message }, { status: r.status });
+  if (!r.reply) return Response.json({ ...(await sessionState(form.get("session_id"), lang)), draft: r.draft, transcript: r.transcript });
   return Response.json({ ...(await withWallet(r.reply)), transcript: r.transcript });
 }

@@ -105,14 +105,15 @@ test("schedule: approved now, paid at the time, by the wallet's own runner", asy
   await expect(page.getByText(/اندفعت الفاتورة المجدولة/)).toBeVisible();
 });
 
-test("voice read-back: nothing happens until «صح»", async ({ page }) => {
+test("voice draft: nothing happens until the reviewed request is sent", async ({ page }) => {
   await openPanel(page);
   await page.getByLabel("نص المحاكاة").fill("دز خمسين ألف لأحمد");
   await page.getByRole("button", { name: "🎤 أرسل كصوت" }).click();
   const readback = page.getByRole("region", { name: "تأكيد اللي سمعته" });
   await expect(readback).toContainText("دز خمسين ألف لأحمد");
   await expect(page.getByText("عندك 2 باسم أحمد")).toHaveCount(0);
-  await readback.getByRole("button", { name: "صح، كمّل" }).click();
+  await expect(page.getByLabel("اكتب طلبك")).toHaveValue("دز خمسين ألف لأحمد");
+  await page.getByRole("button", { name: "أرسل الطلب", exact: true }).click();
   await expect(page.getByText("عندك 2 باسم أحمد، ياهو تقصد؟")).toBeVisible();
 });
 

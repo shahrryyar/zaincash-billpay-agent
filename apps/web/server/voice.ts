@@ -3,13 +3,14 @@
 // of its own, and every failure here ends with nothing sent and an honest message.
 import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { t, type CopyKey } from "@zc/core";
+import { asrDecision, cleanTranscript, isLang, t, type AsrPolicy, type CopyKey, type Lang } from "@zc/core";
 import { AsrError, inspectWav, type AsrConfig, type Transcript } from "@zc/asr";
 import type { Reply, TurnInput } from "@zc/orchestrator";
 
 export type VoiceDeps = {
   orch: { turn(sessionId: string, input: TurnInput): Promise<Reply> };
   asr: AsrConfig;
+  policy?: AsrPolicy;
   /** The demo simulator (typed text posing as a transcript) works only with the fake provider in DEMO_MODE. */
   demo: boolean;
   /** Optional: keep each utterance (WAV + transcript) to build the voice eval set. Synthetic, consented speech only. */
@@ -19,17 +20,19 @@ export type VoiceDeps = {
 };
 
 export type VoiceResult =
-  | { status: 200; reply: Reply; transcript: { text: string; confidence: number | null; provider: string; latency_ms: number } }
+  | { status: 200; reply: Reply | null; draft?: { text: string }; transcript: { text: string; confidence: number | null; provider: string; latency_ms: number } }
   | { status: 400 | 413 | 502 | 503; error: string; message: string };
 
 const MIN_SECONDS = 0.3;
-const fail = (status: 400 | 413 | 502 | 503, error: string, key: CopyKey): VoiceResult => ({ status, error, message: t(key) });
 
 export function createVoiceHandler(d: VoiceDeps) {
   const log = d.log ?? ((m: string) => console.error(m));
   const maxBytes = (d.asr.maxSeconds + 1) * 32_000 + 4_096; // 16 kHz mono PCM16 + header slack
 
   return async function handle(form: FormData): Promise<VoiceResult> {
+    const selected = form.get("lang");
+    const lang: Lang = isLang(selected) ? selected : "ar";
+    const fail = (status: 400 | 413 | 502 | 503, error: string, key: CopyKey): VoiceResult => ({ status, error, message: t(key, {}, lang) });
     if (!d.asr.transcriber) return fail(503, "voice_off", "voice_off");
     const sid = String(form.get("session_id") ?? "web").slice(0, 80);
     const file = form.get("file");
@@ -66,7 +69,14 @@ export function createVoiceHandler(d: VoiceDeps) {
       } catch (e) { log(`[voice] capture failed: ${(e as Error).message}`); }
     }
 
+    const transcript = { text: heard.text, confidence: heard.confidence ?? null, provider: heard.provider, latency_ms: heard.latencyMs };
+    // Composer mode is read-only even when the provider reports high confidence. Only an explicit later typed turn
+    // submits the reviewed draft. The legacy voice/read-back contract remains available to existing clients.
+    if (form.get("draft") === "1") {
+      if (asrDecision(heard.text, heard.confidence, d.policy) === "repeat") return fail(400, "asr_low", "asr_low");
+      return { status: 200, reply: null, draft: { text: cleanTranscript(heard.text) }, transcript };
+    }
     const reply = await d.orch.turn(sid, { text: heard.text, voice: true, ...(heard.confidence !== undefined ? { asrConfidence: heard.confidence } : {}) });
-    return { status: 200, reply, transcript: { text: heard.text, confidence: heard.confidence ?? null, provider: heard.provider, latency_ms: heard.latencyMs } };
+    return { status: 200, reply, transcript };
   };
 }

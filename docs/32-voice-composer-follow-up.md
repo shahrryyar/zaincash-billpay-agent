@@ -1,4 +1,4 @@
-# Voice composer follow-up — requested 2026-10-21, for later
+# Voice composer — editable review implemented 2026-10-23
 
 User request: while speaking, show ASR text in the send-message bar; offer confirmation to send the request or review grammar/errors first.
 
@@ -19,4 +19,10 @@ The author confirms the RegaLabs model supports streaming modes at 80 ms, 320 ms
 
 Test start/stop/cancel, partial/final replacement, existing typed drafts, user edits, repeated uploads, slow/out-of-order responses, read-back expiry, grammar suggestions changing a name/amount, and both languages. Preserve the invariant that no sequence of microphone events, draft edits or grammar suggestions can move money without the final payment confirmation.
 
-The hosted demo now uses the dedicated RegaLabs streaming recognizer through the server adapter (docs/09), but the browser still uploads a finished push-to-talk WAV. The live editable composer described here remains queued and is not claimed as implemented.
+## Release scope, 2026-10-23
+
+The composer now fills an editable draft **after recording ends**. The browser requests `draft=1` on the existing voice upload route. That mode validates audio/confidence and returns the transcript without calling the orchestrator or Gemini, including for high-confidence speech. Low confidence and silence still ask to repeat. The user reviews/edits and explicitly sends a normal text turn; the existing confirmation card remains mandatory. Original uncorrected transcript text is accessible; only existing control-character/whitespace cleanup applies, with no grammar/name/amount rewriting.
+
+Recording/processing disables composer submission and language changes. Typed drafts cannot be overwritten by starting voice. Cancelling invalidates the recording id, aborts the upload locally, and ignores late responses. It cannot guarantee an already-started provider request stops charging. Permission failure and early release return to typing and stop microphone tracks. Existing legacy clients may still use the read-back route without `draft=1`; its expiry and confidence tests remain intact.
+
+**Words appearing while speaking remain queued.** The hosted recognizer supports partials, but the browser still uploads a finished WAV. A browser-to-server live relay would change server packaging/lifecycle; this release keeps the tested single-service Next standalone deployment. No live-partial latency claim is made. The pure draft reducer already tests partial/final/cancel ordering without wiring partials into production.

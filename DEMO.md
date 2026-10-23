@@ -3,7 +3,7 @@
 Judges look for: it runs live on their input and holds up (25%); they understand it in the first minute (5%).
 Rehearse this three times; record one clean run as a backup video. Technical assistant rehearsals are not evidence that the author has rehearsed delivery. Current local provider: Gemini 3.5 Flash-Lite; Claude scores below are historical. See docs/30 for the latest readiness result.
 
-**Live demo: https://zc-billpay-agent.onrender.com** — Render free plan, Gemini 3.5 Flash-Lite, Arabic/Sorani text and push-to-talk voice through hosted RegaLabs streaming ASR. Hold 🎤, speak, release and review the read-back. Gemini runs only after transcript acceptance; payment needs its separate button. The browser sends the finished recording; live partial text in the composer remains queued. No laptop ASR process is needed.
+**Live demo: https://zc-billpay-agent.onrender.com** — Render free plan, Gemini 3.5 Flash-Lite, Arabic/Sorani text and push-to-talk voice through hosted RegaLabs streaming ASR. Hold 🎤, speak, release and review/edit the draft. Explicitly send the request before Gemini runs; payment needs its separate button. The original transcript remains accessible. The browser sends the finished recording; live partial text in the composer remains queued. No laptop ASR process is needed.
 
 Open the URL a few minutes before presenting; after 15 idle minutes the free service sleeps and waking takes about a minute. Keep the demo on the free plan as requested. Wallets and schedules reset on process restart or sandbox eviction. The initial text deployment passed 5/5 public checks; the streaming deployment passed 3/3 public voice checks plus a Chrome fake-microphone/read-back check. These are synthetic transport/safety checks, not physical-phone or ASR-accuracy results. Rehearse with your actual phone and speech before presenting; earlier provider errors and recognition mistakes remain recorded.
 
@@ -23,7 +23,11 @@ Say: "One sentence in Iraqi Arabic. The model understands; code moves money."
    timer, «ما انرسل شي بعد». — "nothing moves without this tap."
 3. «أكّد ودز» → receipt with a reference; balance 149,700.
 
-## Minutes 2–4 — break it on purpose («لوحة العرض»)
+## Optional voice moment (20–30 seconds)
+
+Hold 🎤 and say a fictional request. Release, review the text in the composer, and deliberately correct an amount/name. Expand the original transcript to show it has not been silently rewritten. Tap «أرسل الطلب»; explain that this asks the assistant, while «أكّد ودز» separately authorises the payment. If recognition fails, say so and type instead. No voice-accuracy claim is made from synthetic transport checks.
+
+## Minutes 2–3 — choose two failures («لوحة العرض»)
 - «انقطاع بعد التنفيذ», then «دز خمسين ألف لعلي كريم» → confirm → «جاي نتأكد…» → ONE debit. — "the wallet debited,
   the answer was lost; the retry carries the same idempotency key, so it is replayed, never paid twice."
 - «المولدة واگفة», then «ادفع المولدة» → honest error, no card, nothing charged.

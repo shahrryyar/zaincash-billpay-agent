@@ -8,7 +8,7 @@ export default defineConfig({
   testDir: ".",
   testMatch: ["e2e/demo.spec.ts", "production-e2e/*.spec.ts"],
   // The local simulator is intentionally unavailable on the real provider; production voice has its own check.
-  grepInvert: /voice read-back: nothing happens until/,
+  grepInvert: /voice draft: nothing happens until/,
   workers: 1,
   fullyParallel: false,
   retries: 0,

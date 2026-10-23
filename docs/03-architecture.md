@@ -3,6 +3,8 @@
 ## Principle
 **LLM understands. Deterministic code executes.** Same input → same outcome in the execution layer.
 
+Web voice composer (2026-10-23): `/api/voice` with `draft=1` is transcription-only, with WAV/duration/confidence validation and no orchestrator/model call. After recording stops, the user edits/reviews the transcript and explicitly sends a regular `/api/turn`. This request still cannot execute a payment. The legacy voice read-back API remains available for clients omitting `draft=1`. Live browser partials are queued in docs/32.
+
 ## Layers
 
 ```

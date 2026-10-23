@@ -1,10 +1,10 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { t, type CopyKey, type Lang } from "@zc/core";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
+import { initialVoiceDraft, reduceVoiceDraft, voiceDraftCanSubmit, t, type CopyKey, type Lang } from "@zc/core";
 import { ConfirmCard } from "./ConfirmCard";
 import { MicButton } from "./MicButton";
 import { simulatorWav } from "./recorder";
-import type { Bubble, Envelope, Reply, ScheduleItem, VoiceEnvelope, VoiceInfo, WalletView } from "./types";
+import type { Bubble, Envelope, Reply, ScheduleItem, VoiceInfo, WalletView } from "./types";
 
 const fmt = (n: number) => n.toLocaleString("en-US");
 const SESSION = typeof crypto !== "undefined" && "randomUUID" in crypto ? "" : "web";
@@ -34,6 +34,13 @@ export function PhoneApp() {
   const [wallet, setWallet] = useState<WalletView | null>(null);
   const [meta, setMeta] = useState<{ model: string; mode: string; fault: string | null }>({ model: "", mode: "", fault: null });
   const [text, setText] = useState("");
+  const [draft, draftEvent] = useReducer(reduceVoiceDraft, undefined, initialVoiceDraft);
+  const voiceId = useRef<string | null>(null);
+  const voiceUpload = useRef<AbortController | null>(null);
+  const voiceActive = draft.phase !== "idle";
+  const capturing = voiceActive && draft.phase !== "review";
+  const composerText = voiceActive ? draft.text : text;
+  useEffect(() => () => { voiceId.current = null; voiceUpload.current?.abort(); }, []);
   const [busy, setBusy] = useState(false);
   const [waiting, setWaiting] = useState<"think" | "confirm" | "voice" | null>(null);
   const [voice, setVoice] = useState<VoiceInfo | null>(null);
@@ -132,31 +139,54 @@ export function PhoneApp() {
     return () => clearInterval(timer);
   }, [phase, busy, sid, apply]);
 
-  const send = (msg: string) => { const v = msg.trim(); if (!v || busy || recovering) return; setText(""); void run(() => post("/api/turn", { session_id: sid, text: v, lang }), v); };
+  const send = (msg: string) => {
+    const v = msg.trim();
+    if (!v || busy || recovering || (voiceActive && (!voiceDraftCanSubmit(draft) || msg !== draft.text))) return;
+    voiceId.current = null; draftEvent({ type: "submit" }); setText("");
+    void run(() => post("/api/turn", { session_id: sid, text: v, lang }), v);
+  };
   const say = (kind: Bubble["kind"], text: string) => setBubbles((b) => [...b, { id: ++n.current, from: "agent", kind, text }]);
-  // Voice: the recording goes to our own server (the ASR key never reaches the browser). What the ASR heard is shown
-  // as the user's bubble; the reply may be a read-back that waits for «صح» before anything else happens.
+  const discardVoice = () => {
+    const id = voiceId.current;
+    voiceId.current = null; voiceUpload.current?.abort();
+    if (id) draftEvent({ type: "cancel", id });
+  };
+  const voicePhase = (phase: "starting" | "recording" | "processing") => {
+    if (phase === "starting") {
+      const id = crypto.randomUUID(); voiceId.current = id;
+      draftEvent({ type: "start", id, existingText: text });
+    } else if (voiceId.current) draftEvent({ type: phase === "recording" ? "started" : "stop", id: voiceId.current });
+  };
+  // Transcribe to a draft only: no model call until the user explicitly sends the reviewed text.
   const sendVoice = async (wav: Blob, simulate?: { text: string; conf: string }) => {
-    if (busy || recovering) return;
+    if (busy || recovering || text.trim() || draft.phase === "review" || (simulate && voiceActive)) return;
+    const id = voiceId.current ?? crypto.randomUUID();
+    if (!voiceId.current) { voiceId.current = id; draftEvent({ type: "start", id, existingText: text }); }
+    draftEvent({ type: "stop", id });
+    const abort = new AbortController(); voiceUpload.current = abort;
     setBusy(true); setWaiting("voice");
     try {
       const f = new FormData();
       f.append("session_id", sid);
       f.append("lang", lang);
+      f.append("draft", "1");
       f.append("file", wav, "utterance.wav");
       if (simulate) { f.append("sim_text", simulate.text); if (simulate.conf) f.append("sim_confidence", simulate.conf); }
-      const r = await fetch("/api/voice", { method: "POST", body: f });
+      const r = await fetch("/api/voice", { method: "POST", body: f, signal: AbortSignal.any([abort.signal, AbortSignal.timeout(75_000)]) });
       const d = await r.json().catch(() => null);
-      if (!r.ok || !d?.reply) { say("error", d?.message || tt("asr_unavailable")); return; }
-      const env = d as VoiceEnvelope;
-      if (env.transcript.text.trim()) setBubbles((b) => [...b, { id: ++n.current, from: "user", kind: "info", text: `🎤 ${env.transcript.text}` }]);
-      apply(env);
-    } catch { setOffline(true); say("error", tt("asr_unavailable")); }
-    finally { setBusy(false); setWaiting(null); }
+      if (voiceId.current !== id) return;
+      if (!r.ok || typeof d?.draft?.text !== "string") { draftEvent({ type: "fail", id }); voiceId.current = null; say("error", d?.message || tt("asr_unavailable")); return; }
+      draftEvent({ type: "final", id, text: d.draft.text });
+      inputRef.current?.focus();
+    } catch {
+      if (voiceId.current === id) { draftEvent({ type: "fail", id }); voiceId.current = null; say("error", tt("asr_unavailable")); }
+    } finally {
+      if (voiceId.current === id || voiceId.current === null) { setBusy(false); setWaiting(null); voiceUpload.current = null; }
+    }
   };
   const answerReadback = (v: "accept" | "reject") => { if (!busy) void run(() => post("/api/turn", { session_id: sid, readback: v, lang }), tt(v === "accept" ? "readback_yes" : "readback_no")); };
   const editReadback = (heard: string) => { setText(heard); setReply((r) => (r ? { ...r, readback: null } : r)); inputRef.current?.focus(); };
-  const micProblem = (key: CopyKey) => say(key === "mic_hold" ? "info" : "error", tt(key));
+  const micProblem = (key: CopyKey) => { discardVoice(); say(key === "mic_hold" ? "info" : "error", tt(key)); };
   const pick = (id: string, name: string) => { if (!busy) void run(() => post("/api/turn", { session_id: sid, choice: id, lang }), name); };
   const admin = async (body: object) => {
     try {
@@ -175,12 +205,12 @@ export function PhoneApp() {
     say(d?.cancelled ? "info" : "error", d?.cancelled ? tt("schedule_cancelled") : d ? tt("ui_cancel_schedule_failed") : tt("busy"));
   };
   const discussSchedule = () => { setSchedPanel(false); send(tt("ui_sched_request")); };
-  const reset = async () => { await admin({ action: "reset" }); pending.current.clear(); setBubbles([]); setReply(null); setUncertain(null); };
+  const reset = async () => { discardVoice(); await admin({ action: "reset" }); pending.current.clear(); setBubbles([]); setReply(null); setUncertain(null); };
 
   // A missing confirmation response can mean the wallet already debited. Never leave a stale “nothing sent yet”
   // approval on screen or accept a fresh request while the user still needs the existing operation's outcome.
-  const card = recovering ? null : reply?.card ?? null;
-  const showCandidates = reply && reply.phase === "CLARIFYING" && reply.candidates.length > 0;
+  const card = recovering || voiceActive ? null : reply?.card ?? null;
+  const showCandidates = !voiceActive && reply && reply.phase === "CLARIFYING" && reply.candidates.length > 0;
 
   return (
     <main className="min-h-dvh flex items-center justify-center md:p-6">
@@ -190,7 +220,7 @@ export function PhoneApp() {
             <h1 className="text-lg font-bold">{tt("ui_title")}</h1>
             <div role="group" aria-label={tt("ui_language")} className="flex shrink-0 rounded-full border border-white/40 p-0.5">
               {LANGS.map((l) => (
-                <button key={l.id} lang={l.html} onClick={() => chooseLang(l.id)} aria-pressed={lang === l.id} disabled={busy || recovering}
+                <button key={l.id} lang={l.html} onClick={() => chooseLang(l.id)} aria-pressed={lang === l.id} disabled={busy || recovering || voiceActive}
                   className={`rounded-full px-3 min-h-9 text-sm font-semibold ${lang === l.id ? "bg-white text-[var(--ink)]" : "text-white/90"}`}>{l.label}</button>
               ))}
             </div>
@@ -238,14 +268,14 @@ export function PhoneApp() {
         {panel && (
           <section aria-label={tt("ui_demo_panel")} className="bg-[#fff8e6] border-b border-[var(--line)] px-4 py-3 text-base space-y-2">
             <p className="text-sm text-[var(--muted)]">{tt("ui_demo_only")} <span className="nums">{meta.model} · {meta.mode}</span></p>
-            <div className="flex flex-wrap gap-2">
+            <fieldset disabled={busy || voiceActive || recovering} className="flex flex-wrap gap-2 disabled:opacity-60">
               <button className="rounded-lg border border-[var(--line)] bg-white px-3 min-h-11" onClick={() => admin({ action: "fault", kind: "timeout" })}>{tt("ui_fault_timeout")}</button>
               <button className="rounded-lg border border-[var(--line)] bg-white px-3 min-h-11" onClick={() => admin({ action: "fault", kind: "5xx" })}>{tt("ui_fault_5xx")}</button>
               <button className="rounded-lg border border-[var(--line)] bg-white px-3 min-h-11" onClick={() => admin({ action: "fault", kind: "biller_down" })}>{tt("ui_fault_biller")}</button>
               <button className="rounded-lg border border-[var(--line)] bg-white px-3 min-h-11" onClick={() => admin({ action: "advance", ms: 3_600_000 })}>{tt("ui_advance_hour")}</button>
               <button className="rounded-lg border border-[var(--line)] bg-white px-3 min-h-11" onClick={() => admin({ action: "advance", ms: 86_400_000 })}>{tt("ui_advance_day")}</button>
               <button className="rounded-lg border border-[var(--bad)] text-[var(--bad)] bg-white px-3 min-h-11" onClick={reset}>{tt("ui_reset")}</button>
-            </div>
+            </fieldset>
             {meta.fault && <p className="text-[var(--warn)] font-semibold">{tt("ui_fault_on")} {meta.fault}</p>}
             <p className="text-sm text-[var(--muted)]">{tt("ui_voice")} <span className="nums">{voice ? (voice.enabled ? voice.provider : "off") : "…"}</span></p>
             {voice?.simulator && (
@@ -256,7 +286,7 @@ export function PhoneApp() {
                   <select aria-label={tt("ui_sim_conf")} value={sim.conf} onChange={(e) => setSim((s) => ({ ...s, conf: e.target.value }))} className="min-h-11 rounded-lg border border-[var(--line)] px-2">
                     <option value="">{tt("ui_sim_noconf")}</option><option value="0.3">0.3</option><option value="0.6">0.6</option><option value="0.95">0.95</option>
                   </select>
-                  <button disabled={busy} onClick={() => sendVoice(simulatorWav(), sim)} className="rounded-lg border border-[var(--line)] bg-[#fff8e6] px-3 min-h-11">{tt("ui_sim_send")}</button>
+                  <button disabled={busy || voiceActive || recovering || !!text.trim()} onClick={() => sendVoice(simulatorWav(), sim)} className="rounded-lg border border-[var(--line)] bg-[#fff8e6] px-3 min-h-11">{tt("ui_sim_send")}</button>
                 </div>
               </div>
             )}
@@ -335,7 +365,7 @@ export function PhoneApp() {
               </div>
             </div>
           )}
-          {reply?.readback && (
+          {!voiceActive && reply?.readback && (
             <section className="rise rounded-2xl border-2 border-[var(--accent)] bg-white p-4 space-y-3" aria-label={tt("ui_heard_confirm")}>
               <p className="text-lg font-semibold">«{reply.readback.text}»</p>
               <div className="flex flex-wrap gap-2">
@@ -365,11 +395,20 @@ export function PhoneApp() {
           </div>
         )}
 
-        <form onSubmit={(e) => { e.preventDefault(); send(text); }} className="flex flex-wrap items-center gap-2 border-t border-[var(--line)] bg-white px-3 py-2.5">
+        <form onSubmit={(e) => { e.preventDefault(); send(composerText); }} className="flex flex-wrap items-center gap-2 border-t border-[var(--line)] bg-white px-3 py-2.5">
+          {draft.phase === "review" && <section aria-label={tt("ui_heard_confirm")} className="w-full rounded-xl bg-[#eef7f2] p-2 text-sm space-y-1">
+            <p>{tt("voice_review")}</p>
+            <div className="flex items-center justify-between gap-2">
+              <details className="min-w-0"><summary className="cursor-pointer min-h-9 content-center">{tt("voice_raw")}</summary><p className="max-h-24 overflow-auto break-words">{draft.raw}</p></details>
+              <button type="button" onClick={discardVoice} className="shrink-0 min-h-11 underline">{tt("voice_discard")}</button>
+            </div>
+          </section>}
+          {draft.phase === "connecting" && <p className="w-full text-sm" role="status">{tt("voice_starting")}</p>}
+          {draft.phase === "finalizing" && <button type="button" onClick={discardVoice} className="min-h-11 underline text-sm">{tt("voice_discard")}</button>}
           <label htmlFor="msg" className="sr-only">{tt("ui_placeholder")}</label>
-          <input id="msg" ref={inputRef} value={text} onChange={(e) => setText(e.target.value)} disabled={recovering} autoComplete="off" enterKeyHint="send" placeholder={tt("ui_placeholder")} className="flex-1 basis-40 min-w-0 min-h-12 rounded-full border-2 border-[var(--line)] bg-[var(--paper)] px-4 outline-none focus:border-[var(--accent)]" />
-          {voice?.enabled && !text.trim() && <MicButton lang={lang} maxSeconds={voice.max_seconds} disabled={busy || recovering} onWav={(w) => void sendVoice(w)} onProblem={micProblem} />}
-          <button type="submit" disabled={busy || recovering || !text.trim()} className="min-h-12 min-w-20 rounded-full bg-[var(--accent)] text-white font-bold px-5">{tt("ui_send")}</button>
+          <input id="msg" ref={inputRef} value={composerText} onChange={(e) => draft.phase === "review" ? draftEvent({ type: "edit", text: e.target.value }) : setText(e.target.value)} disabled={recovering || capturing} maxLength={400} autoComplete="off" enterKeyHint="send" placeholder={tt("ui_placeholder")} className="flex-1 basis-40 min-w-0 min-h-12 rounded-full border-2 border-[var(--line)] bg-[var(--paper)] px-4 outline-none focus:border-[var(--accent)]" />
+          {voice?.enabled && !text.trim() && draft.phase !== "review" && <MicButton lang={lang} maxSeconds={voice.max_seconds} disabled={busy || recovering} onPhase={voicePhase} onCancel={discardVoice} onWav={(w) => void sendVoice(w)} onProblem={micProblem} />}
+          <button type="submit" disabled={busy || recovering || capturing || !composerText.trim()} className="min-h-12 min-w-20 rounded-full bg-[var(--accent)] text-white font-bold px-5">{tt(draft.phase === "review" ? "voice_send" : "ui_send")}</button>
         </form>
       </div>
     </main>

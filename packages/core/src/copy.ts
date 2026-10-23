@@ -25,6 +25,12 @@ export const COPY = {
   mic_listening: { ar: "دا أسمعك… شيل إصبعك من تخلص", en: "Listening… release when you finish", ku: "گوێم لێتە… کە تەواو بوویت دەستت لابە" },
   mic_transcribing: { ar: "دا أكتب اللي گلته…", en: "Transcribing…", ku: "ئەوەی وتت دەینووسمەوە…" },
   mic_denied: { ar: "ما عندي إذن أستعمل المايك. اكتب طلبك.", en: "No microphone permission. Please type your request.", ku: "مۆڵەتی مایکم نییە. داواکارییەکەت بنووسە." },
+  // <!-- VERIFY-DIALECT -->
+  voice_review: { ar: "راجع النص وعدّل الاسم والمبلغ إذا يحتاج. إرسال الطلب ما يحوّل فلوس؛ التأكيد يجي بعدين.", en: "Review the text, especially the name and amount. Sending this request does not move money; confirmation comes later.", ku: "دەقەکە بپشکنە، بە تایبەتی ناو و بڕەکە. ناردنی داواکاری پارە نانێرێت؛ پشتڕاستکردنەوە دواترە." },
+  voice_send: { ar: "أرسل الطلب", en: "Send request", ku: "داواکارییەکە بنێرە" },
+  voice_discard: { ar: "إلغاء التسجيل", en: "Discard recording", ku: "تۆمارکردنەکە هەڵبوەشێنەوە" },
+  voice_raw: { ar: "النص الأصلي اللي سمعه المايك", en: "Original transcript", ku: "دەقی ڕەسەنی تۆمارکراو" },
+  voice_starting: { ar: "دا أفتح المايك…", en: "Opening the microphone…", ku: "مایک دەکەمەوە…" },
   voice_off: { ar: "الصوت مو مفعّل بهاي النسخة. اكتب طلبك.", en: "Voice is not enabled in this build. Please type your request.", ku: "دەنگ لەم وەشانەدا چالاک نییە. داواکارییەکەت بنووسە." },
   number_not_saved: { ar: "الرقم {phone} مو محفوظ بجهات اتصالك. ضيفه بالتطبيق أول وبعدين دز له، لو گول اسم واحد من جهاتك. ما انرسل شي.", en: "The number {phone} is not in your contacts. Add it in the app first, or tell me a saved contact's name. Nothing was sent.", ku: "ژمارەی {phone} لە پەیوەندییەکانتدا پاشەکەوت نەکراوە. سەرەتا لە ئەپەکەدا زیادی بکە، یان ناوی کەسێک لە پەیوەندییەکانت بڵێ. هیچ نەنێردرا." }, // VERIFY-DIALECT
   recipient_full: { ar: "محفظة {name} ما تستوعب هذا المبلغ (حد المحفظة 10,000,000 د.ع). ما انرسل شي.", en: "{name}'s wallet cannot hold that amount (wallet limit 10,000,000 IQD). Nothing was sent.", ku: "جزدانی {name} ئەم بڕە هەڵناگرێت (سنووری جزدان 10,000,000 دینار). هیچ نەنێردرا." }, // VERIFY-DIALECT

@@ -18,6 +18,32 @@ const wavOf = (seconds: number) => new Blob([encodeWav(new Float32Array(Math.rou
 const form = (fields: Record<string, string | Blob>) => { const f = new FormData(); for (const [k, v] of Object.entries(fields)) f.append(k, v); return f; };
 
 describe("voice route: audio -> checks -> ASR -> the same orchestrator turn as text", () => {
+  it("draft mode never calls the orchestrator, even for high-confidence speech", async () => {
+    const { d, turns } = deps();
+    const r = await createVoiceHandler(d)(form({ file: wavOf(0.5), draft: "1", sim_text: "دز 50000 لأحمد", sim_confidence: "0.99" }));
+    expect(r).toMatchObject({ status: 200, reply: null, draft: { text: "دز 50000 لأحمد" }, transcript: { text: "دز 50000 لأحمد" } });
+    expect(turns).toHaveLength(0);
+  });
+  it("draft mode rejects silence or low confidence and keeps unknown confidence for explicit review", async () => {
+    const { d, turns } = deps();
+    const h = createVoiceHandler(d);
+    for (const [text, conf] of [["", ""], ["دز مليون", "0.2"]])
+      expect(await h(form({ file: wavOf(0.5), draft: "1", sim_text: text!, sim_confidence: conf! }))).toMatchObject({ status: 400 });
+    expect(await h(form({ file: wavOf(0.5), draft: "1", sim_text: "دز خمسين ألف لأحمد" }))).toMatchObject({ status: 200, reply: null, draft: { text: "دز خمسين ألف لأحمد" } });
+    expect(turns).toHaveLength(0);
+  });
+  it("draft errors follow the language picker", async () => {
+    const { d } = deps();
+    const r = await createVoiceHandler(d)(form({ lang: "ku", draft: "1" }));
+    expect(r).toMatchObject({ status: 400, message: "باش گوێم لێ نەبوو، دەتوانیت دووبارەی بکەیتەوە؟" });
+  });
+  it("draft mode honours the configured low-confidence threshold", async () => {
+    const { d, turns } = deps({ policy: { low: 0.7, high: 0.9, noConfidence: "accept" } });
+    const h = createVoiceHandler(d);
+    expect(await h(form({ file: wavOf(0.5), draft: "1", sim_text: "دز خمسين ألف", sim_confidence: "0.6" }))).toMatchObject({ status: 400 });
+    expect(await h(form({ file: wavOf(0.5), draft: "1", sim_text: "دز خمسين ألف" }))).toMatchObject({ status: 200, reply: null });
+    expect(turns).toHaveLength(0);
+  });
   it("voice off: 503 with an honest message, the orchestrator is never called", async () => {
     const { d, turns } = deps({ asr: asrFromEnv({}) });
     const r = await createVoiceHandler(d)(form({ session_id: "s", file: wavOf(1) }));

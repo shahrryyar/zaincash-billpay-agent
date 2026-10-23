@@ -1,6 +1,6 @@
 # 09 — Voice: RegaLabs Iraqi-Arabic ASR
 
-Updated 2026-10-23: **hosted streaming ASR is live on Render**, with mandatory transcript read-back. The pre-existing local Stage-11 option remains available separately; corpus voice evaluation is still pending. Disclose (docs/19,
+Updated 2026-10-23: **hosted streaming ASR is live on Render**, with transcript review before Gemini. The pre-existing local Stage-11 option remains available separately; corpus voice evaluation is still pending. Disclose (docs/19,
 `DISCLOSURE.md`): RegaLabs is the author's company; the ASR predates the challenge and is called as an external API.
 
 ## Selected demo transport — streaming ASR, 2026-10-23
@@ -11,7 +11,7 @@ Application commit `9213345` is deployed on the existing free Render service. Pu
 
 Set `REGALABS_STREAM_URL` alongside the existing server-side developer key to select this adapter. Keep the current push-to-talk UI: the browser uploads its finished WAV to our server; the server authenticates to the socket, configures `language: auto` and `sample_rate: 16000`, sends raw mono PCM16 in 50 ms frames, then sends `end`. Only ordered final utterances followed by `done` form the final transcript. Ignore partials for intent understanding; timeout, close without `done`, malformed/out-of-order/duplicate finals, failed utterances or dropped audio fail closed. Do not automatically retry a charged stream. No new service or payment path is added, and the key never reaches the browser.
 
-Final transcripts enter the existing voice gate and read-back before Gemini. The live editable composer remains the separate queued work in docs/32; this adapter does not claim browser partials while recording. REST remains available for the pre-existing local Stage-11 wrapper when no stream URL is configured. The current public REST docs specify an explicit/default language rather than automatic detection; use the selected socket's documented `auto` for the hosted bilingual demo.
+Final transcripts enter the confidence gate. The web composer requests `draft=1`: reject low confidence, then return an editable unsent draft with no orchestrator/model call, regardless of high confidence. The user explicitly sends the reviewed text before Gemini. Legacy clients without that field retain the read-back contract. Live browser partials remain queued in docs/32; this adapter does not claim words appearing while recording. REST remains available for the pre-existing local Stage-11 wrapper when no stream URL is configured. The current public REST docs specify an explicit/default language rather than automatic detection; use the selected socket's documented `auto` for the hosted bilingual demo.
 
 ## Initial hosted voice setup, 2026-10-23
 
@@ -65,7 +65,7 @@ The selected socket explicitly supports `acm`, `ar`, `ckb` and `auto`; do not ap
 hold 🎤 ─► MediaRecorder (webm/opus) ─► decode in browser ─► downmix + resample 16 kHz + PCM16 WAV (@zc/asr, pure)
         ─► POST /api/voice (our server)  ─► checks: WAV, 0.3–30 s, size
         ─► RegaLabs /audio/transcriptions/stream (server-side key, 50 ms PCM frames, complete finals + done; no automatic retry)
-        ─► voice gate ─► orchestrator.turn(text, voice: true)   ← the SAME path as typed text
+        ─► confidence gate ─► editable draft ─► user sends /api/turn(text) ← SAME path as typed text
 ```
 - **Voice has no execution logic.** The transcript enters the normal turn; the confirmation card and token are unchanged.
 - **Voice gate** (`packages/core/src/asr.ts`, pure, property-tested):
