@@ -1,6 +1,6 @@
 # 22 — Submission checklist
 
-Updated 2026-10-21. [Current verification and gaps](30-readiness-execution.md). Checked items refer to evidence already recorded, not organiser acceptance.
+Updated 2026-10-23. [Current verification and gaps](30-readiness-execution.md). Checked items refer to evidence already recorded, not organiser acceptance.
 
 ## Dated deliverables
 
@@ -43,7 +43,9 @@ Updated 2026-10-21. [Current verification and gaps](30-readiness-execution.md). 
 ## Hosting and repo
 
 - [x] README, .env.example, Dockerfile, Render Blueprint and hosting/local-ASR guide prepared.
-- [ ] Hosting account authorised; public demo deployed and verified on a phone over HTTPS.
+- [x] Render CLI account authenticated and workspace selected; author authorised deployment.
+- [x] Render billing requirement resolved; free Docker service live at https://zc-billpay-agent.onrender.com, with 5/5 real-model public smoke checks.
+- [ ] Author verifies the public HTTPS demo on a physical phone (desktop phone-sized browser checks passed).
 - [ ] Laptop-ASR tunnel/reachable endpoint configured if a remote web host uses it; loopback is not remote.
 - [x] Keys kept in ignored server-side secrets, no keys in image/source/history scans.
 - [ ] Organiser/author permission for judges to run the proprietary repo resolved. Do not silently change the licence.

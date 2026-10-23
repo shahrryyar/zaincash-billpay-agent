@@ -1,0 +1,36 @@
+{
+  "date": "2026-10-23",
+  "source_commit": "093c4395db720265ed2faa2f867672f0c8127a5a",
+  "unit_integration_tests": {
+    "passed": 900,
+    "failed": 0
+  },
+  "typecheck": "passed",
+  "next_production_build": "passed",
+  "docker_build": {
+    "status": "passed",
+    "image": "zc-billpay:demo",
+    "image_id": "sha256:7953210501b4a026e435e93a39cfcc59c334989bd94d346eba206b4648baa56b"
+  },
+  "scripted_browser_scenarios": {
+    "passed": 10,
+    "failed": 0,
+    "base": "http://127.0.0.1:3200",
+    "note": "Production standalone server, scripted model and fake ASR; not provider accuracy or a physical phone test."
+  },
+  "render": {
+    "cli_version": "2.31.0",
+    "authenticated": true,
+    "workspace_selected": true,
+    "blueprint_validation": "need_payment_info",
+    "free_service_creation_http_status": 402,
+    "service_created": false,
+    "note": "The author reports all attempted cards were rejected; no reason for issuer rejection has been established."
+  },
+  "real_gemini_smoke": {
+    "initial_artifact": "readiness-render-local-gemini-2026-10-23.json",
+    "corrected_artifact": "readiness-render-local-gemini-corrected-2026-10-23.json",
+    "initial_limitations": "Initial script assumed an empty transaction history although the seed includes eight transactions. Its invalid-confirm and bill assertions were wrong. Two provider timeouts also occurred. Original results preserved. Corrected run passed all five checks; no application/prompt/model change between runs."
+  },
+  "note": "Deployment preflight evidence, not held-out evaluation or proof of uptime."
+}

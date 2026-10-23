@@ -1,6 +1,6 @@
-# Free API, hosting and publishing options — checked 2026-10-21
+# Free API, hosting and publishing options — APIs checked 2026-10-21; hosting updated 2026-10-23
 
-Hosting research requested for later. Google AI Studio is now configured locally; no hosting account, public tunnel, deployment or access-control change was created.
+**Live demo: https://zc-billpay-agent.onrender.com.** Deployed on 2026-10-23 to one Render **free** Docker instance in Frankfurt, using Gemini 3.5 Flash-Lite and server-side secrets. The author resolved Render's initial billing-verification blocker. No paid compute upgrade was made. Voice is off until a reachable ASR endpoint is configured.
 
 ## LLM API
 
@@ -15,9 +15,35 @@ Create the key in the provider account, store it only in local/server secrets, t
 
 ## Hosting the web app
 
-**Render Free is the existing repo-compatible starting point.** It accepts Docker web services and supplies an onrender.com URL; this repo already has Dockerfile and render.yaml. Free services sleep after 15 idle minutes and use ephemeral storage. Those limits matter because this demo's in-memory sandboxes and schedules vanish on restart. Open the demo before presenting and keep a laptop backup. [Render free services](https://render.com/docs/free), [Docker web services](https://render.com/docs/web-services).
+**Render Free is the deployed host.** It accepts Docker web services and supplies an onrender.com URL; this repo has Dockerfile and render.yaml. Free services sleep after 15 idle minutes and use ephemeral storage. Those limits matter because this demo's in-memory sandboxes and schedules vanish on restart. Open the demo before presenting and keep a laptop backup. [Render free services](https://render.com/docs/free), [Docker web services](https://render.com/docs/web-services).
 
-Render supplies an official [CLI](https://render.com/docs/cli) and [MCP server](https://render.com/docs/mcp-server). Their documented capabilities include service creation/deployment and inspecting logs; the MCP supports environment changes too. After account authorisation, an agent can operate the supported commands. Render CLI 2.30.0 is now installed locally at .cache/hosting-tools/render (official release ZIP and SHA256 verified; telemetry disabled for checks). The MCP connector is not connected. GitHub CLI and Docker are available. Blueprint validation was attempted with the real CLI but stopped with “no workspace specified and no default workspace set”. Account/workspace authorisation is still needed; a public repo alone is not platform authentication. After selecting the authorised workspace, run `.cache/hosting-tools/render blueprints validate render.yaml --output json`, then deploy from that reviewed configuration.
+Render supplies an official [CLI](https://render.com/docs/cli) and [MCP server](https://render.com/docs/mcp-server). Their documented capabilities include service creation/deployment and inspecting logs; the MCP supports environment changes too. The current authenticated `render` CLI is 2.31.0; the earlier verified 2.30.0 binary remains at .cache/hosting-tools/render. The MCP connector is not connected. GitHub CLI and Docker are available.
+
+### Deployment attempt, 2026-10-23
+
+- `render whoami --output json` succeeds; the author's only workspace is selected with `render workspace set`.
+- Initially, service listing was empty, Blueprint validation returned `need_payment_info`, and explicit free-service creation returned HTTP 402 requiring payment information. The author reported rejected cards, then resolved the billing requirement. The reason for the card rejections is unknown.
+- After that account change, Blueprint validation succeeded and CLI creation used `--runtime docker --plan free --region frankfurt --num-instances 1 --auto-deploy=false --health-check-path /api/health`. Read-back confirms `serviceDetails.plan: free` and one instance.
+- Server environment comes from render.yaml, with GEMINI_API_KEY read from the ignored local .env without printing it. Voice is explicitly off: the local Stage-11 endpoint is not reachable remotely, and it was not listening during preflight.
+- Service: `srv-dbdk0l7avr4c73abjdq0`; initial deploy: `dep-dbdk0lvavr4c73abjgp0`, status `live`; deployed application commit: `093c4395db720265ed2faa2f867672f0c8127a5a`. [Render dashboard](https://dashboard.render.com/web/srv-dbdk0l7avr4c73abjdq0).
+- Public HTTPS checks passed **5/5** with the real Gemini model: health, invalid confirmation, clarification/approval/replay with session isolation, insufficient funds, and bill payment. [Artifact](../eval/results/readiness-render-hosted-gemini-2026-10-23.json). Desktop Chrome also loaded the public app at a phone-sized viewport; a physical-phone check remains for the author.
+
+### Operate the existing demo
+
+Do not create another service or Blueprint. render.yaml is the reference configuration for the existing CLI-created service. Automatic deploys are off so documentation pushes do not restart the demo. Keep `plan: free` as requested by the author.
+
+```bash
+render services --output json
+render deploys list srv-dbdk0l7avr4c73abjdq0 --output json
+render logs --resources srv-dbdk0l7avr4c73abjdq0 --limit 40 --output text
+curl --fail https://zc-billpay-agent.onrender.com/api/health
+# Only when intentionally deploying a new application commit:
+render deploys create srv-dbdk0l7avr4c73abjdq0 --commit <commit-sha> --wait --confirm
+```
+
+Retain one instance: wallets, confirmation state and schedules are process-local. A persistent disk alone would not persist the current in-memory sandboxes. Free-plan sleeping is expected; opening the URL wakes the service. No continuous keep-awake job was added.
+
+A temporary Cloudflare Quick Tunnel was used while billing was blocked; all five real-model public checks passed there too. It was stopped after Render verification, and its local Docker container was stopped with automatic restart disabled. The local image/container remain available as a manual laptop backup. cloudflared 2026.10.3 was downloaded from the official Cloudflare release and its published SHA-256 verified.
 
 GitHub is the source/evidence publication path here, already reachable through authenticated `gh`/git. A static-only site host cannot run this Next.js/Hono/native-SQLite/ASR server unchanged. Render can host the web image; do not assume its free instance can load the large NeMo checkpoint.
 
@@ -32,7 +58,7 @@ Two layouts are possible:
 
 Cloudflare [Tunnel](https://developers.cloudflare.com/tunnel/get-started/) maps a public hostname to a local service and is controlled with the cloudflared CLI or its API. A normal stable published hostname needs an account and a domain on Cloudflare. [Quick Tunnels](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/) provide a temporary trycloudflare.com URL without an account/domain, for testing. They have no uptime guarantee, a changing hostname, a 200 in-flight request limit and no SSE support. Temporary email authentication is interactive, so it is not a substitute for machine-to-machine ASR authentication.
 
-The CLI examples, for a future authorised setup, are `cloudflared tunnel --url http://localhost:3000` for the web app, or port 8790 for the ASR service. They publish a service; do not run them casually. Prefer a production web build for a public demo rather than exposing the Next development server. cloudflared is not installed here. It can be installed and controlled later; a Cloudflare MCP connector is optional, not required to run the local tunnel process.
+The CLI examples, for a future setup, are `cloudflared tunnel --url http://localhost:3000` for the web app, or port 8790 for the ASR service. They publish a service; do not run them casually. Prefer a production web build for a public demo rather than exposing the Next development server. The verified cloudflared binary is now at .cache/hosting-tools/cloudflared; no tunnel remains running after Render handover. A Cloudflare MCP connector is optional, not required to run a local tunnel process.
 
 The laptop must remain awake, powered, connected and running the model. Model warm-up is about 70–85 seconds in observed startup logs; per-utterance latency is a different measurement. The local service disappeared once during testing and was restarted, demonstrating why this is a demo dependency rather than cloud uptime. The ASR server serialises inference; test concurrent judges and longer utterances before promising service capacity.
 

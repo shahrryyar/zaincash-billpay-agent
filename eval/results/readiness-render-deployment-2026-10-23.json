@@ -1,0 +1,32 @@
+{
+  "date": "2026-10-23",
+  "service_id": "srv-dbdk0l7avr4c73abjdq0",
+  "url": "https://zc-billpay-agent.onrender.com",
+  "plan": "free",
+  "region": "frankfurt",
+  "num_instances": 1,
+  "auto_deploy": "no",
+  "deploy": {
+    "commit": {
+      "createdAt": "2026-10-21T22:37:26Z",
+      "id": "093c4395db720265ed2faa2f867672f0c8127a5a",
+      "message": "test(web): make scheduled payment runner check time-independent"
+    },
+    "createdAt": "2026-10-23T11:09:11.406374Z",
+    "finishedAt": "2026-10-23T11:10:45.604631Z",
+    "id": "dep-dbdk0lvavr4c73abjgp0",
+    "startedAt": "2026-10-23T11:09:11.397738Z",
+    "status": "live",
+    "trigger": "manual",
+    "updatedAt": "2026-10-23T11:11:20.229945Z"
+  },
+  "hosted_smoke_artifact": "readiness-render-hosted-gemini-2026-10-23.json",
+  "temporary_tunnel": "stopped",
+  "local_backup_container": "stopped; automatic restart disabled",
+  "voice": "off; laptop ASR not reachable from Render",
+  "notes": [
+    "No paid compute upgrade.",
+    "Free service sleeps on idle; state remains in memory.",
+    "Documentation commits do not trigger a redeploy; application commit is recorded in deploy."
+  ]
+}

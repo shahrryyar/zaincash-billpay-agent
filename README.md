@@ -82,8 +82,8 @@ the agent. Free tiers may train on prompts (all data here is synthetic) and have
   docker run -p 3000:3000 -e ANTHROPIC_API_KEY=... zc-billpay    # put the key in the host's secret store, not the image
   docker run -p 3000:3000 -e LLM_PROVIDER=fake zc-billpay        # no key: scripted sentences only
   ```
-  **Render** (the organisers' suggestion): `render.yaml` is a ready Blueprint (render.com → New → Blueprint → this repo,
-  then enter the key in the dashboard). The free plan sleeps when idle: open the URL before presenting.
+  **Render:** [the live demo](https://zc-billpay-agent.onrender.com) runs on one **free** Docker instance in Frankfurt.
+  The existing service was created through Render CLI; `render.yaml` records its configuration. See [docs/31](docs/31-free-api-hosting-and-local-asr.md) to manage it. Automatic deploys are off. The free plan sleeps when idle: open the URL before presenting.
   Health check: `GET /api/health`. Limits per session: `TURNS_PER_10_MIN` (default 60), plus `LLM_DAILY_TOKEN_CAP` per
   process; `SANDBOX_MAX` (200) and `SANDBOX_IDLE_MIN` (30). Any Docker host works (Fly.io, Render, a VPS); deploying
   needs the author's account.

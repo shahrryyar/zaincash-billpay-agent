@@ -1,0 +1,38 @@
+{
+  "date": "2026-10-23T11:02:58.362Z",
+  "base": "http://127.0.0.1:3301",
+  "source_commit": "093c4395db720265ed2faa2f867672f0c8127a5a",
+  "health": {
+    "ok": true,
+    "model": "gemini:gemini-3.5-flash-lite",
+    "voice": false
+  },
+  "checks": [
+    {
+      "name": "health reports real Gemini and voice disabled",
+      "pass": true,
+      "ms": 43
+    },
+    {
+      "name": "invalid confirmation leaves seeded wallet untouched",
+      "pass": true,
+      "ms": 22
+    },
+    {
+      "name": "real Gemini ambiguity, explicit approval and replay debit once; separate session untouched",
+      "pass": true,
+      "ms": 5872
+    },
+    {
+      "name": "real Gemini insufficient funds produces no debit",
+      "pass": true,
+      "ms": 5406
+    },
+    {
+      "name": "real Gemini bill shows seeded amount and executes only after approval",
+      "pass": true,
+      "ms": 4655
+    }
+  ],
+  "note": "Synthetic deployment smoke checks; not held-out evaluation, model-quality measurement, or physical-phone evidence. Local URLs do not establish hosted availability."
+}

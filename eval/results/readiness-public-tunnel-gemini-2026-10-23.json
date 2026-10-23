@@ -1,0 +1,38 @@
+{
+  "date": "2026-10-23T11:08:37.614Z",
+  "base": "https://receiving-medium-ads-producer.trycloudflare.com",
+  "source_commit": "093c4395db720265ed2faa2f867672f0c8127a5a",
+  "health": {
+    "ok": true,
+    "model": "gemini:gemini-3.5-flash-lite",
+    "voice": false
+  },
+  "checks": [
+    {
+      "name": "health reports real Gemini and voice disabled",
+      "pass": true,
+      "ms": 868
+    },
+    {
+      "name": "invalid confirmation leaves seeded wallet untouched",
+      "pass": true,
+      "ms": 950
+    },
+    {
+      "name": "real Gemini ambiguity, explicit approval and replay debit once; separate session untouched",
+      "pass": true,
+      "ms": 15169
+    },
+    {
+      "name": "real Gemini insufficient funds produces no debit",
+      "pass": true,
+      "ms": 2896
+    },
+    {
+      "name": "real Gemini bill shows seeded amount and executes only after approval",
+      "pass": true,
+      "ms": 5070
+    }
+  ],
+  "note": "Synthetic deployment smoke checks; not held-out evaluation, model-quality measurement, or physical-phone evidence. Local URLs do not establish hosted availability."
+}

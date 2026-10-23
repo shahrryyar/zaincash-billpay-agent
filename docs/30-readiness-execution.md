@@ -56,9 +56,9 @@ Chrome fake microphone input fed the same prerecorded clip through MediaRecorder
 
 The underlying model supports 80/320/400 ms streaming chunks (author-supplied capability). The present laptop wrapper returns final HTTP transcription. The requested editable live composer, optional request auto-send and correction review are recorded **for later**, as requested, in docs/32. Sending a transcript/request will never replace explicit payment approval.
 
-## Hosting preparation
+## Hosting preparation (2026-10-21; deployment update below)
 
-Dockerfile/health endpoint and Render Blueprint are prepared; no public demo has been deployed. The Blueprint uses Gemini 3.5 Flash-Lite and server-side key entry with 5000 ms pacing. Re-check availability/quota in the deployment project. Optional voice variables must be configured in the host only after a reachable ASR endpoint exists; a remote host's 127.0.0.1 cannot reach this laptop.
+At that checkpoint, Dockerfile/health endpoint and Render Blueprint were prepared, but no public demo had been deployed. The Blueprint uses Gemini 3.5 Flash-Lite and server-side key entry with 5000 ms pacing. Optional voice variables must be configured in the host only after a reachable ASR endpoint exists; a remote host's 127.0.0.1 cannot reach this laptop. The actual 2026-10-23 deployment is recorded below.
 
 [docs/31](31-free-api-hosting-and-local-asr.md) links official free-provider, Render CLI/MCP and Cloudflare Tunnel docs, and explains the whole-laptop vs hosted-web/laptop-ASR layouts. Render CLI 2.30.0 was downloaded with official SHA256 verification into .cache/hosting-tools/render. Its real Blueprint validation stopped because no authorised workspace/default workspace is selected; no validation success or deployment is claimed. No tunnel or network access-rule change was made. The author cancelled the phone IP restriction/LAN-origin work. Phone HTTPS is still required for normal microphone access. Hosted wallets/schedules are in-memory and disappear on restart/eviction; do not market them as durable banking storage.
 
@@ -70,7 +70,7 @@ Dockerfile/health endpoint and Render Blueprint are prepared; no public demo has
 | Reviewed/frozen heldout2 single final run | Requires the human review and code/prompt/scorer freeze first; no premature run just because a key exists |
 | Consented 40–60 task recordings from at least five speakers, human references | Needed for actual WER/CER, name/amount survival and voice-payment completion |
 | Broader interviews and observed usability tasks | Five genuine interviews exist, but narrow city/age sample; no invented outcomes/quotes |
-| Host account authorisation, publication and reachable ASR route | Account/endpoint not supplied; no public exposure created |
+| Physical-phone verification and optional hosted ASR route | Render is live and public smoke checks pass; desktop phone-sized browser checks do not establish physical-device microphone behavior. Optional ASR route remains unavailable |
 | Author presentation rehearsals, surprise human input and backup review | Automated technical captures are not the author's delivery or a judge-input gate |
 | Organiser replies and proprietary evaluation run permission | No reply/permission is invented; licence was not silently broadened |
 | Uniform support reference for every failure; candidate history dates | Still UX follow-ups; existing receipt/payment references and masked candidates are implemented |
@@ -80,6 +80,18 @@ Technical captures now include a scripted ambiguity/card/receipt backup, direct 
 A one-page PDF draft of MVP_UPDATE.md was generated with local Chrome from reproducible print HTML (brief/build_mvp_update.py), verified with pdfinfo and visually inspected. It is labelled DRAFT and has not been submitted.
 
 Public deliverables: [MVP_UPDATE.md](../MVP_UPDATE.md), [DEMO.md](../DEMO.md), [DISCLOSURE.md](../DISCLOSURE.md), [FAILURE_MODES.md](../FAILURE_MODES.md), [checklist](22-submission-checklist.md). Never-cut safety/text/mock requirements remain intact. No held-out tuning, fabricated measurements or real payment rails were introduced.
+
+## Hosting preflight, 2026-10-23
+
+Source commit `093c4395db720265ed2faa2f867672f0c8127a5a` has green GitHub CI. Fresh local checks passed all **900 unit/integration tests**, workspace typechecking, the Next.js production build and **10/10 browser scenarios** against the production standalone server with scripted LLM/fake ASR. Phone-sized ambiguity/card/receipt screenshots were visually checked with agent-browser; these are desktop Chrome checks, not physical-phone evidence. The Docker image built successfully and runs as the `node` user with a 512 MB limit, a healthy `/api/health`, real Gemini configured and voice explicitly off. [Preflight artifact](../eval/results/readiness-hosting-preflight-2026-10-23.json).
+
+A separate real-Gemini/cache-disabled local production smoke run passed **5/5** checks: health/provider configuration, invalid confirmation, ambiguity → explicit approval → one receipt under replay with another session untouched, insufficient funds, and seeded bill payment after approval. [Corrected smoke artifact](../eval/results/readiness-render-local-gemini-corrected-2026-10-23.json). The [initial run](../eval/results/readiness-render-local-gemini-2026-10-23.json) is retained: it had two real provider timeouts, plus erroneous assertions assuming the seeded transaction history was empty. The corrected script compares the pre-existing history and specific new receipt references. No application, prompt or model change occurred between those two runs. This is deployment smoke evidence, not a fresh accuracy evaluation or availability guarantee.
+
+Render CLI 2.31.0 authentication and workspace selection succeeded. Initially, Blueprint validation returned `need_payment_info` and explicit free-service creation returned HTTP 402. After the author resolved the account's billing requirement, validation succeeded and the service was created on the **free** plan with one instance in Frankfurt and automatic deploys off. No paid compute upgrade was made.
+
+**Public demo: https://zc-billpay-agent.onrender.com.** Service `srv-dbdk0l7avr4c73abjdq0`; deploy `dep-dbdk0lvavr4c73abjgp0` observed `live` at application commit `093c4395db720265ed2faa2f867672f0c8127a5a`. Real-Gemini public HTTPS smoke checks passed **5/5**, including approval/replay and session isolation: [hosted artifact](../eval/results/readiness-render-hosted-gemini-2026-10-23.json). The README links the demo for judges. Free-plan sleep and in-memory state-loss behavior remain as documented; no continuous keep-awake job was added.
+
+A temporary laptop/Cloudflare Quick Tunnel passed [5/5 real-model public checks](../eval/results/readiness-public-tunnel-gemini-2026-10-23.json) during the billing blocker. It was stopped after Render verification, with its Docker container stopped and automatic restart disabled. cloudflared 2026.10.3 was verified against the official release SHA-256. Optional Stage-11 ASR was not listening on port 8790; voice remains off on Render and no ASR endpoint was published.
 
 ### Legacy Sorani label correction
 

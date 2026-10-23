@@ -1,4 +1,5 @@
-# Render Blueprint for the hosted demo (render.com → New → Blueprint → pick this repo). Not deployed yet.
+# Reference configuration for the hosted demo; the existing service was created with Render CLI (docs/31).
+# Update that service instead of creating a second Blueprint deployment.
 # Free plan: the service sleeps when idle, so open the URL a minute before presenting. Keys are entered in Render's
 # dashboard (sync: false), never in this file.
 services:
@@ -6,6 +7,8 @@ services:
     name: zc-billpay-agent
     runtime: docker
     plan: free
+    region: frankfurt
+    numInstances: 1
     dockerfilePath: ./Dockerfile
     healthCheckPath: /api/health
     autoDeploy: false
@@ -30,3 +33,5 @@ services:
         value: "1"
       - key: LLM_CACHE
         value: "0"
+      - key: ASR_PROVIDER        # enable only after a reachable ASR endpoint is configured
+        value: "off"
