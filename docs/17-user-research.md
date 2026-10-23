@@ -82,3 +82,20 @@ author's notes; exact dates, method and quotes not recorded):
 | I-05 | n/r | 19–22, Sulaymaniyah | wallet app | wished it was automated | no (reason n/r) | n/r | yes | ✅ |
 
 2 of the 5 sent money to the wrong person (not linked to an ID). n/r = not recorded.
+
+## Prototype tryout — three friends (reported 2026-10-23)
+
+The author reports testing the prototype with three mates and receiving positive feedback from all three. This is an informal convenience sample of friends. The assistant recorded the author's report; it did not observe the sessions.
+
+| Item | Recorded evidence |
+|---|---|
+| Participants | Three of the author's friends; identities not recorded |
+| Overall reaction | All three gave positive feedback, according to the author |
+| Session date, app version and setting | Not yet recorded; 2026-10-23 is the report date |
+| Language, text/voice and devices | Not yet recorded |
+| Tasks, completion, assistance and mistakes | Not yet recorded |
+| Specific comments / permitted quotations | Not yet recorded |
+| Consent to research notes or quotation | Not yet recorded |
+| Overlap with the five earlier interviewees | Unknown; do not add these counts into eight unique participants |
+
+This supplies early qualitative feedback. Task completion, confirmation comprehension, recognition accuracy and willingness to adopt remain unmeasured by this report. Follow up with notes from these three sessions before asking the author to repeat recruitment. Keep any participant/task rows in `research/usability-log.csv` limited to actual observations supplied by the author.

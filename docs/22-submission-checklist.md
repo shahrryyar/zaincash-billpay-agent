@@ -32,7 +32,8 @@ Updated 2026-10-23. [Current verification and gaps](30-readiness-execution.md). 
 ## Evidence and rehearsal
 
 - [x] Five real interviews logged and synthesised (docs/17); narrow sample disclosed.
-- [ ] Broader interviews and observed usability tasks; do not manufacture results.
+- [x] Informal prototype tryout with three mates reported by the author; all three gave positive feedback (docs/17).
+- [ ] Task/device/language/help/error notes from that tryout, plus broader participant coverage; do not manufacture results.
 - [x] Local Stage-11 client/upload transport and read-back checks.
 - [ ] Consented task voice corpus and WER/CER/name/amount/E2E metrics if making voice-quality claims.
 - [x] Current offline tests/typecheck, browser scenarios and secret/dependency scans recorded in docs/30.

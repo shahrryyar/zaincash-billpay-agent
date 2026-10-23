@@ -15,9 +15,11 @@ These checks need you or real participants. Automated production tests and synth
 - Review at least 50 development examples for natural wording and realistic expected behaviour. Existing sheet: `eval/data/review/dialect.review.csv`.
 - Review/sign the fresh heldout2 sheet separately: `eval/data/review/heldout2.review.csv`. Do not use its rows to tune the app. After human review and code/prompt/scorer freeze, its final evaluation runs once.
 
-## Observe 3–5 users
+## Add notes from your three-person tryout
 
-With consent, let each person try a bill payment, a transfer to an ambiguous name, and correcting a mistaken amount. Do not guide their first attempt. Record whether they finish, where they hesitate, whether they understand “nothing sent yet”, and whether they notice confirmation. Keep real observations in the research log; quotes only if actually said and permitted.
+You reported testing with three mates and receiving positive feedback from all three (recorded in docs/17 on 2026-10-23). Start by capturing what those three actually tried: language, text/voice, device, task, help needed, mistakes and specific feedback. The session date, consent and overlap with earlier interviewees are still unknown. You do not need to repeat recruitment just to report that tryout.
+
+If those tasks were not covered, a useful follow-up with consent is a bill payment, a transfer to an ambiguous name, and correcting a mistaken amount. Avoid guiding the first attempt. Record whether they finish, where they hesitate, whether they understand “nothing sent yet”, and whether they notice confirmation. Keep real observations in the research log; quotes only if actually said and permitted.
 
 Use `research/usability-log.csv` (one row per task; no invented sample participants). Or send notes with: participant code, language/device, fictional task, completed alone/with help/failed, what confused them, and any explicitly permitted quote. Five earlier interviews exist; this is a new observed usability check, not a claim those participants tested the product.
 
