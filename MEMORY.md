@@ -1,6 +1,6 @@
 # MEMORY.md — current project state
 
-Updated 2026-10-21. No secrets. Read README.md, AGENTS.md and the relevant numbered doc; docs/ and brief/ are tracked. The full readiness audit is docs/29; follow-up verification and outstanding evidence are docs/30.
+Updated 2026-10-23. No secrets. Read README.md, AGENTS.md and the relevant numbered doc; docs/ and brief/ are tracked. The full readiness audit is docs/29; follow-up verification and outstanding evidence are docs/30.
 
 Solo entry: Shahryar Sabir Muhammed (RegaLabs), ZainCash Topic 04. Design brief reported uploaded (22/10); MVP due 08/11. Mock wallet, synthetic data, no real rails. The model understands; deterministic code moves money.
 
@@ -17,9 +17,9 @@ Solo entry: Shahryar Sabir Muhammed (RegaLabs), ZainCash Topic 04. Design brief 
 - Actual Gemini project/model free quota returned 15 requests/minute. LLM_REQUEST_INTERVAL_MS=5000 spaces starts/retries per provider within each process. Run web/eval/smoke sequentially; separate processes/apps still share quota. Current numbers and failed probes are in docs/30. Do not call setup success a quality result.
 - Gemini thought signatures round-trip on original tool calls; stripped for other providers. Invalid/absent model output cannot pay.
 - Local ASR: http://127.0.0.1:8790/v1, ASR_PROVIDER=regalabs, language auto, separate local key. Stage-11 avg3-36k44k48k checkpoint SHA256 e9de02a14d531d79c531d442e6d7294d175cda55d118cf34fa4ab6efb052b02c; CPU context [56,13], blank penalty .9. No hosted-service credit needed locally. External server: /home/jackal/storage/Desktop/idk/rega-asr-work/local-asr/server.py, Python /home/jackal/Desktop/idk/nemo-venv/bin/python. Manual startup, roughly 70–85 seconds warm-up; check /healthz. Keep the process alive; it does not auto-start.
-- The model supports streaming chunks of 80/320/400 ms; current local wrapper is final HTTP only. User requested editable live transcript/send-or-review composer **for later**; captured in docs/32, not implemented or promised as live.
-- The user cancelled phone-IP allowlisting/LAN-origin changes. Do not change network exposure. Phone HTTPS and hosting are future authorised setup steps after account availability; no tunnel/public deployment created here.
-- Hosted demo sandboxes are in-memory: balances, tokens, receipts, schedules and session traces vanish on restart/eviction. No durable/full replay claim. Render account/ASR reachability still needed (docs/31).
+- The model supports streaming chunks of 80/320/400 ms; current local wrapper is final HTTP only. Hosted recognition uses wss://api.regalabs.dev/v1/audio/transcriptions/stream, server-side key, auto language. Editable post-recording drafts are implemented: explicit send before Gemini, independent payment approval, raw transcript accessible, stale responses ignored. Live words while recording remain queued in docs/32.
+- The user cancelled phone-IP allowlisting/LAN-origin changes. Render is now authorised and live at https://zc-billpay-agent.onrender.com, service srv-dbdk0l7avr4c73abjdq0, one FREE Frankfurt instance, auto deploy off. Preserve the free plan. Temporary Cloudflare tunnel and local backup container were stopped after Render became live. No laptop ASR tunnel is needed.
+- Hosted demo sandboxes are in-memory: balances, tokens, receipts, schedules and session traces vanish on restart/eviction. No durable/full replay claim. Render sleeps after inactivity; open it early. Current application commit 648e3687081501f98bc5eedc415d59123ba08dc4, deployment dep-dbdojf59fdbs73brp75g observed live; GitHub CI passed (943 tests, 20 browser scenarios). Production release checks/results and human follow-ups: docs/33 and docs/34.
 
 ## Evaluation and human evidence
 

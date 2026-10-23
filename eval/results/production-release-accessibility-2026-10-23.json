@@ -1,0 +1,30 @@
+{
+  "success": true,
+  "data": {
+    "axeVersion": "4.12.1",
+    "counts": {
+      "inapplicable": 39,
+      "incomplete": 0,
+      "passes": 21,
+      "violations": 0
+    },
+    "incomplete": [],
+    "lifecycle": {
+      "effectiveLaunch": {
+        "browserLaunched": true,
+        "engine": "chrome",
+        "launchHash": 13051079382702640090
+      },
+      "launched": false,
+      "relaunchedBrowser": false,
+      "restartedBackground": false,
+      "restoreStatus": "not_configured",
+      "reused": true,
+      "saveStatus": "not_attempted"
+    },
+    "url": "http://127.0.0.1:3300/",
+    "violations": []
+  },
+  "error": null,
+  "note": "One editable voice-review state of the production Docker image, local fake providers, Chrome/axe WCAG2 A/AA. Not full accessibility certification or a screen-reader user study."
+}

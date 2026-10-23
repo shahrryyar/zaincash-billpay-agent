@@ -33,6 +33,8 @@ top bar. Kurdish amounts, time words, relation words and names are read by the s
 Arabic ones (`packages/core/src/kurdish.ts`); the model gets a Kurdish rules block plus local retrieval from a small
 example bank and glossary (`packages/llm/src/kurdish.ts`). No fine-tuning, no vector DB.
 
+**Current Gemini deployment checks:** [production API/browser checks, editable voice verification and known limits](docs/33-production-improvements.md). The held-out scores below describe the older Claude builds; they are not Gemini accuracy estimates.
+
 **Public evidence in this repo:** [DISCLOSURE.md](DISCLOSURE.md) (models, tools, data, conflict of interest) · [FAILURE_MODES.md](FAILURE_MODES.md) (21 documented failure modes with handling and test references) · [eval/results/](eval/results/) (every measured run).
 
 | Measured (Claude Haiku 5.5, tool mode) | Value |

@@ -1,0 +1,525 @@
+{
+  "config": {
+    "configFile": "/home/jackal/storage/Desktop/ZainCash/apps/web/playwright.production.config.ts",
+    "rootDir": "/home/jackal/storage/Desktop/ZainCash/apps/web",
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": {},
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "/home/jackal/storage/Desktop/ZainCash/.cache/production-e2e/release-browser.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "quiet": false,
+    "projects": [
+      {
+        "outputDir": "/home/jackal/storage/Desktop/ZainCash/.cache/production-e2e/release-browser-output",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "/home/jackal/storage/Desktop/ZainCash/apps/web",
+        "testIgnore": [],
+        "testMatch": [
+          "e2e/demo.spec.ts",
+          "production-e2e/*.spec.ts"
+        ],
+        "timeout": 120000
+      }
+    ],
+    "shard": null,
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.56.1",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "e2e/demo.spec.ts",
+      "file": "e2e/demo.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "phone at 200% zoom keeps the language controls, payment amount and input within reach",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 10256,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-23T16:23:41.485Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4a06fc6d054828de402a-bee8a700cdbac2978295",
+          "file": "e2e/demo.spec.ts",
+          "line": 21,
+          "column": 1
+        },
+        {
+          "title": "hero: two Ahmeds is a question, the pick gives a card, confirm sends once",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 20669,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-23T16:23:51.939Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4a06fc6d054828de402a-fcbfc7979dbf2e0e6399",
+          "file": "e2e/demo.spec.ts",
+          "line": 51,
+          "column": 1
+        },
+        {
+          "title": "cancel on the card: nothing is sent",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3618,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-23T16:24:12.628Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4a06fc6d054828de402a-b8756f5576818e611426",
+          "file": "e2e/demo.spec.ts",
+          "line": 88,
+          "column": 1
+        },
+        {
+          "title": "the connection drops after the wallet debited: «جاي نتأكد», then ONE debit",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 16218,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-23T16:24:16.261Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4a06fc6d054828de402a-3e224582bec11944d602",
+          "file": "e2e/demo.spec.ts",
+          "line": 102,
+          "column": 1
+        },
+        {
+          "title": "biller down: an honest error, no card, nothing charged",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3890,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-23T16:24:32.494Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4a06fc6d054828de402a-c42ebf824495069ccdd4",
+          "file": "e2e/demo.spec.ts",
+          "line": 121,
+          "column": 1
+        },
+        {
+          "title": "an unconfirmed card expires when the time runs out",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 14194,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-23T16:24:36.404Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4a06fc6d054828de402a-cc6992104e1a67ce7da7",
+          "file": "e2e/demo.spec.ts",
+          "line": 135,
+          "column": 1
+        },
+        {
+          "title": "schedule: approved now, paid at the time, by the wallet's own runner",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 66545,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('region', { name: 'تأكيد جدولة دفع الفاتورة' })\nExpected substring: \u001b[32m\"ما راح ينرسل شي هسه\"\u001b[39m\nTimeout: 65000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" with timeout 65000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('region', { name: 'تأكيد جدولة دفع الفاتورة' })\u001b[22m\n",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('region', { name: 'تأكيد جدولة دفع الفاتورة' })\nExpected substring: \u001b[32m\"ما راح ينرسل شي هسه\"\u001b[39m\nTimeout: 65000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" with timeout 65000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('region', { name: 'تأكيد جدولة دفع الفاتورة' })\u001b[22m\n\n    at /home/jackal/storage/Desktop/ZainCash/apps/web/e2e/demo.spec.ts:95:22",
+                    "location": {
+                      "file": "/home/jackal/storage/Desktop/ZainCash/apps/web/e2e/demo.spec.ts",
+                      "column": 22,
+                      "line": 95
+                    },
+                    "snippet": "  93 |   await say(page, \"ادفع المولدة باچر الساعة 9 الصبح\");\n  94 |   const card = page.getByRole(\"region\", { name: \"تأكيد جدولة دفع الفاتورة\" });\n> 95 |   await expect(card).toContainText(\"ما راح ينرسل شي هسه\");\n     |                      ^\n  96 |   await card.getByRole(\"button\", { name: \"أكّد وجدول\" }).click();\n  97 |   await expect(page.getByRole(\"region\", { name: \"الإيصال\" })).toContainText(\"انجدولت\");\n  98 |   await expect(balance(page)).toHaveText(\"200,000 د.ع\");"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/home/jackal/storage/Desktop/ZainCash/apps/web/e2e/demo.spec.ts",
+                        "column": 22,
+                        "line": 95
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('region', { name: 'تأكيد جدولة دفع الفاتورة' })\nExpected substring: \u001b[32m\"ما راح ينرسل شي هسه\"\u001b[39m\nTimeout: 65000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" with timeout 65000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('region', { name: 'تأكيد جدولة دفع الفاتورة' })\u001b[22m\n\n\n  93 |   await say(page, \"ادفع المولدة باچر الساعة 9 الصبح\");\n  94 |   const card = page.getByRole(\"region\", { name: \"تأكيد جدولة دفع الفاتورة\" });\n> 95 |   await expect(card).toContainText(\"ما راح ينرسل شي هسه\");\n     |                      ^\n  96 |   await card.getByRole(\"button\", { name: \"أكّد وجدول\" }).click();\n  97 |   await expect(page.getByRole(\"region\", { name: \"الإيصال\" })).toContainText(\"انجدولت\");\n  98 |   await expect(balance(page)).toHaveText(\"200,000 د.ع\");\n    at /home/jackal/storage/Desktop/ZainCash/apps/web/e2e/demo.spec.ts:95:22"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-23T16:24:50.614Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "screenshot",
+                      "contentType": "image/png",
+                      "path": "/home/jackal/storage/Desktop/ZainCash/.cache/production-e2e/release-browser-output/e2e-demo-schedule-approved-f0cd7--by-the-wallet-s-own-runner/test-failed-1.png"
+                    },
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/home/jackal/storage/Desktop/ZainCash/.cache/production-e2e/release-browser-output/e2e-demo-schedule-approved-f0cd7--by-the-wallet-s-own-runner/error-context.md"
+                    },
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "/home/jackal/storage/Desktop/ZainCash/.cache/production-e2e/release-browser-output/e2e-demo-schedule-approved-f0cd7--by-the-wallet-s-own-runner/trace.zip"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/home/jackal/storage/Desktop/ZainCash/apps/web/e2e/demo.spec.ts",
+                    "column": 22,
+                    "line": 95
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "4a06fc6d054828de402a-057a7328079b59ddb0b4",
+          "file": "e2e/demo.spec.ts",
+          "line": 149,
+          "column": 1
+        },
+        {
+          "title": "two judges at once: one payment never shows in the other's wallet",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 17603,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-23T16:25:58.150Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4a06fc6d054828de402a-4901007b91ddb17e5581",
+          "file": "e2e/demo.spec.ts",
+          "line": 196,
+          "column": 1
+        },
+        {
+          "title": "Kurdish: the picker switches the whole screen; two Arases is a question; the Kurdish card confirms once",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 12802,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-23T16:26:15.973Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4a06fc6d054828de402a-63b820fe581fc496c1ee",
+          "file": "e2e/demo.spec.ts",
+          "line": 215,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "production-e2e/recovery.spec.ts",
+      "file": "production-e2e/recovery.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "production browser: lost confirmation response hides stale approval and recovers one debit",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 19686,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-23T16:26:28.823Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "fffeaea2570315be741c-6e450265511b61fdced7",
+          "file": "production-e2e/recovery.spec.ts",
+          "line": 3,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "production-e2e/voice.spec.ts",
+      "file": "production-e2e/voice.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "production voice: real ASR draft, explicit edited request, Gemini card and one confirmed receipt",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 15111,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-23T16:26:49.418Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "actual-voice-response",
+                      "contentType": "application/json",
+                      "body": "ewogICJ3YWxsZXQiOiB7CiAgICAiYmFsYW5jZV9pcWQiOiAyMDAwMDAsCiAgICAidHJhbnNhY3Rpb25zIjogWwogICAgICB7CiAgICAgICAgInJlZmVyZW5jZSI6ICJaQy0wMDAwMDAwMSIsCiAgICAgICAgImtpbmQiOiAidHJhbnNmZXIiLAogICAgICAgICJhbW91bnRfaXFkIjogMjUwMDAsCiAgICAgICAgImNvdW50ZXJwYXJ0eSI6ICLYudmE2Yog2YPYsdmK2YUiLAogICAgICAgICJjcmVhdGVkX2F0IjogMTc5MTgwNjQwMDAwMAogICAgICB9LAogICAgICB7CiAgICAgICAgInJlZmVyZW5jZSI6ICJaQy0wMDAwMDAwMiIsCiAgICAgICAgImtpbmQiOiAidHJhbnNmZXIiLAogICAgICAgICJhbW91bnRfaXFkIjogMTAwMDAwLAogICAgICAgICJjb3VudGVycGFydHkiOiAi2YXYp9mF2KciLAogICAgICAgICJjcmVhdGVkX2F0IjogMTc5MTI4ODAwMDAwMAogICAgICB9LAogICAgICB7CiAgICAgICAgInJlZmVyZW5jZSI6ICJaQy0wMDAwMDAwMyIsCiAgICAgICAgImtpbmQiOiAidHJhbnNmZXIiLAogICAgICAgICJhbW91bnRfaXFkIjogMjAwMDAsCiAgICAgICAgImNvdW50ZXJwYXJ0eSI6ICLYo9iu2YjZiiDZg9ix2KfYsSIsCiAgICAgICAgImNyZWF0ZWRfYXQiOiAxNzkwNjgzMjAwMDAwCiAgICAgIH0sCiAgICAgIHsKICAgICAgICAicmVmZXJlbmNlIjogIlpDLTAwMDAwMDA0IiwKICAgICAgICAia2luZCI6ICJ0cmFuc2ZlciIsCiAgICAgICAgImFtb3VudF9pcWQiOiA1MDAwMCwKICAgICAgICAiY291bnRlcnBhcnR5IjogItij2K3ZhdivINi52YTZiiIsCiAgICAgICAgImNyZWF0ZWRfYXQiOiAxNzkwMTY0ODAwMDAwCiAgICAgIH0sCiAgICAgIHsKICAgICAgICAicmVmZXJlbmNlIjogIlpDLTAwMDAwMDA1IiwKICAgICAgICAia2luZCI6ICJ0cmFuc2ZlciIsCiAgICAgICAgImFtb3VudF9pcWQiOiAxMDAwMDAsCiAgICAgICAgImNvdW50ZXJwYXJ0eSI6ICLZhdin2YXYpyIsCiAgICAgICAgImNyZWF0ZWRfYXQiOiAxNzg5Mzg3MjAwMDAwCiAgICAgIH0sCiAgICAgIHsKICAgICAgICAicmVmZXJlbmNlIjogIlpDLTAwMDAwMDA2IiwKICAgICAgICAia2luZCI6ICJ0cmFuc2ZlciIsCiAgICAgICAgImFtb3VudF9pcWQiOiAyNTAwMCwKICAgICAgICAiY291bnRlcnBhcnR5IjogIti52YTZiiDZg9ix2YrZhSIsCiAgICAgICAgImNyZWF0ZWRfYXQiOiAxNzg4NzgyNDAwMDAwCiAgICAgIH0sCiAgICAgIHsKICAgICAgICAicmVmZXJlbmNlIjogIlpDLTAwMDAwMDA3IiwKICAgICAgICAia2luZCI6ICJ0cmFuc2ZlciIsCiAgICAgICAgImFtb3VudF9pcWQiOiAxNTAwMCwKICAgICAgICAiY291bnRlcnBhcnR5IjogItit2LPZitmGIiwKICAgICAgICAiY3JlYXRlZF9hdCI6IDE3ODgyNjQwMDAwMDAKICAgICAgfSwKICAgICAgewogICAgICAgICJyZWZlcmVuY2UiOiAiWkMtMDAwMDAwMDgiLAogICAgICAgICJraW5kIjogInRyYW5zZmVyIiwKICAgICAgICAiYW1vdW50X2lxZCI6IDMwMDAwLAogICAgICAgICJjb3VudGVycGFydHkiOiAi2KPYrtiq2Yog2LLZh9ix2KfYoSIsCiAgICAgICAgImNyZWF0ZWRfYXQiOiAxNzg3NTcyODAwMDAwCiAgICAgIH0KICAgIF0KICB9LAogICJzY2hlZHVsZXMiOiBbXSwKICAiZmF1bHQiOiBudWxsLAogICJtb2RlbCI6ICJnZW1pbmk6Z2VtaW5pLTMuNS1mbGFzaC1saXRlIiwKICAibW9kZSI6ICJ0b29scyIsCiAgInZvaWNlIjogewogICAgImVuYWJsZWQiOiB0cnVlLAogICAgInByb3ZpZGVyIjogInJlZ2FsYWJzIiwKICAgICJtYXhfc2Vjb25kcyI6IDMwLAogICAgInNpbXVsYXRvciI6IGZhbHNlCiAgfSwKICAic2VydmVyX25vdyI6IDE3OTI3NzI4MTkzODQsCiAgImRyYWZ0IjogewogICAgInRleHQiOiAi2b7bldmG2KzblSDZh9uV2LLYp9ixINio2Ybbjtix25Ug2KjbhiDYptin2LHYp9iz2KrblduMIgogIH0sCiAgInRyYW5zY3JpcHQiOiB7CiAgICAidGV4dCI6ICLZvtuV2YbYrNuVINmH25XYstin2LEg2KjZhtuO2LHblSDYqNuGINim2KfYsdin2LPYqtuV24wiLAogICAgImNvbmZpZGVuY2UiOiBudWxsLAogICAgInByb3ZpZGVyIjogInJlZ2FsYWJzLXN0cmVhbTphdXRvIiwKICAgICJsYXRlbmN5X21zIjogMzg5MAogIH0KfQ=="
+                    },
+                    {
+                      "name": "actual-model-trace",
+                      "contentType": "application/json",
+                      "body": "ewogICJpbnRlbnQiOiB7CiAgICAiY29uZmlkZW5jZSI6IDEsCiAgICAibGFuZ3VhZ2UiOiAiYXItaXEiLAogICAgInN0YXR1cyI6ICJvayIsCiAgICAiYWN0aW9ucyI6IFsKICAgICAgewogICAgICAgICJhbW91bnQiOiB7CiAgICAgICAgICAidmFsdWUiOiAyMzAwMCwKICAgICAgICAgICJzb3VyY2VfdGV4dCI6ICIyMzAwMCIsCiAgICAgICAgICAiY3VycmVuY3kiOiAiSVFEIgogICAgICAgIH0sCiAgICAgICAgInR5cGUiOiAidHJhbnNmZXIiLAogICAgICAgICJyZWNpcGllbnQiOiB7CiAgICAgICAgICAidGV4dCI6ICLYudmE2Yog2YPYsdmK2YUiLAogICAgICAgICAgImtpbmQiOiAibmFtZSIKICAgICAgICB9CiAgICAgIH0KICAgIF0KICB9LAogICJtb2RlbCI6ICJnZW1pbmk6Z2VtaW5pLTMuNS1mbGFzaC1saXRlIiwKICAibW9kZSI6ICJ0b29scyIsCiAgInRvb2xfY2FsbHMiOiBbXSwKICAidXNhZ2UiOiB7CiAgICAiaW5wdXQiOiAyNzMwLAogICAgIm91dHB1dCI6IDgwCiAgfSwKICAicmVzb2x1dGlvbiI6IHsKICAgICJzbG90IjogInJlY2lwaWVudCIsCiAgICAic3RhdHVzIjogInJlc29sdmVkIgogIH0sCiAgInF1b3RlIjogewogICAgIm9rIjogdHJ1ZSwKICAgICJraW5kIjogInRyYW5zZmVyIiwKICAgICJhbW91bnRfaXFkIjogMjMwMDAsCiAgICAibGltaXRfaXFkIjogMjUwMDAwMCwKICAgICJmZWVfaXFkIjogMzAwLAogICAgInRvdGFsX2lxZCI6IDIzMzAwLAogICAgImJhbGFuY2VfYWZ0ZXJfaXFkIjogMTc2NzAwLAogICAgImVycm9ycyI6IFtdLAogICAgImNvdW50ZXJwYXJ0eV9uYW1lIjogIti52YTZiiDZg9ix2YrZhSIKICB9Cn0="
+                    },
+                    {
+                      "name": "video",
+                      "contentType": "video/webm",
+                      "path": "/home/jackal/storage/Desktop/ZainCash/.cache/production-e2e/release-browser-output/production-e2e-voice-produ-b0213-d-and-one-confirmed-receipt/video.webm"
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4457aa179178662dd851-7e7d4a11966bd058cfd4",
+          "file": "production-e2e/voice.spec.ts",
+          "line": 21,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-23T16:23:40.635Z",
+    "duration": 204191.86,
+    "expected": 10,
+    "skipped": 0,
+    "unexpected": 1,
+    "flaky": 0
+  }
+}

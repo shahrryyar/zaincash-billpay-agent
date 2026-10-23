@@ -1,0 +1,27 @@
+{
+  "service_id": "srv-dbdk0l7avr4c73abjdq0",
+  "url": "https://zc-billpay-agent.onrender.com",
+  "plan": "free",
+  "instances": 1,
+  "auto_deploy": "no",
+  "deployment": {
+    "commit": {
+      "createdAt": "2026-10-23T16:22:07Z",
+      "id": "648e3687081501f98bc5eedc415d59123ba08dc4",
+      "message": "feat(voice): review and edit transcripts before sending requests"
+    },
+    "createdAt": "2026-10-23T16:22:20.145687Z",
+    "finishedAt": "2026-10-23T16:23:19.695631Z",
+    "id": "dep-dbdojf59fdbs73brp75g",
+    "startedAt": "2026-10-23T16:22:20.116783Z",
+    "status": "live",
+    "trigger": "api",
+    "updatedAt": "2026-10-23T16:23:52.614145Z"
+  },
+  "health": {
+    "ok": true,
+    "model": "gemini:gemini-3.5-flash-lite",
+    "voice": true
+  },
+  "note": "Read-only release observation. No hosting-plan or environment mutation."
+}

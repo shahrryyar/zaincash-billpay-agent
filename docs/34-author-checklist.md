@@ -19,11 +19,14 @@ These checks need you or real participants. Automated production tests and synth
 
 With consent, let each person try a bill payment, a transfer to an ambiguous name, and correcting a mistaken amount. Do not guide their first attempt. Record whether they finish, where they hesitate, whether they understand “nothing sent yet”, and whether they notice confirmation. Keep real observations in the research log; quotes only if actually said and permitted.
 
+Use `research/usability-log.csv` (one row per task; no invented sample participants). Or send notes with: participant code, language/device, fictional task, completed alone/with help/failed, what confused them, and any explicitly permitted quote. Five earlier interviews exist; this is a new observed usability check, not a claim those participants tested the product.
+
 If you want a voice-accuracy claim, collect the separate consented task corpus: 40–60 fictional utterances from at least five speakers, with human transcripts and the name/amount labels. Follow `eval/voice/README.md`. Current synthetic transport checks establish no WER or human task accuracy.
 
 ## Disclosure and presentation
 
 - Confirm the hosted ASR model/checkpoint version and training-data provenance you can disclose as RegaLabs' founder. The endpoint has not supplied a version; do not label it Stage-11 without evidence.
+- Review the prepared silent technical backup at `.cache/production-e2e/production-voice-walkthrough.mp4` (real hosted ASR/Gemini, synthetic microphone input, 23,000-IQD edited request and receipt). Record your own narrated demonstration if useful.
 - Rehearse the runbook three times yourself. Ask someone to supply an unexpected request. Review the backup recording before relying on it.
 - Before presenting: open Render early, check provider quota/credits, reset only your own demo session, leave faults off, and prepare the hotspot/backup.
 - Resolve organiser questions, proprietary-repo evaluation permission and the submission/review booking. The assistant cannot invent acceptance or submit on your behalf without that instruction.

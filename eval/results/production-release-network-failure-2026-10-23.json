@@ -1,0 +1,71 @@
+{
+  "request": {
+    "session_id": "aa6c4b90-f1a5-4b47-84f3-707a1d45c18b",
+    "text": "ادفع المولدة باچر الساعة 9 الصبح",
+    "lang": "ar"
+  },
+  "network_error": "net::ERR_NETWORK_CHANGED",
+  "observed_wallet": {
+    "balance_iqd": 200000,
+    "transactions": [
+      {
+        "reference": "ZC-00000001",
+        "kind": "transfer",
+        "amount_iqd": 25000,
+        "counterparty": "علي كريم",
+        "created_at": 1791806400000
+      },
+      {
+        "reference": "ZC-00000002",
+        "kind": "transfer",
+        "amount_iqd": 100000,
+        "counterparty": "ماما",
+        "created_at": 1791288000000
+      },
+      {
+        "reference": "ZC-00000003",
+        "kind": "transfer",
+        "amount_iqd": 20000,
+        "counterparty": "أخوي كرار",
+        "created_at": 1790683200000
+      },
+      {
+        "reference": "ZC-00000004",
+        "kind": "transfer",
+        "amount_iqd": 50000,
+        "counterparty": "أحمد علي",
+        "created_at": 1790164800000
+      },
+      {
+        "reference": "ZC-00000005",
+        "kind": "transfer",
+        "amount_iqd": 100000,
+        "counterparty": "ماما",
+        "created_at": 1789387200000
+      },
+      {
+        "reference": "ZC-00000006",
+        "kind": "transfer",
+        "amount_iqd": 25000,
+        "counterparty": "علي كريم",
+        "created_at": 1788782400000
+      },
+      {
+        "reference": "ZC-00000007",
+        "kind": "transfer",
+        "amount_iqd": 15000,
+        "counterparty": "حسين",
+        "created_at": 1788264000000
+      },
+      {
+        "reference": "ZC-00000008",
+        "kind": "transfer",
+        "amount_iqd": 30000,
+        "counterparty": "أختي زهراء",
+        "created_at": 1787572800000
+      }
+    ]
+  },
+  "observed_schedules": [],
+  "note": "Read-only check after laptop browser scheduling request failed; no confirmation was attempted."
+}

@@ -5,7 +5,7 @@ import { expect, test } from "@playwright/test";
 // Opt in with an ignored synthetic audio file. Chrome's fake device still exercises real capture, upload and ASR.
 const fixture = process.env.PRODUCTION_VOICE_WAV ? resolve(process.env.PRODUCTION_VOICE_WAV) : "";
 if (fixture && !existsSync(fixture)) throw new Error("PRODUCTION_VOICE_WAV must exist");
-test.use({ launchOptions: {
+test.use({ video: "on", viewport: { width: 430, height: 860 }, launchOptions: {
   ...(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {}),
   args: ["--use-fake-device-for-media-stream", "--use-fake-ui-for-media-stream", ...(fixture ? [`--use-file-for-fake-audio-capture=${fixture}`] : [])],
 } });
@@ -21,7 +21,7 @@ test("production voice: real ASR draft, explicit edited request, Gemini card and
   await mic.focus(); await page.keyboard.down("Space");
   await expect(page.getByText(/دا أسمعك/)).toBeVisible();
   await page.waitForTimeout(3_500); // fixture speech plus trailing silence
-  const voiceReply = page.waitForResponse(r => r.url().endsWith("/api/voice") && r.request().method() === "POST");
+  const voiceReply = page.waitForResponse(r => r.url().endsWith("/api/voice") && r.request().method() === "POST", { timeout: 80_000 });
   await page.keyboard.up("Space");
   const response = await voiceReply;
   expect(response.status()).toBe(200);
@@ -36,7 +36,7 @@ test("production voice: real ASR draft, explicit edited request, Gemini card and
   await input.fill("دز 23000 لعلي كريم");
   await page.getByText("النص الأصلي اللي سمعه المايك", { exact: true }).click();
   await expect(page.getByRole("region", { name: "تأكيد اللي سمعته" })).toContainText(voice.draft.text);
-  const modelReply = page.waitForResponse(r => r.url().endsWith("/api/turn") && r.request().method() === "POST");
+  const modelReply = page.waitForResponse(r => r.url().endsWith("/api/turn") && r.request().method() === "POST", { timeout: 80_000 });
   await page.getByRole("button", { name: "أرسل الطلب", exact: true }).click();
   const understood = await (await modelReply).json();
   expect(understood.reply.trace.model).toBe("gemini:gemini-3.5-flash-lite");

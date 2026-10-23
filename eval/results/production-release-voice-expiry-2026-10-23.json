@@ -1,0 +1,287 @@
+{
+  "started": "2026-10-23T16:30:23.398Z",
+  "finished": "2026-10-23T16:30:28.080Z",
+  "base": "https://zc-billpay-agent.onrender.com",
+  "application_commit": "648e3687081501f98bc5eedc415d59123ba08dc4",
+  "name": "Legacy real voice read-back expires safely and cannot be accepted in another session",
+  "pass": true,
+  "heard": {
+    "reply": {
+      "session_id": "release-voice-7788726d-5387-4092-aa8e-72fc282a307a",
+      "phase": "IDLE",
+      "messages": [
+        {
+          "kind": "ask",
+          "text": "گوێم لێبوو وتت: «پەنجە هەزار بنێرە بۆ ئارەزووی» — ڕاستە؟"
+        }
+      ],
+      "card": null,
+      "candidates": [],
+      "result": null,
+      "audit": [],
+      "trace": {},
+      "readback": {
+        "text": "پەنجە هەزار بنێرە بۆ ئارەزووی"
+      }
+    },
+    "wallet": {
+      "balance_iqd": 200000,
+      "transactions": [
+        {
+          "reference": "ZC-00000001",
+          "kind": "transfer",
+          "amount_iqd": 25000,
+          "counterparty": "علي كريم",
+          "created_at": 1791806400000
+        },
+        {
+          "reference": "ZC-00000002",
+          "kind": "transfer",
+          "amount_iqd": 100000,
+          "counterparty": "ماما",
+          "created_at": 1791288000000
+        },
+        {
+          "reference": "ZC-00000003",
+          "kind": "transfer",
+          "amount_iqd": 20000,
+          "counterparty": "أخوي كرار",
+          "created_at": 1790683200000
+        },
+        {
+          "reference": "ZC-00000004",
+          "kind": "transfer",
+          "amount_iqd": 50000,
+          "counterparty": "أحمد علي",
+          "created_at": 1790164800000
+        },
+        {
+          "reference": "ZC-00000005",
+          "kind": "transfer",
+          "amount_iqd": 100000,
+          "counterparty": "ماما",
+          "created_at": 1789387200000
+        },
+        {
+          "reference": "ZC-00000006",
+          "kind": "transfer",
+          "amount_iqd": 25000,
+          "counterparty": "علي كريم",
+          "created_at": 1788782400000
+        },
+        {
+          "reference": "ZC-00000007",
+          "kind": "transfer",
+          "amount_iqd": 15000,
+          "counterparty": "حسين",
+          "created_at": 1788264000000
+        },
+        {
+          "reference": "ZC-00000008",
+          "kind": "transfer",
+          "amount_iqd": 30000,
+          "counterparty": "أختي زهراء",
+          "created_at": 1787572800000
+        }
+      ]
+    },
+    "schedules": [],
+    "fault": null,
+    "model": "gemini:gemini-3.5-flash-lite",
+    "mode": "tools",
+    "voice": {
+      "enabled": true,
+      "provider": "regalabs",
+      "max_seconds": 30,
+      "simulator": false
+    },
+    "server_now": 1792773027448,
+    "transcript": {
+      "text": "پەنجە هەزار بنێرە بۆ ئارەزووی",
+      "confidence": null,
+      "provider": "regalabs-stream:auto",
+      "latency_ms": 2497
+    }
+  },
+  "foreign": {
+    "reply": {
+      "session_id": "foreign-771edd2b-cacf-49e0-92b4-f2cb0debc72f",
+      "phase": "IDLE",
+      "messages": [
+        {
+          "kind": "info",
+          "text": "باشە، هیچم نەکرد. دووبارە بیڵێوە یان بینووسە."
+        }
+      ],
+      "card": null,
+      "candidates": [],
+      "result": null,
+      "audit": [],
+      "trace": {},
+      "readback": null
+    },
+    "wallet": {
+      "balance_iqd": 200000,
+      "transactions": [
+        {
+          "reference": "ZC-00000001",
+          "kind": "transfer",
+          "amount_iqd": 25000,
+          "counterparty": "علي كريم",
+          "created_at": 1791806400000
+        },
+        {
+          "reference": "ZC-00000002",
+          "kind": "transfer",
+          "amount_iqd": 100000,
+          "counterparty": "ماما",
+          "created_at": 1791288000000
+        },
+        {
+          "reference": "ZC-00000003",
+          "kind": "transfer",
+          "amount_iqd": 20000,
+          "counterparty": "أخوي كرار",
+          "created_at": 1790683200000
+        },
+        {
+          "reference": "ZC-00000004",
+          "kind": "transfer",
+          "amount_iqd": 50000,
+          "counterparty": "أحمد علي",
+          "created_at": 1790164800000
+        },
+        {
+          "reference": "ZC-00000005",
+          "kind": "transfer",
+          "amount_iqd": 100000,
+          "counterparty": "ماما",
+          "created_at": 1789387200000
+        },
+        {
+          "reference": "ZC-00000006",
+          "kind": "transfer",
+          "amount_iqd": 25000,
+          "counterparty": "علي كريم",
+          "created_at": 1788782400000
+        },
+        {
+          "reference": "ZC-00000007",
+          "kind": "transfer",
+          "amount_iqd": 15000,
+          "counterparty": "حسين",
+          "created_at": 1788264000000
+        },
+        {
+          "reference": "ZC-00000008",
+          "kind": "transfer",
+          "amount_iqd": 30000,
+          "counterparty": "أختي زهراء",
+          "created_at": 1787572800000
+        }
+      ]
+    },
+    "schedules": [],
+    "fault": null,
+    "model": "gemini:gemini-3.5-flash-lite",
+    "mode": "tools",
+    "voice": {
+      "enabled": true,
+      "provider": "regalabs",
+      "max_seconds": 30,
+      "simulator": false
+    },
+    "server_now": 1792773027560
+  },
+  "expired": {
+    "reply": {
+      "session_id": "release-voice-7788726d-5387-4092-aa8e-72fc282a307a",
+      "phase": "IDLE",
+      "messages": [
+        {
+          "kind": "info",
+          "text": "باشە، هیچم نەکرد. دووبارە بیڵێوە یان بینووسە."
+        }
+      ],
+      "card": null,
+      "candidates": [],
+      "result": null,
+      "audit": [],
+      "trace": {},
+      "readback": null
+    },
+    "wallet": {
+      "balance_iqd": 200000,
+      "transactions": [
+        {
+          "reference": "ZC-00000001",
+          "kind": "transfer",
+          "amount_iqd": 25000,
+          "counterparty": "علي كريم",
+          "created_at": 1791806400000
+        },
+        {
+          "reference": "ZC-00000002",
+          "kind": "transfer",
+          "amount_iqd": 100000,
+          "counterparty": "ماما",
+          "created_at": 1791288000000
+        },
+        {
+          "reference": "ZC-00000003",
+          "kind": "transfer",
+          "amount_iqd": 20000,
+          "counterparty": "أخوي كرار",
+          "created_at": 1790683200000
+        },
+        {
+          "reference": "ZC-00000004",
+          "kind": "transfer",
+          "amount_iqd": 50000,
+          "counterparty": "أحمد علي",
+          "created_at": 1790164800000
+        },
+        {
+          "reference": "ZC-00000005",
+          "kind": "transfer",
+          "amount_iqd": 100000,
+          "counterparty": "ماما",
+          "created_at": 1789387200000
+        },
+        {
+          "reference": "ZC-00000006",
+          "kind": "transfer",
+          "amount_iqd": 25000,
+          "counterparty": "علي كريم",
+          "created_at": 1788782400000
+        },
+        {
+          "reference": "ZC-00000007",
+          "kind": "transfer",
+          "amount_iqd": 15000,
+          "counterparty": "حسين",
+          "created_at": 1788264000000
+        },
+        {
+          "reference": "ZC-00000008",
+          "kind": "transfer",
+          "amount_iqd": 30000,
+          "counterparty": "أختي زهراء",
+          "created_at": 1787572800000
+        }
+      ]
+    },
+    "schedules": [],
+    "fault": null,
+    "model": "gemini:gemini-3.5-flash-lite",
+    "mode": "tools",
+    "voice": {
+      "enabled": true,
+      "provider": "regalabs",
+      "max_seconds": 30,
+      "simulator": false
+    },
+    "server_now": 1792773149040
+  },
+  "note": "One optional API scenario run separately after the 16-case release audit; real ASR with synthetic audio, no physical-mic or accuracy claim."
+}
