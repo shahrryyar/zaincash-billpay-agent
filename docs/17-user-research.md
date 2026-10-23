@@ -92,7 +92,9 @@ The author reports testing the prototype with three mates and receiving positive
 | Participants | Three of the author's friends; identities not recorded |
 | Overall reaction | All three gave positive feedback, according to the author |
 | Session date, app version and setting | Not yet recorded; 2026-10-23 is the report date |
-| Language, text/voice and devices | Not yet recorded |
+| Languages | Arabic and Sorani, confirmed by the author |
+| Feature coverage | Author described it as “both features”; clarification of text/voice versus transfer/bill coverage pending |
+| Devices | Not yet recorded |
 | Tasks, completion, assistance and mistakes | Not yet recorded |
 | Specific comments / permitted quotations | Not yet recorded |
 | Consent to research notes or quotation | Not yet recorded |

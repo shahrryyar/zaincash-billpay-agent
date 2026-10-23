@@ -17,7 +17,7 @@ These checks need you or real participants. Automated production tests and synth
 
 ## Add notes from your three-person tryout
 
-You reported testing with three mates and receiving positive feedback from all three (recorded in docs/17 on 2026-10-23). Start by capturing what those three actually tried: language, text/voice, device, task, help needed, mistakes and specific feedback. The session date, consent and overlap with earlier interviewees are still unknown. You do not need to repeat recruitment just to report that tryout.
+You reported testing with three mates and receiving positive feedback from all three (recorded in docs/17 on 2026-10-23), then confirmed both Arabic and Sorani were tested. Feature coverage was described as “both features” and is awaiting clarification. Capture any available device/task/help/error notes and specific feedback from those sessions. The session date, consent and overlap with earlier interviewees are still unknown. You do not need to repeat recruitment just to report that tryout.
 
 If those tasks were not covered, a useful follow-up with consent is a bill payment, a transfer to an ambiguous name, and correcting a mistaken amount. Avoid guiding the first attempt. Record whether they finish, where they hesitate, whether they understand “nothing sent yet”, and whether they notice confirmation. Keep real observations in the research log; quotes only if actually said and permitted.
 
