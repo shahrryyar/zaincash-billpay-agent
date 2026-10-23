@@ -125,18 +125,19 @@ export function PhoneApp() {
 
   // While the wallet has not told us what happened to a payment, ask it again every few seconds (by the same key; never re-sends).
   const phase = reply?.phase;
+  const recovering = uncertain !== null || phase === "UNKNOWN_OUTCOME";
   useEffect(() => {
     if (phase !== "UNKNOWN_OUTCOME") return;
     const timer = setInterval(() => { if (!busy) void post("/api/recheck", { session_id: sid, lang: langRef.current }).then(apply).catch(() => undefined); }, 5000);
     return () => clearInterval(timer);
   }, [phase, busy, sid, apply]);
 
-  const send = (msg: string) => { const v = msg.trim(); if (!v || busy) return; setText(""); void run(() => post("/api/turn", { session_id: sid, text: v, lang }), v); };
+  const send = (msg: string) => { const v = msg.trim(); if (!v || busy || recovering) return; setText(""); void run(() => post("/api/turn", { session_id: sid, text: v, lang }), v); };
   const say = (kind: Bubble["kind"], text: string) => setBubbles((b) => [...b, { id: ++n.current, from: "agent", kind, text }]);
   // Voice: the recording goes to our own server (the ASR key never reaches the browser). What the ASR heard is shown
   // as the user's bubble; the reply may be a read-back that waits for «صح» before anything else happens.
   const sendVoice = async (wav: Blob, simulate?: { text: string; conf: string }) => {
-    if (busy) return;
+    if (busy || recovering) return;
     setBusy(true); setWaiting("voice");
     try {
       const f = new FormData();
@@ -176,7 +177,9 @@ export function PhoneApp() {
   const discussSchedule = () => { setSchedPanel(false); send(tt("ui_sched_request")); };
   const reset = async () => { await admin({ action: "reset" }); pending.current.clear(); setBubbles([]); setReply(null); setUncertain(null); };
 
-  const card = reply?.card ?? null;
+  // A missing confirmation response can mean the wallet already debited. Never leave a stale “nothing sent yet”
+  // approval on screen or accept a fresh request while the user still needs the existing operation's outcome.
+  const card = recovering ? null : reply?.card ?? null;
   const showCandidates = reply && reply.phase === "CLARIFYING" && reply.candidates.length > 0;
 
   return (
@@ -187,7 +190,7 @@ export function PhoneApp() {
             <h1 className="text-lg font-bold">{tt("ui_title")}</h1>
             <div role="group" aria-label={tt("ui_language")} className="flex shrink-0 rounded-full border border-white/40 p-0.5">
               {LANGS.map((l) => (
-                <button key={l.id} lang={l.html} onClick={() => chooseLang(l.id)} aria-pressed={lang === l.id} disabled={busy}
+                <button key={l.id} lang={l.html} onClick={() => chooseLang(l.id)} aria-pressed={lang === l.id} disabled={busy || recovering}
                   className={`rounded-full px-3 min-h-9 text-sm font-semibold ${lang === l.id ? "bg-white text-[var(--ink)]" : "text-white/90"}`}>{l.label}</button>
               ))}
             </div>
@@ -364,9 +367,9 @@ export function PhoneApp() {
 
         <form onSubmit={(e) => { e.preventDefault(); send(text); }} className="flex flex-wrap items-center gap-2 border-t border-[var(--line)] bg-white px-3 py-2.5">
           <label htmlFor="msg" className="sr-only">{tt("ui_placeholder")}</label>
-          <input id="msg" ref={inputRef} value={text} onChange={(e) => setText(e.target.value)} autoComplete="off" enterKeyHint="send" placeholder={tt("ui_placeholder")} className="flex-1 basis-40 min-w-0 min-h-12 rounded-full border-2 border-[var(--line)] bg-[var(--paper)] px-4 outline-none focus:border-[var(--accent)]" />
-          {voice?.enabled && !text.trim() && <MicButton lang={lang} maxSeconds={voice.max_seconds} disabled={busy} onWav={(w) => void sendVoice(w)} onProblem={micProblem} />}
-          <button type="submit" disabled={busy || !text.trim()} className="min-h-12 min-w-20 rounded-full bg-[var(--accent)] text-white font-bold px-5">{tt("ui_send")}</button>
+          <input id="msg" ref={inputRef} value={text} onChange={(e) => setText(e.target.value)} disabled={recovering} autoComplete="off" enterKeyHint="send" placeholder={tt("ui_placeholder")} className="flex-1 basis-40 min-w-0 min-h-12 rounded-full border-2 border-[var(--line)] bg-[var(--paper)] px-4 outline-none focus:border-[var(--accent)]" />
+          {voice?.enabled && !text.trim() && <MicButton lang={lang} maxSeconds={voice.max_seconds} disabled={busy || recovering} onWav={(w) => void sendVoice(w)} onProblem={micProblem} />}
+          <button type="submit" disabled={busy || recovering || !text.trim()} className="min-h-12 min-w-20 rounded-full bg-[var(--accent)] text-white font-bold px-5">{tt("ui_send")}</button>
         </form>
       </div>
     </main>
