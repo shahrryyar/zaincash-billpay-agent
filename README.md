@@ -37,6 +37,8 @@ example bank and glossary (`packages/llm/src/kurdish.ts`). No fine-tuning, no ve
 
 **Public evidence in this repo:** [DISCLOSURE.md](DISCLOSURE.md) (models, tools, data, conflict of interest) · [FAILURE_MODES.md](FAILURE_MODES.md) (21 documented failure modes with handling and test references) · [eval/results/](eval/results/) (every measured run).
 
+**Early prototype feedback:** the author reports a tryout with three friends covering Arabic and Sorani, text and voice; all three gave positive feedback. This is a small convenience sample; task completion and assistance were not recorded. [Research notes](docs/17-user-research.md).
+
 | Measured (Claude Haiku 5.5, tool mode) | Value |
 |---|---|
 | Held-out, run once (n=180, commit `1445bff`): end-to-end completion | 81.1% [74.8, 86.2] |

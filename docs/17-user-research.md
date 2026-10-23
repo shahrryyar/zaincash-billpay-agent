@@ -85,7 +85,7 @@ author's notes; exact dates, method and quotes not recorded):
 
 ## Prototype tryout — three friends (reported 2026-10-23)
 
-The author reports testing the prototype with three mates and receiving positive feedback from all three. This is an informal convenience sample of friends. The assistant recorded the author's report; it did not observe the sessions.
+The author reports testing the prototype with three mates and receiving positive feedback from all three. Follow-up confirms the tryout covered Arabic and Sorani, with both text and voice. This is an informal convenience sample of friends. The assistant recorded the author's report; it did not observe the sessions.
 
 | Item | Recorded evidence |
 |---|---|
@@ -93,7 +93,7 @@ The author reports testing the prototype with three mates and receiving positive
 | Overall reaction | All three gave positive feedback, according to the author |
 | Session date, app version and setting | Not yet recorded; 2026-10-23 is the report date |
 | Languages | Arabic and Sorani, confirmed by the author |
-| Feature coverage | Author described it as “both features”; clarification of text/voice versus transfer/bill coverage pending |
+| Input coverage | Text and voice, confirmed by the author; per-participant coverage not recorded |
 | Devices | Not yet recorded |
 | Tasks, completion, assistance and mistakes | Not yet recorded |
 | Specific comments / permitted quotations | Not yet recorded |
