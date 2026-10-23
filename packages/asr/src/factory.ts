@@ -1,5 +1,6 @@
 import { createFakeTranscriber } from "./fake";
 import { createOpenAICompatTranscriber } from "./openai-compat";
+import { createRegalabsStreamTranscriber } from "./regalabs-stream";
 import type { Transcriber } from "./types";
 
 export const REGALABS_DEFAULT_BASE_URL = "https://api.regalabs.dev/v1";
@@ -38,6 +39,18 @@ export function asrFromEnv(env: Env, deps: { fetch?: typeof fetch } = {}): AsrCo
   if (requested === "regalabs") {
     if (!env.REGALABS_API_KEY) return { transcriber: null, provider: "off", description: "regalabs selected but REGALABS_API_KEY is empty: voice off", language: null, maxSeconds };
     const language = forced(env.REGALABS_ASR_LANGUAGE);
+    const streamUrl = env.REGALABS_STREAM_URL?.trim();
+    if (streamUrl) {
+      let url: URL;
+      try {
+        url = new URL(streamUrl);
+        if (url.protocol !== "wss:" || url.username || url.password) throw new Error("invalid socket URL");
+      } catch {
+        return { transcriber: null, provider: "off", description: "invalid REGALABS_STREAM_URL: voice off", language: null, maxSeconds };
+      }
+      const transcriber = createRegalabsStreamTranscriber({ url: streamUrl, apiKey: env.REGALABS_API_KEY, language: language ?? "auto", timeoutMs });
+      return { transcriber, provider: "regalabs", description: `RegaLabs streaming ASR (${language ?? "auto"}) at ${url.host}`, language: language ?? "auto", maxSeconds };
+    }
     const baseUrl = env.REGALABS_BASE_URL?.trim() || REGALABS_DEFAULT_BASE_URL;
     const transcriber = createOpenAICompatTranscriber({ baseUrl, apiKey: env.REGALABS_API_KEY, provider: "regalabs", ...(language ? { language } : {}), timeoutMs, ...fetchOpt });
     const shown = language ?? REGALABS_DEFAULT_LANGUAGE;

@@ -33,5 +33,13 @@ services:
         value: "1"
       - key: LLM_CACHE
         value: "0"
-      - key: ASR_PROVIDER        # enable only after a reachable ASR endpoint is configured
-        value: "off"
+      - key: ASR_PROVIDER
+        value: "regalabs"
+      - key: REGALABS_API_KEY
+        sync: false
+      - key: REGALABS_STREAM_URL
+        value: "wss://api.regalabs.dev/v1/audio/transcriptions/stream"
+      - key: REGALABS_ASR_LANGUAGE
+        value: "auto"
+      - key: ASR_NO_CONFIDENCE
+        value: "readback"

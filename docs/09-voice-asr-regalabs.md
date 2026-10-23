@@ -3,11 +3,19 @@
 Updated 2026-10-21: **local Stage-11 API available for laptop testing**, according to the author's client checks below; corpus voice evaluation is still pending. Disclose (docs/19,
 `DISCLOSURE.md`): RegaLabs is the author's company; the ASR predates the challenge and is called as an external API.
 
-## Hosted voice setup, 2026-10-23
+## Selected demo transport — streaming ASR, 2026-10-23
+
+The author selected **`wss://api.regalabs.dev/v1/audio/transcriptions/stream`**, verified against [RegaLabs Speech API docs](https://docs.regalabs.dev/#speech-api). The earlier `/v1/audio/stream` socket combines recognition and synthesis and is not the selected demo recognizer. A real authenticated no-audio handshake returned `ready`, `done` and normal close; [evidence](../eval/results/readiness-asr-stream-handshake-2026-10-23T12-01-53-965Z.json).
+
+Set `REGALABS_STREAM_URL` alongside the existing server-side developer key to select this adapter. Keep the current push-to-talk UI: the browser uploads its finished WAV to our server; the server authenticates to the socket, configures `language: auto` and `sample_rate: 16000`, sends raw mono PCM16 in 50 ms frames, then sends `end`. Only ordered final utterances followed by `done` form the final transcript. Ignore partials for intent understanding; timeout, close without `done`, malformed/out-of-order/duplicate finals, failed utterances or dropped audio fail closed. Do not automatically retry a charged stream. No new service or payment path is added, and the key never reaches the browser.
+
+Final transcripts enter the existing voice gate and read-back before Gemini. The live editable composer remains the separate queued work in docs/32; this adapter does not claim browser partials while recording. REST remains available for the pre-existing local Stage-11 wrapper when no stream URL is configured. The current public REST docs specify an explicit/default language rather than automatic detection; use the selected socket's documented `auto` for the hosted bilingual demo.
+
+## Initial hosted voice setup, 2026-10-23
 
 The author supplied a hosted developer key and chose to resume the hosted RegaLabs API. The key, `REGALABS_BASE_URL=https://api.regalabs.dev/v1`, automatic language detection and `ASR_NO_CONFIDENCE=readback` were saved and read back through Render's environment API without printing secret values. Render remains on the free plan. The laptop configuration was preserved separately.
 
-The hosted transcription endpoint currently returns **HTTP 503 `SERVICE_PAUSED`** for both the supplied key and a deliberately invalid test key. This occurs before authentication, so key validity and hosted transcription have not been established. [Probe evidence](../eval/results/readiness-hosted-asr-probe-2026-10-23T11-44-55-801Z.json). Voice remains explicitly off until the API resumes; the text demo remains available. No laptop-ASR tunnel was started.
+The initial REST transcription check returned **HTTP 503 `SERVICE_PAUSED`** for both the supplied key and a deliberately invalid test key, before authentication. [Probe evidence](../eval/results/readiness-hosted-asr-probe-2026-10-23T11-44-55-801Z.json). The author then resumed the service and selected the dedicated streaming recognizer described above. No laptop-ASR tunnel was started.
 
 After the API resumes, check the supplied key with a synthetic WAV, set the existing Render service's `ASR_PROVIDER=regalabs`, redeploy the existing application commit, then verify the mic, upload/read-back and Gemini continuation over public HTTPS. Every transcript still requires read-back acceptance and every payment still requires its separate confirmation card. Synthetic test audio was generated with eSpeak NG and converted to 16 kHz mono PCM16 by FFmpeg; it is a transport fixture, not human task speech or WER evidence.
 

@@ -22,6 +22,16 @@ describe("asrFromEnv", () => {
     expect(c.provider).toBe("off");
     expect(c.description).toMatch(/REGALABS_API_KEY/);
   });
+  it("an explicit dedicated stream URL selects the streaming adapter without revealing the key", () => {
+    const c = asrFromEnv({ REGALABS_API_KEY: "rega_live_private", REGALABS_STREAM_URL: "wss://api.regalabs.dev/v1/audio/transcriptions/stream" });
+    expect(c.provider).toBe("regalabs"); expect(c.language).toBe("auto");
+    expect(c.transcriber?.id).toBe("regalabs-stream:auto");
+    expect(c.description).toContain("stream"); expect(c.description).not.toContain("rega_live_private");
+  });
+  it.each(["invalid", "ws://public.example/stream", "wss://user:password@example.com/stream"])("invalid stream config leaves voice off and text available: %s", (url) => {
+    const c = asrFromEnv({ REGALABS_API_KEY: "k", REGALABS_STREAM_URL: url });
+    expect(c.provider).toBe("off"); expect(c.transcriber).toBeNull();
+  });
   it("language and base URL can be overridden", () => {
     const c = asrFromEnv({ REGALABS_API_KEY: "k", REGALABS_ASR_LANGUAGE: "ar", REGALABS_BASE_URL: "http://localhost:8080/v1" });
     expect(c.language).toBe("ar");
