@@ -1,0 +1,515 @@
+{
+  "config": {
+    "configFile": "/home/jackal/storage/Desktop/ZainCash/apps/web/playwright.production.config.ts",
+    "rootDir": "/home/jackal/storage/Desktop/ZainCash/apps/web",
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": {},
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "../../.cache/production-e2e/browser.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "quiet": false,
+    "projects": [
+      {
+        "outputDir": "/home/jackal/storage/Desktop/ZainCash/.cache/production-e2e/browser-output",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "/home/jackal/storage/Desktop/ZainCash/apps/web",
+        "testIgnore": [],
+        "testMatch": [
+          "e2e/demo.spec.ts",
+          "production-e2e/*.spec.ts"
+        ],
+        "timeout": 120000
+      }
+    ],
+    "shard": null,
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.56.1",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "e2e/demo.spec.ts",
+      "file": "e2e/demo.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "phone at 200% zoom keeps the language controls, payment amount and input within reach",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 19608,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-23T12:45:44.401Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4a06fc6d054828de402a-bee8a700cdbac2978295",
+          "file": "e2e/demo.spec.ts",
+          "line": 21,
+          "column": 1
+        },
+        {
+          "title": "hero: two Ahmeds is a question, the pick gives a card, confirm sends once",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 77814,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeGreaterThan\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: > \u001b[32m0\u001b[39m\nReceived:   \u001b[31m0\u001b[39m\n\nCall Log:\n- Timeout 65000ms exceeded while waiting on the predicate",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeGreaterThan\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: > \u001b[32m0\u001b[39m\nReceived:   \u001b[31m0\u001b[39m\n\nCall Log:\n- Timeout 65000ms exceeded while waiting on the predicate\n    at /home/jackal/storage/Desktop/ZainCash/apps/web/e2e/demo.spec.ts:52:3",
+                    "location": {
+                      "file": "/home/jackal/storage/Desktop/ZainCash/apps/web/e2e/demo.spec.ts",
+                      "column": 3,
+                      "line": 52
+                    },
+                    "snippet": "  50 |   await expect.poll(() => conversation.evaluate((e) => e.scrollTop)).toBe(0);\n  51 |   await conversation.press(\"End\");\n> 52 |   await expect.poll(() => conversation.evaluate((e) => e.scrollTop)).toBeGreaterThan(0);\n     |   ^\n  53 | });\n  54 |\n  55 | test(\"cancel on the card: nothing is sent\", async ({ page }) => {"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/home/jackal/storage/Desktop/ZainCash/apps/web/e2e/demo.spec.ts",
+                        "column": 3,
+                        "line": 52
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeGreaterThan\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: > \u001b[32m0\u001b[39m\nReceived:   \u001b[31m0\u001b[39m\n\nCall Log:\n- Timeout 65000ms exceeded while waiting on the predicate\n\n  50 |   await expect.poll(() => conversation.evaluate((e) => e.scrollTop)).toBe(0);\n  51 |   await conversation.press(\"End\");\n> 52 |   await expect.poll(() => conversation.evaluate((e) => e.scrollTop)).toBeGreaterThan(0);\n     |   ^\n  53 | });\n  54 |\n  55 | test(\"cancel on the card: nothing is sent\", async ({ page }) => {\n    at /home/jackal/storage/Desktop/ZainCash/apps/web/e2e/demo.spec.ts:52:3"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-23T12:46:04.193Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "screenshot",
+                      "contentType": "image/png",
+                      "path": "/home/jackal/storage/Desktop/ZainCash/.cache/production-e2e/browser-output/e2e-demo-hero-two-Ahmeds-i-faef8-s-a-card-confirm-sends-once/test-failed-1.png"
+                    },
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/home/jackal/storage/Desktop/ZainCash/.cache/production-e2e/browser-output/e2e-demo-hero-two-Ahmeds-i-faef8-s-a-card-confirm-sends-once/error-context.md"
+                    },
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "/home/jackal/storage/Desktop/ZainCash/.cache/production-e2e/browser-output/e2e-demo-hero-two-Ahmeds-i-faef8-s-a-card-confirm-sends-once/trace.zip"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/home/jackal/storage/Desktop/ZainCash/apps/web/e2e/demo.spec.ts",
+                    "column": 3,
+                    "line": 52
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "4a06fc6d054828de402a-fcbfc7979dbf2e0e6399",
+          "file": "e2e/demo.spec.ts",
+          "line": 51,
+          "column": 1
+        },
+        {
+          "title": "cancel on the card: nothing is sent",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 11022,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-23T12:47:22.885Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4a06fc6d054828de402a-b8756f5576818e611426",
+          "file": "e2e/demo.spec.ts",
+          "line": 88,
+          "column": 1
+        },
+        {
+          "title": "the connection drops after the wallet debited: «جاي نتأكد», then ONE debit",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 17397,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-23T12:47:34.102Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4a06fc6d054828de402a-3e224582bec11944d602",
+          "file": "e2e/demo.spec.ts",
+          "line": 102,
+          "column": 1
+        },
+        {
+          "title": "biller down: an honest error, no card, nothing charged",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3410,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-23T12:47:51.514Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4a06fc6d054828de402a-c42ebf824495069ccdd4",
+          "file": "e2e/demo.spec.ts",
+          "line": 121,
+          "column": 1
+        },
+        {
+          "title": "an unconfirmed card expires when the time runs out",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 4486,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-23T12:47:54.942Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4a06fc6d054828de402a-cc6992104e1a67ce7da7",
+          "file": "e2e/demo.spec.ts",
+          "line": 135,
+          "column": 1
+        },
+        {
+          "title": "schedule: approved now, paid at the time, by the wallet's own runner",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 5842,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-23T12:47:59.453Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4a06fc6d054828de402a-057a7328079b59ddb0b4",
+          "file": "e2e/demo.spec.ts",
+          "line": 149,
+          "column": 1
+        },
+        {
+          "title": "two judges at once: one payment never shows in the other's wallet",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 13382,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-23T12:48:05.312Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4a06fc6d054828de402a-4901007b91ddb17e5581",
+          "file": "e2e/demo.spec.ts",
+          "line": 194,
+          "column": 1
+        },
+        {
+          "title": "Kurdish: the picker switches the whole screen; two Arases is a question; the Kurdish card confirms once",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 17553,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-23T12:48:18.710Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4a06fc6d054828de402a-63b820fe581fc496c1ee",
+          "file": "e2e/demo.spec.ts",
+          "line": 213,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "production-e2e/recovery.spec.ts",
+      "file": "production-e2e/recovery.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "production browser: lost confirmation response recovers one debit and keeps the receipt after a recheck",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "timedOut",
+                  "duration": 120376,
+                  "error": {
+                    "message": "\u001b[31mTest timeout of 120000ms exceeded.\u001b[39m",
+                    "stack": "\u001b[31mTest timeout of 120000ms exceeded.\u001b[39m"
+                  },
+                  "errors": [
+                    {
+                      "message": "\u001b[31mTest timeout of 120000ms exceeded.\u001b[39m"
+                    },
+                    {
+                      "location": {
+                        "file": "/home/jackal/storage/Desktop/ZainCash/apps/web/production-e2e/recovery.spec.ts",
+                        "column": 84,
+                        "line": 21
+                      },
+                      "message": "Error: locator.click: Test timeout of 120000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: '🔄 تأكد من النتيجة (لا تعيد الإرسال)' })\u001b[22m\n\n\n  19 |   await card.getByRole(\"button\", { name: \"أكّد ودز\" }).click();\n  20 |   await expect(page.getByText(\"ما متأكدين إذا انرسلت. لا تعيد الإرسال، راح نتأكد ونبلغك.\")).toBeVisible();\n> 21 |   await page.getByRole(\"button\", { name: \"تحقق شصار بالعملية (ما راح ينرسل مرتين)\", exact: true }).click();\n     |                                                                                    ^\n  22 |   await expect(page.getByRole(\"region\", { name: \"الإيصال\" })).toContainText(\"23,000 د.ع\");\n  23 |   await expect(balance).toHaveText(\"176,700 د.ع\");\n  24 |   const sid = await page.evaluate(() => sessionStorage.getItem(\"zc_session\"));\n    at /home/jackal/storage/Desktop/ZainCash/apps/web/production-e2e/recovery.spec.ts:21:84"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-23T12:48:36.293Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "screenshot",
+                      "contentType": "image/png",
+                      "path": "/home/jackal/storage/Desktop/ZainCash/.cache/production-e2e/browser-output/production-e2e-recovery-pr-eedb6-the-receipt-after-a-recheck/test-failed-1.png"
+                    },
+                    {
+                      "name": "screenshot",
+                      "contentType": "image/png",
+                      "path": "/home/jackal/storage/Desktop/ZainCash/.cache/production-e2e/browser-output/production-e2e-recovery-pr-eedb6-the-receipt-after-a-recheck/test-failed-2.png"
+                    },
+                    {
+                      "name": "screenshot",
+                      "contentType": "image/png",
+                      "path": "/home/jackal/storage/Desktop/ZainCash/.cache/production-e2e/browser-output/production-e2e-recovery-pr-eedb6-the-receipt-after-a-recheck/test-failed-3.png"
+                    },
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/home/jackal/storage/Desktop/ZainCash/.cache/production-e2e/browser-output/production-e2e-recovery-pr-eedb6-the-receipt-after-a-recheck/error-context.md"
+                    },
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "/home/jackal/storage/Desktop/ZainCash/.cache/production-e2e/browser-output/production-e2e-recovery-pr-eedb6-the-receipt-after-a-recheck/trace.zip"
+                    }
+                  ]
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "fffeaea2570315be741c-47e462e92f44df7606fb",
+          "file": "production-e2e/recovery.spec.ts",
+          "line": 2,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-23T12:45:43.691Z",
+    "duration": 293531.96,
+    "expected": 8,
+    "skipped": 0,
+    "unexpected": 2,
+    "flaky": 0
+  },
+  "production_provenance": {
+    "application_commit": "921334514023048b99e4353c518498d37792afd4",
+    "deploy_id": "dep-dbdl13on74is7395mc4g",
+    "base": "https://zc-billpay-agent.onrender.com",
+    "note": "Real production browser checks, synthetic fresh sessions; initial viewport/label harness failures preserved. Screenshot/trace files remain local. No held-out data."
+  }
+}

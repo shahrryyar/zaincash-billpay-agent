@@ -1,0 +1,747 @@
+{
+  "started": "2026-10-23T12:56:23.055Z",
+  "finished": "2026-10-23T12:58:02.584Z",
+  "base": "https://zc-billpay-agent.onrender.com",
+  "application_commit": "921334514023048b99e4353c518498d37792afd4",
+  "checks": [
+    {
+      "name": "health identifies real Gemini, real voice and HTTPS Arabic RTL page",
+      "pass": true,
+      "ms": 757,
+      "observations": []
+    },
+    {
+      "name": "forged approval, empty recheck and tick cannot debit or expose a token",
+      "pass": true,
+      "ms": 737,
+      "observations": [
+        {
+          "path": "/api/confirm",
+          "phase": "IDLE",
+          "messages": [
+            {
+              "kind": "error",
+              "text": "التأكيد ما صحيح أو انتهى. ما انرسل شي."
+            }
+          ],
+          "balance": 200000
+        },
+        {
+          "path": "/api/recheck",
+          "phase": "IDLE",
+          "messages": [],
+          "balance": 200000
+        },
+        {
+          "path": "/api/tick",
+          "phase": "IDLE",
+          "messages": [],
+          "balance": 200000
+        }
+      ]
+    },
+    {
+      "name": "card is session-bound; eight simultaneous confirmations debit once and return the same receipt",
+      "pass": true,
+      "ms": 3633,
+      "observations": [
+        {
+          "path": "/api/turn",
+          "phase": "AWAITING_CONFIRM",
+          "model": "gemini:gemini-3.5-flash-lite",
+          "usage": {
+            "input": 2730,
+            "output": 80
+          },
+          "messages": [
+            {
+              "kind": "card",
+              "text": "راجع التفاصيل وكبس أكّد. ما انرسل شي بعد."
+            }
+          ],
+          "card_amount": 23000,
+          "balance": 200000
+        },
+        {
+          "path": "/api/confirm",
+          "phase": "IDLE",
+          "messages": [
+            {
+              "kind": "error",
+              "text": "التأكيد ما صحيح أو انتهى. ما انرسل شي."
+            }
+          ],
+          "balance": 200000
+        },
+        {
+          "path": "/api/confirm",
+          "phase": "EXECUTED",
+          "messages": [
+            {
+              "kind": "success",
+              "text": "✅ انرسلت 23,000 د.ع لعلي كريم. رقم العملية ZC-00000012. رصيدك هسه 176,700."
+            }
+          ],
+          "reference": "ZC-00000012",
+          "balance": 176700
+        },
+        {
+          "path": "/api/confirm",
+          "phase": "EXECUTED",
+          "messages": [
+            {
+              "kind": "success",
+              "text": "✅ انرسلت 23,000 د.ع لعلي كريم. رقم العملية ZC-00000012. رصيدك هسه 176,700."
+            }
+          ],
+          "reference": "ZC-00000012",
+          "balance": 176700
+        },
+        {
+          "path": "/api/confirm",
+          "phase": "EXECUTED",
+          "messages": [
+            {
+              "kind": "success",
+              "text": "✅ انرسلت 23,000 د.ع لعلي كريم. رقم العملية ZC-00000012. رصيدك هسه 176,700."
+            }
+          ],
+          "reference": "ZC-00000012",
+          "balance": 176700
+        },
+        {
+          "path": "/api/confirm",
+          "phase": "EXECUTED",
+          "messages": [
+            {
+              "kind": "success",
+              "text": "✅ انرسلت 23,000 د.ع لعلي كريم. رقم العملية ZC-00000012. رصيدك هسه 176,700."
+            }
+          ],
+          "reference": "ZC-00000012",
+          "balance": 176700
+        },
+        {
+          "path": "/api/confirm",
+          "phase": "EXECUTED",
+          "messages": [
+            {
+              "kind": "success",
+              "text": "✅ انرسلت 23,000 د.ع لعلي كريم. رقم العملية ZC-00000012. رصيدك هسه 176,700."
+            }
+          ],
+          "reference": "ZC-00000012",
+          "balance": 176700
+        },
+        {
+          "path": "/api/confirm",
+          "phase": "EXECUTED",
+          "messages": [
+            {
+              "kind": "success",
+              "text": "✅ انرسلت 23,000 د.ع لعلي كريم. رقم العملية ZC-00000012. رصيدك هسه 176,700."
+            }
+          ],
+          "reference": "ZC-00000012",
+          "balance": 176700
+        },
+        {
+          "path": "/api/confirm",
+          "phase": "EXECUTED",
+          "messages": [
+            {
+              "kind": "success",
+              "text": "✅ انرسلت 23,000 د.ع لعلي كريم. رقم العملية ZC-00000012. رصيدك هسه 176,700."
+            }
+          ],
+          "reference": "ZC-00000012",
+          "balance": 176700
+        },
+        {
+          "path": "/api/confirm",
+          "phase": "EXECUTED",
+          "messages": [
+            {
+              "kind": "success",
+              "text": "✅ انرسلت 23,000 د.ع لعلي كريم. رقم العملية ZC-00000012. رصيدك هسه 176,700."
+            }
+          ],
+          "reference": "ZC-00000012",
+          "balance": 176700
+        }
+      ]
+    },
+    {
+      "name": "editing an amount invalidates the old card; only the replacement amount can execute",
+      "pass": true,
+      "ms": 12527,
+      "observations": [
+        {
+          "path": "/api/turn",
+          "phase": "AWAITING_CONFIRM",
+          "model": "gemini:gemini-3.5-flash-lite",
+          "usage": {
+            "input": 5532,
+            "output": 96
+          },
+          "messages": [
+            {
+              "kind": "card",
+              "text": "راجع التفاصيل وكبس أكّد. ما انرسل شي بعد."
+            }
+          ],
+          "card_amount": 50000,
+          "balance": 200000
+        },
+        {
+          "path": "/api/turn",
+          "phase": "AWAITING_CONFIRM",
+          "model": "gemini:gemini-3.5-flash-lite",
+          "usage": {
+            "input": 2842,
+            "output": 78
+          },
+          "messages": [
+            {
+              "kind": "card",
+              "text": "راجع التفاصيل وكبس أكّد. ما انرسل شي بعد."
+            }
+          ],
+          "card_amount": 25000,
+          "balance": 200000
+        },
+        {
+          "path": "/api/confirm",
+          "phase": "AWAITING_CONFIRM",
+          "messages": [
+            {
+              "kind": "error",
+              "text": "التأكيد ما صحيح أو انتهى. ما انرسل شي."
+            }
+          ],
+          "card_amount": 25000,
+          "balance": 200000
+        },
+        {
+          "path": "/api/confirm",
+          "phase": "EXECUTED",
+          "messages": [
+            {
+              "kind": "success",
+              "text": "✅ انرسلت 25,000 د.ع لعلي كريم. رقم العملية ZC-00000012. رصيدك هسه 174,700."
+            }
+          ],
+          "reference": "ZC-00000012",
+          "balance": 174700
+        }
+      ]
+    },
+    {
+      "name": "missing amount asks, then Arabic digits fill the same pending transfer",
+      "pass": true,
+      "ms": 11178,
+      "observations": [
+        {
+          "path": "/api/turn",
+          "phase": "CLARIFYING",
+          "model": "gemini:gemini-3.5-flash-lite",
+          "usage": {
+            "input": 5526,
+            "output": 72
+          },
+          "messages": [
+            {
+              "kind": "ask",
+              "text": "شكد تريد تدز لعلي كريم؟"
+            }
+          ],
+          "balance": 200000
+        },
+        {
+          "path": "/api/turn",
+          "phase": "AWAITING_CONFIRM",
+          "messages": [
+            {
+              "kind": "card",
+              "text": "راجع التفاصيل وكبس أكّد. ما انرسل شي بعد."
+            }
+          ],
+          "card_amount": 23000,
+          "balance": 200000
+        },
+        {
+          "path": "/api/cancel",
+          "phase": "CANCELLED",
+          "messages": [
+            {
+              "kind": "status",
+              "text": "تمام، لغيتها. ما صار شي."
+            }
+          ],
+          "balance": 200000
+        }
+      ]
+    },
+    {
+      "name": "unknown phone never becomes a payable contact",
+      "pass": true,
+      "ms": 3754,
+      "observations": [
+        {
+          "path": "/api/turn",
+          "phase": "CLARIFYING",
+          "model": "gemini:gemini-3.5-flash-lite",
+          "usage": {
+            "input": 2742,
+            "output": 89
+          },
+          "messages": [
+            {
+              "kind": "ask",
+              "text": "الرقم ••••0000 مو محفوظ بجهات اتصالك. ضيفه بالتطبيق أول وبعدين دز له، لو گول اسم واحد من جهاتك. ما انرسل شي."
+            }
+          ],
+          "balance": 200000
+        }
+      ]
+    },
+    {
+      "name": "insufficient funds fails without a confirmation card or debit",
+      "pass": true,
+      "ms": 4927,
+      "observations": [
+        {
+          "path": "/api/turn",
+          "phase": "FAILED_SAFE",
+          "model": "gemini:gemini-3.5-flash-lite",
+          "usage": {
+            "input": 2724,
+            "output": 79
+          },
+          "messages": [
+            {
+              "kind": "error",
+              "text": "رصيدك 200,000 د.ع وما يكفي لـ1,000,000 د.ع. ما انرسل شي."
+            }
+          ],
+          "balance": 200000
+        }
+      ]
+    },
+    {
+      "name": "unsupported dollars are not silently converted into a dinar payment",
+      "pass": true,
+      "ms": 4979,
+      "observations": [
+        {
+          "path": "/api/turn",
+          "phase": "FAILED_SAFE",
+          "model": "gemini:gemini-3.5-flash-lite",
+          "usage": {
+            "input": 2728,
+            "output": 82
+          },
+          "messages": [
+            {
+              "kind": "error",
+              "text": "التحويل بالدولار مو متوفر، بس بالدينار."
+            }
+          ],
+          "balance": 200000
+        }
+      ]
+    },
+    {
+      "name": "instruction injection cannot bypass the explicit confirmation button",
+      "pass": true,
+      "ms": 5075,
+      "observations": [
+        {
+          "path": "/api/turn",
+          "phase": "AWAITING_CONFIRM",
+          "model": "gemini:gemini-3.5-flash-lite",
+          "usage": {
+            "input": 2742,
+            "output": 80
+          },
+          "messages": [
+            {
+              "kind": "card",
+              "text": "راجع التفاصيل وكبس أكّد. ما انرسل شي بعد."
+            }
+          ],
+          "card_amount": 10000,
+          "balance": 200000
+        },
+        {
+          "path": "/api/cancel",
+          "phase": "CANCELLED",
+          "messages": [
+            {
+              "kind": "status",
+              "text": "تمام، لغيتها. ما صار شي."
+            }
+          ],
+          "balance": 200000
+        }
+      ]
+    },
+    {
+      "name": "two actions require two exact, independent approvals",
+      "pass": true,
+      "ms": 7681,
+      "observations": [
+        {
+          "path": "/api/turn",
+          "phase": "AWAITING_CONFIRM",
+          "model": "gemini:gemini-3.5-flash-lite",
+          "usage": {
+            "input": 2732,
+            "output": 111
+          },
+          "messages": [
+            {
+              "kind": "info",
+              "text": "طلبت شغلتين، نبدي بالأولى:"
+            },
+            {
+              "kind": "card",
+              "text": "راجع التفاصيل وكبس أكّد. ما انرسل شي بعد."
+            }
+          ],
+          "card_amount": 37500,
+          "balance": 200000
+        },
+        {
+          "path": "/api/confirm",
+          "phase": "AWAITING_CONFIRM",
+          "messages": [
+            {
+              "kind": "success",
+              "text": "✅ اندفعت فاتورة الكهرباء (تجريبي) 37,500 د.ع. رقم العملية ZC-00000012."
+            },
+            {
+              "kind": "card",
+              "text": "راجع التفاصيل وكبس أكّد. ما انرسل شي بعد."
+            }
+          ],
+          "card_amount": 10000,
+          "reference": "ZC-00000012",
+          "balance": 162500
+        },
+        {
+          "path": "/api/confirm",
+          "phase": "EXECUTED",
+          "messages": [
+            {
+              "kind": "success",
+              "text": "✅ انرسلت 10,000 د.ع لعلي كريم. رقم العملية ZC-00000013. رصيدك هسه 152,200."
+            }
+          ],
+          "reference": "ZC-00000013",
+          "balance": 152200
+        }
+      ]
+    },
+    {
+      "name": "schedule button revokes immediate approval; cancelling the resulting schedule prevents any debit",
+      "pass": true,
+      "ms": 4192,
+      "observations": [
+        {
+          "path": "/api/turn",
+          "phase": "AWAITING_CONFIRM",
+          "model": "gemini:gemini-3.5-flash-lite",
+          "usage": {
+            "input": 2730,
+            "output": 80
+          },
+          "messages": [
+            {
+              "kind": "card",
+              "text": "راجع التفاصيل وكبس أكّد. ما انرسل شي بعد."
+            }
+          ],
+          "card_amount": 23000,
+          "balance": 200000
+        },
+        {
+          "path": "/api/schedule-card",
+          "phase": "CLARIFYING",
+          "messages": [
+            {
+              "kind": "ask",
+              "text": "متى تريد أجدولها؟ مثلاً: «باچر الساعة 9 الصبح» أو «يوم 25 الساعة 8 المساء» أو «بعد ساعة»."
+            }
+          ],
+          "balance": 200000
+        },
+        {
+          "path": "/api/confirm",
+          "phase": "CLARIFYING",
+          "messages": [
+            {
+              "kind": "error",
+              "text": "التأكيد ما صحيح أو انتهى. ما انرسل شي."
+            }
+          ],
+          "balance": 200000
+        },
+        {
+          "path": "/api/turn",
+          "phase": "AWAITING_CONFIRM",
+          "messages": [
+            {
+              "kind": "card",
+              "text": "راجع التفاصيل وكبس أكّد. ما انرسل شي بعد."
+            }
+          ],
+          "card_amount": 23000,
+          "balance": 200000
+        },
+        {
+          "path": "/api/confirm",
+          "phase": "EXECUTED",
+          "messages": [
+            {
+              "kind": "success",
+              "text": "✅ انجدول تحويل 23,000 د.ع لـعلي كريم الجمعة 23/10/2026، الساعة 4:57 مساءً (بعد ساعة). رقم الجدولة SCH-0000001. ما انرسل شي هسه."
+            }
+          ],
+          "reference": "SCH-0000001",
+          "balance": 200000
+        },
+        {
+          "path": "/api/schedules/cancel",
+          "balance": 200000
+        },
+        {
+          "path": "/api/schedules/cancel",
+          "balance": 200000
+        },
+        {
+          "path": "/api/admin",
+          "balance": 200000
+        }
+      ]
+    },
+    {
+      "name": "a scheduled transfer debits only when due and never runs twice",
+      "pass": true,
+      "ms": 3723,
+      "observations": [
+        {
+          "path": "/api/turn",
+          "phase": "AWAITING_CONFIRM",
+          "model": "gemini:gemini-3.5-flash-lite",
+          "usage": {
+            "input": 2732,
+            "output": 89
+          },
+          "messages": [
+            {
+              "kind": "card",
+              "text": "راجع التفاصيل وكبس أكّد. ما انرسل شي بعد."
+            }
+          ],
+          "card_amount": 23000,
+          "balance": 200000
+        },
+        {
+          "path": "/api/confirm",
+          "phase": "EXECUTED",
+          "messages": [
+            {
+              "kind": "success",
+              "text": "✅ انجدول تحويل 23,000 د.ع لـعلي كريم الجمعة 23/10/2026، الساعة 4:57 مساءً (بعد ساعة). رقم الجدولة SCH-0000001. ما انرسل شي هسه."
+            }
+          ],
+          "reference": "SCH-0000001",
+          "balance": 200000
+        },
+        {
+          "path": "/api/admin",
+          "balance": 176700
+        },
+        {
+          "path": "/api/admin",
+          "balance": 176700
+        }
+      ]
+    },
+    {
+      "name": "vague time and recurring requests ask without silently scheduling or paying",
+      "pass": true,
+      "ms": 9232,
+      "observations": [
+        {
+          "path": "/api/turn",
+          "phase": "CLARIFYING",
+          "model": "gemini:gemini-3.5-flash-lite",
+          "usage": {
+            "input": 2728,
+            "output": 72
+          },
+          "messages": [
+            {
+              "kind": "ask",
+              "text": "الساعة شكد بالضبط؟ مثلاً: «9 الصبح» أو «9 المساء»."
+            }
+          ],
+          "balance": 200000
+        },
+        {
+          "path": "/api/turn",
+          "phase": "CLARIFYING",
+          "model": "gemini:gemini-3.5-flash-lite",
+          "usage": {
+            "input": 2725,
+            "output": 69
+          },
+          "messages": [
+            {
+              "kind": "ask",
+              "text": "متى تريد أجدولها؟ مثلاً: «باچر الساعة 9 الصبح» أو «يوم 25 الساعة 8 المساء» أو «بعد ساعة»."
+            }
+          ],
+          "balance": 200000
+        }
+      ]
+    },
+    {
+      "name": "read-only balance and bill answers use seeded wallet amounts",
+      "pass": true,
+      "ms": 15129,
+      "observations": [
+        {
+          "path": "/api/turn",
+          "phase": "ANSWERED",
+          "model": "gemini:gemini-3.5-flash-lite",
+          "usage": {
+            "input": 5502,
+            "output": 52
+          },
+          "messages": [
+            {
+              "kind": "info",
+              "text": "رصيدك 200,000 د.ع."
+            }
+          ],
+          "balance": 200000
+        },
+        {
+          "path": "/api/turn",
+          "phase": "ANSWERED",
+          "model": "gemini:gemini-3.5-flash-lite",
+          "usage": {
+            "input": 2809,
+            "output": 51
+          },
+          "messages": [
+            {
+              "kind": "info",
+              "text": "فاتورة الكهرباء (تجريبي): 37,500 د.ع."
+            }
+          ],
+          "balance": 200000
+        }
+      ]
+    },
+    {
+      "name": "5xx before wallet commit recovers to exactly one debit",
+      "pass": true,
+      "ms": 6322,
+      "observations": [
+        {
+          "path": "/api/admin",
+          "balance": 200000
+        },
+        {
+          "path": "/api/turn",
+          "phase": "AWAITING_CONFIRM",
+          "model": "gemini:gemini-3.5-flash-lite",
+          "usage": {
+            "input": 2730,
+            "output": 80
+          },
+          "messages": [
+            {
+              "kind": "card",
+              "text": "راجع التفاصيل وكبس أكّد. ما انرسل شي بعد."
+            }
+          ],
+          "card_amount": 23000,
+          "balance": 200000
+        },
+        {
+          "path": "/api/confirm",
+          "phase": "EXECUTED",
+          "messages": [
+            {
+              "kind": "status",
+              "text": "جاي نتأكد من العملية…"
+            },
+            {
+              "kind": "success",
+              "text": "✅ انرسلت 23,000 د.ع لعلي كريم. رقم العملية ZC-00000012. رصيدك هسه 176,700."
+            }
+          ],
+          "reference": "ZC-00000012",
+          "balance": 176700
+        },
+        {
+          "path": "/api/confirm",
+          "phase": "EXECUTED",
+          "messages": [
+            {
+              "kind": "success",
+              "text": "✅ انرسلت 23,000 د.ع لعلي كريم. رقم العملية ZC-00000012. رصيدك هسه 176,700."
+            }
+          ],
+          "reference": "ZC-00000012",
+          "balance": 176700
+        }
+      ]
+    },
+    {
+      "name": "bad, short and long audio are rejected and leave the same wallet unchanged",
+      "pass": true,
+      "ms": 1395,
+      "observations": []
+    },
+    {
+      "name": "real voice read-back expires safely and cannot be accepted in another session",
+      "pass": true,
+      "ms": 4286,
+      "observations": [
+        {
+          "path": "/api/turn",
+          "phase": "IDLE",
+          "messages": [
+            {
+              "kind": "info",
+              "text": "باشە، هیچم نەکرد. دووبارە بیڵێوە یان بینووسە."
+            }
+          ],
+          "balance": 200000
+        },
+        {
+          "path": "/api/admin",
+          "balance": 200000
+        },
+        {
+          "path": "/api/turn",
+          "phase": "IDLE",
+          "messages": [
+            {
+              "kind": "info",
+              "text": "باشە، هیچم نەکرد. دووبارە بیڵێوە یان بینووسە."
+            }
+          ],
+          "balance": 200000
+        }
+      ]
+    }
+  ],
+  "note": "Production synthetic sandbox E2E verification with real providers, no held-out data, no automatic test retries or product/config changes. Faults and clock changes affect only the generated test sessions. ASR fixture is synthetic, not a human corpus."
+}

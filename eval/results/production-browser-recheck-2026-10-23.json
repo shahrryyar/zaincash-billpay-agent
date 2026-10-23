@@ -1,0 +1,161 @@
+{
+  "config": {
+    "configFile": "/home/jackal/storage/Desktop/ZainCash/apps/web/playwright.production.config.ts",
+    "rootDir": "/home/jackal/storage/Desktop/ZainCash/apps/web",
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": {},
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "../../.cache/production-e2e/browser-corrected.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "quiet": false,
+    "projects": [
+      {
+        "outputDir": "/home/jackal/storage/Desktop/ZainCash/.cache/production-e2e/browser-corrected-output",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "/home/jackal/storage/Desktop/ZainCash/apps/web",
+        "testIgnore": [],
+        "testMatch": [
+          "e2e/demo.spec.ts",
+          "production-e2e/*.spec.ts"
+        ],
+        "timeout": 120000
+      }
+    ],
+    "shard": null,
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.56.1",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "e2e/demo.spec.ts",
+      "file": "e2e/demo.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "hero: two Ahmeds is a question, the pick gives a card, confirm sends once",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 9516,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-23T12:54:30.147Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4a06fc6d054828de402a-fcbfc7979dbf2e0e6399",
+          "file": "e2e/demo.spec.ts",
+          "line": 51,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "production-e2e/recovery.spec.ts",
+      "file": "production-e2e/recovery.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "production browser: lost confirmation response recovers one debit and keeps the receipt after a recheck",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 14562,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-23T12:54:39.906Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "fffeaea2570315be741c-47e462e92f44df7606fb",
+          "file": "production-e2e/recovery.spec.ts",
+          "line": 2,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-23T12:54:29.331Z",
+    "duration": 25304.432999999997,
+    "expected": 2,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "production_provenance": {
+    "application_commit": "921334514023048b99e4353c518498d37792afd4",
+    "deploy_id": "dep-dbdl13on74is7395mc4g",
+    "base": "https://zc-billpay-agent.onrender.com",
+    "note": "Real production browser checks, synthetic fresh sessions; initial viewport/label harness failures preserved. Screenshot/trace files remain local. No held-out data."
+  }
+}
