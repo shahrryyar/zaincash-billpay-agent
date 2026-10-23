@@ -1,0 +1,35 @@
+{
+  "date": "2026-10-23T11:44:55.801Z",
+  "endpoint": "https://api.regalabs.dev",
+  "synthetic_audio": "eSpeak NG Arabic synthetic speech; transport check, not task accuracy evaluation",
+  "results": [
+    {
+      "path": "/health",
+      "status": 404,
+      "server": null,
+      "body": "{\"error\":\"NOT_FOUND\",\"message\":\"No route matches GET /health.\"}"
+    },
+    {
+      "path": "/healthz",
+      "status": 404,
+      "server": null,
+      "body": "{\"error\":\"NOT_FOUND\",\"message\":\"No route matches GET /healthz.\"}"
+    },
+    {
+      "path": "/v1/audio/transcriptions",
+      "credential": "deliberately invalid test key",
+      "status": 503,
+      "ms": 320,
+      "server": null,
+      "body": "{\"error\":\"SERVICE_PAUSED\",\"message\":\"This service is temporarily paused. Please try again later.\"}"
+    },
+    {
+      "path": "/v1/audio/transcriptions",
+      "credential": "supplied hosted key",
+      "status": 503,
+      "ms": 324,
+      "server": null,
+      "body": "{\"error\":\"SERVICE_PAUSED\",\"message\":\"This service is temporarily paused. Please try again later.\"}"
+    }
+  ]
+}

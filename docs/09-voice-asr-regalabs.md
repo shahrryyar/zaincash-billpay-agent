@@ -3,6 +3,14 @@
 Updated 2026-10-21: **local Stage-11 API available for laptop testing**, according to the author's client checks below; corpus voice evaluation is still pending. Disclose (docs/19,
 `DISCLOSURE.md`): RegaLabs is the author's company; the ASR predates the challenge and is called as an external API.
 
+## Hosted voice setup, 2026-10-23
+
+The author supplied a hosted developer key and chose to resume the hosted RegaLabs API. The key, `REGALABS_BASE_URL=https://api.regalabs.dev/v1`, automatic language detection and `ASR_NO_CONFIDENCE=readback` were saved and read back through Render's environment API without printing secret values. Render remains on the free plan. The laptop configuration was preserved separately.
+
+The hosted transcription endpoint currently returns **HTTP 503 `SERVICE_PAUSED`** for both the supplied key and a deliberately invalid test key. This occurs before authentication, so key validity and hosted transcription have not been established. [Probe evidence](../eval/results/readiness-hosted-asr-probe-2026-10-23T11-44-55-801Z.json). Voice remains explicitly off until the API resumes; the text demo remains available. No laptop-ASR tunnel was started.
+
+After the API resumes, check the supplied key with a synthetic WAV, set the existing Render service's `ASR_PROVIDER=regalabs`, redeploy the existing application commit, then verify the mic, upload/read-back and Gemini continuation over public HTTPS. Every transcript still requires read-back acceptance and every payment still requires its separate confirmation card. Synthetic test audio was generated with eSpeak NG and converted to 16 kHz mono PCM16 by FFmpeg; it is a transport fixture, not human task speech or WER evidence.
+
 ## Local Stage-11 option (2026-10-21, author-reported checks)
 
 The laptop service in `rega-asr-work/local-asr/server.py` implements the same transcription contract at
