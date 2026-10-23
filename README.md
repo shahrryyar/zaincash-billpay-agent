@@ -3,6 +3,8 @@
 > **From one Iraqi-Arabic sentence to a safe, confirmed transaction.**
 > The model understands. Code moves money.
 
+**[Open the live demo →](https://zc-billpay-agent.onrender.com)** · Synthetic wallet only; no real money moves. Arabic and Sorani text input. The free host can take about a minute to wake after inactivity.
+
 Solo entry by Shahryar Sabir Muhammed (RegaLabs). Status: **working end to end** (core, mock wallet, LLM layer, orchestrator, web app, eval harness). Project state: [MEMORY.md](MEMORY.md). **Deadlines: design brief 22/10, MVP 08/11.**
 
 ---
