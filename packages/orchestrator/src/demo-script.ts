@@ -43,6 +43,6 @@ const SCRIPT_BY_KEY = new Map(Object.entries(DEMO_SCRIPT).map(([k, v]) => [norma
 /** An Understander that answers only the sentences above (matched after Arabic normalisation). No network, no key. */
 export function createScriptedUnderstander(): Understander {
   return {
-    understand: async ({ text }) => ({ raw: SCRIPT_BY_KEY.get(normaliseArabic(text)) ?? null, toolCalls: [], usage: { input: 0, output: 0 }, model: "fake (scripted demo sentences)", mode: "workflow", turns: 1 }),
+    understand: async ({ text }) => ({ raw: SCRIPT_BY_KEY.get(normaliseArabic(text)) ?? null, toolCalls: [], usage: { input: 0, output: 0 }, model: "fake (scripted demo sentences)", mode: "workflow", turns: 1, requests: 0 }),
   };
 }

@@ -16,7 +16,8 @@ export type ToolChoice = "auto" | { name: string };
 export type CompleteRequest = { system: string; systemPrefix?: string; messages: Msg[]; tools: ToolDef[]; toolChoice: ToolChoice; maxTokens: number };
 /** input = tokens billed at the normal rate; cacheRead / cacheWrite = prompt-cache tokens (read at a fraction of the price, write at a small premium). */
 export type Usage = { input: number; output: number; cacheRead?: number; cacheWrite?: number };
-export type CompleteResponse = { content: Block[]; stop: "tool_use" | "end" | "max_tokens"; usage: Usage; via?: string };
+/** `attempts`: upstream requests behind this answer (retries included, 0 for a cache hit); absent means one. Free tiers count each. */
+export type CompleteResponse = { content: Block[]; stop: "tool_use" | "end" | "max_tokens"; usage: Usage; via?: string; attempts?: number };
 
 export interface ChatClient {
   /** e.g. "anthropic:claude-haiku-5-5", logged with every result. */

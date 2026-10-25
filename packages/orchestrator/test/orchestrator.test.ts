@@ -680,3 +680,24 @@ describe("answering «أي فاتورة؟» with any alias of the biller", () =>
     expect(r.card).toMatchObject({ kind: "bill_pay", biller: { name: "شركة النور للإنترنت (تجريبي)" } });
   });
 });
+
+describe("trace: upstream model requests per turn (free-tier quota planning, docs/35 FA-03)", () => {
+  const counting = (requests: number | undefined) => () => ({
+    understand: async () => ({ raw: transferIntent("علي كريم", 25_000, "25 الف"), toolCalls: [], usage: { input: 1, output: 1 }, model: "x", mode: "tools" as const, turns: 2, ...(requests === undefined ? {} : { requests }) }),
+  });
+  it("reports the understander's request count", async () => {
+    const e = setup({ understanderFor: counting(3) });
+    const r = await e.orch.turn("s", { text: "دز 25 الف لعلي كريم" });
+    expect(r.trace.model_requests).toBe(3);
+    expect(r.card).not.toBeNull();
+  });
+  it("leaves it out when the understander does not count (scripted fakes)", async () => {
+    const e = setup({ understanderFor: counting(undefined) });
+    expect((await e.orch.turn("s", { text: "دز 25 الف لعلي كريم" })).trace.model_requests).toBeUndefined();
+  });
+  it("a turn answered without the model reports none", async () => {
+    const e = setup({ understanderFor: counting(3) });
+    await e.orch.turn("s", { text: "دز 25 الف لعلي كريم" });
+    expect((await e.orch.turn("s", { text: "الغي" })).trace.model_requests).toBeUndefined();
+  });
+});

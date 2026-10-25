@@ -7,7 +7,8 @@ import { addUsage, type Block, type ChatClient, type Msg, type Usage } from "./t
 
 export type UnderstandInput = { text: string; context: { billers: string[]; awaiting?: string | undefined; recent?: string | undefined; lang?: PromptLang | undefined } };
 export type ToolTrace = { name: string; args: unknown; ok: boolean };
-export type UnderstandResult = { raw: unknown; toolCalls: ToolTrace[]; usage: Usage; model: string; mode: PromptMode; turns: number };
+/** `requests`: upstream model requests this turn used (retries included, cache hits excluded), for free-tier quota planning. */
+export type UnderstandResult = { raw: unknown; toolCalls: ToolTrace[]; usage: Usage; model: string; mode: PromptMode; turns: number; requests?: number };
 
 export interface Understander {
   understand(input: UnderstandInput): Promise<UnderstandResult>;
@@ -50,6 +51,7 @@ export function createUnderstander(opts: UnderstanderOptions): Understander {
       const messages: Msg[] = [{ role: "user", content: [{ type: "text", text: input.text }] }];
       const trace: ToolTrace[] = [];
       let usage: Usage = { input: 0, output: 0 };
+      let requests = 0;
       let via = chat.id;
       let executed = 0;
       const maxTurns = mode === "workflow" ? 1 : maxToolCalls + 2;
@@ -59,27 +61,29 @@ export function createUnderstander(opts: UnderstanderOptions): Understander {
         const forced = mode === "workflow" || executed >= maxToolCalls || turn === maxTurns;
         let res = await chat.complete({ system, systemPrefix: prefix, messages, tools, toolChoice: forced ? { name: FINAL_TOOL } : "auto", maxTokens });
         usage = addUsage(usage, res.usage);
+        requests += res.attempts ?? 1;
         via = res.via ?? via;
         // Cut off by the output limit: whatever was produced is incomplete and is never used. Ask again ONCE, forcing
         // `propose` with a bigger budget; a second cut-off returns nothing, so the machine asks the user to rephrase.
         if (res.stop === "max_tokens") {
-          if (cutRetried) return { raw: null, toolCalls: trace, usage, model: via, mode, turns: turn };
+          if (cutRetried) return { raw: null, toolCalls: trace, usage, model: via, mode, turns: turn, requests };
           cutRetried = true;
           res = await chat.complete({ system, systemPrefix: prefix, messages, tools, toolChoice: { name: FINAL_TOOL }, maxTokens: maxTokens * 2 });
           usage = addUsage(usage, res.usage);
+          requests += res.attempts ?? 1;
           via = res.via ?? via;
-          if (res.stop === "max_tokens") return { raw: null, toolCalls: trace, usage, model: via, mode, turns: turn };
+          if (res.stop === "max_tokens") return { raw: null, toolCalls: trace, usage, model: via, mode, turns: turn, requests };
         }
         const uses = res.content.filter((b): b is Extract<Block, { type: "tool_use" }> => b.type === "tool_use");
 
         const propose = uses.find((u) => u.name === FINAL_TOOL);
-        if (propose) return { raw: propose.input, toolCalls: trace, usage, model: via, mode, turns: turn };
+        if (propose) return { raw: propose.input, toolCalls: trace, usage, model: via, mode, turns: turn, requests };
 
         if (uses.length === 0) {
           const text = res.content.filter((b): b is Extract<Block, { type: "text" }> => b.type === "text").map((b) => b.text).join("").trim();
           let raw: unknown = text;
           try { raw = JSON.parse(text); } catch { /* not JSON: the machine will reject it (NEEDS_REPHRASE) */ }
-          return { raw, toolCalls: trace, usage, model: via, mode, turns: turn };
+          return { raw, toolCalls: trace, usage, model: via, mode, turns: turn, requests };
         }
 
         messages.push({ role: "assistant", content: res.content });
@@ -103,7 +107,7 @@ export function createUnderstander(opts: UnderstanderOptions): Understander {
         messages.push({ role: "user", content: results });
       }
       // The model never proposed even when forced: hand back nothing usable; the machine fails closed.
-      return { raw: null, toolCalls: trace, usage, model: via, mode, turns: maxTurns };
+      return { raw: null, toolCalls: trace, usage, model: via, mode, turns: maxTurns, requests };
     },
   };
 }

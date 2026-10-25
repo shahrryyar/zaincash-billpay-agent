@@ -59,6 +59,12 @@ describe("withRetry: exponential backoff on 429/5xx only", () => {
     await withRetry(flaky, { retries: 2, sleep: noSleep }).complete(REQ);
     expect(n).toBe(2);
   });
+  it("reports how many upstream attempts the answer took (free-tier daily quota counts each one)", async () => {
+    let n = 0;
+    const inner: ChatClient = { id: "x", async complete() { if (n++ < 2) throw new ProviderError("429", 429); return ok("x").complete(REQ); } };
+    expect((await withRetry(inner, { retries: 2, sleep: noSleep }).complete(REQ)).attempts).toBe(3);
+    expect((await withRetry(ok("y"), { sleep: noSleep }).complete(REQ)).attempts).toBe(1);
+  });
   it("does not retry a 400 (a bug, not a limit)", async () => {
     const f = failing("x", 400);
     await expect(withRetry(f, { sleep: noSleep }).complete(REQ)).rejects.toMatchObject({ status: 400 });
@@ -115,6 +121,11 @@ describe("withCache: identical requests cost nothing", () => {
     expect(c.stats).toEqual({ hits: 1, misses: 1 });
     expect(b.content).toEqual(a.content);
     expect(b.usage).toEqual({ input: 0, output: 0 });
+  });
+  it("a cache hit made no upstream request", async () => {
+    const c = withCache(ok("m"), memoryStore());
+    expect((await c.complete(REQ)).attempts).toBeUndefined();
+    expect((await c.complete(REQ)).attempts).toBe(0);
   });
   it("a different request or a different model is a different key", async () => {
     const inner = ok("m");

@@ -125,6 +125,15 @@ describe("tools mode: read-only lookups, then propose", () => {
     const r = await createUnderstander({ chat, mode: "tools", host: fakeHost() }).understand(input);
     expect(r.usage).toEqual({ input: 200, output: 40 });
     expect(r.turns).toBe(2);
+    expect(r.requests).toBe(2);
+  });
+  it("counts upstream requests including transport retries, and none for cache hits", async () => {
+    const replies = [{ attempts: 3, blocks: [use("get_balance", {})] }, { attempts: 0, blocks: [use("propose", HERO_INTENT)] }];
+    let i = 0;
+    const chat: import("../src/types").ChatClient = { id: "fake:counted", async complete() {
+      const s = replies[i++]!; return { content: s.blocks, stop: "tool_use", usage: { input: 1, output: 1 }, attempts: s.attempts }; } };
+    const r = await createUnderstander({ chat, mode: "tools", host: fakeHost() }).understand(input);
+    expect(r.requests).toBe(3);
   });
   it("needs a host in tools mode", () => {
     const { chat } = scriptedChat([[]]);
@@ -245,6 +254,7 @@ describe("an answer cut off by the output limit is never used (held-out C-0187, 
       expect(requests[1]!.toolChoice).toEqual({ name: "propose" });
       expect(requests[1]!.maxTokens).toBeGreaterThan(requests[0]!.maxTokens);
       expect(r.usage.output).toBe(1224);
+      expect(r.requests).toBe(2); // the cut-off answer still used a request
     });
   }
   it("cut off twice: returns nothing usable (the machine asks to rephrase), never the truncated intent", async () => {

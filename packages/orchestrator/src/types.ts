@@ -34,6 +34,8 @@ export type AuditEntry = { ts: number; session_id: string; from: Phase; to: Phas
 export type Trace = {
   intent?: unknown; model?: string; mode?: string; tool_calls?: ToolTrace[]; usage?: Usage;
   resolution?: unknown; quote?: unknown; issues?: string[]; llm_error?: string; previous_amount?: { reference: string; amount_iqd: number } | null;
+  /** Upstream model requests this turn (retries included, cache hits excluded); absent when the understander does not count. */
+  model_requests?: number;
 };
 
 export type Reply = {

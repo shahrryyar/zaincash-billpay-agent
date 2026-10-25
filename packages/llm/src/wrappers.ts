@@ -45,7 +45,7 @@ export function withRetry(inner: ChatClient, o: { retries?: number; baseMs?: num
     id: inner.id,
     async complete(req) {
       for (let attempt = 0; ; attempt++) {
-        try { return await inner.complete(req); }
+        try { const res = await inner.complete(req); return { ...res, attempts: attempt + (res.attempts ?? 1) }; }
         catch (e) {
           if (attempt >= retries || !isRetryable(e)) throw e;
           await nap(base * 2 ** attempt); // exponential backoff on 429 / 5xx (organiser guide)
@@ -110,7 +110,7 @@ export function withCache(inner: ChatClient, store: CacheStore): ChatClient & { 
     async complete(req) {
       const k = cacheKey(inner.id, req);
       const hit = store.get(k);
-      if (hit) { stats.hits++; return { ...hit, usage: { input: 0, output: 0 } }; }
+      if (hit) { stats.hits++; return { ...hit, usage: { input: 0, output: 0 }, attempts: 0 }; }
       stats.misses++;
       const res = await inner.complete(req);
       store.set(k, res);

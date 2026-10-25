@@ -138,7 +138,8 @@ export function createOrchestrator(opts: OrchestratorOptions) {
         const u = opts.understanderFor(createToolHost({ wallet, userId, session: s }));
         try {
           const res = await u.understand({ text: tc.text, context: { billers: await billerContext(tc.lang), awaiting: awaitingText(s), recent: s.recent ?? undefined, lang: tc.lang } });
-          tc.reply.trace = { ...tc.reply.trace, intent: res.raw, model: res.model, mode: res.mode, tool_calls: res.toolCalls, usage: res.usage };
+          tc.reply.trace = { ...tc.reply.trace, intent: res.raw, model: res.model, mode: res.mode, tool_calls: res.toolCalls, usage: res.usage,
+            ...(res.requests === undefined ? {} : { model_requests: (tc.reply.trace.model_requests ?? 0) + res.requests }) };
           return [{ type: "LLM_OUTPUT", raw: res.raw, input: tc.text }];
         } catch (e) {
           // provider down / budget reached: honest "busy", nothing changes, nothing was sent
