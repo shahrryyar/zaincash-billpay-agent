@@ -13,7 +13,7 @@ Rule: every claim needs a check that **someone or something other than the autho
 | **D**oS | Burn LLM budget / free-tier quota | Per-session rate limit, daily budget cap, fallback chain | Flood test; budget trips → honest "busy" |
 | **E**levation | Model calls execute; injection via contact name or note | No execute tool; downstream token check; tool results wrapped as data | Injection set (docs/11) + tool-result injection cases |
 
-**OWASP LLM Top 10 (2025) checklist:** LLM01 prompt injection · LLM02 sensitive info disclosure · LLM05 improper output handling (Zod) · **LLM06 excessive agency** · LLM07 system prompt leakage · LLM10 unbounded consumption. Walk every item; record "mitigated by / not applicable". *(Only LLM06 read in full so far — docs/research/02.)*
+**OWASP LLM Top 10 (2025) checklist:** LLM01 prompt injection · LLM02 sensitive info disclosure · LLM05 improper output handling (Zod) · **LLM06 excessive agency** · LLM07 system prompt leakage · LLM10 unbounded consumption. Walk every item; record "mitigated by / not applicable". *(Walked through item by item in docs/14, 2026-10-25.)*
 
 ## 2. Machine-checked invariants (CI, no LLM involved)
 - **Property-based tests** (`fast-check`) on `parseAmount`, `normalise`, resolver: no crash, idempotent normalisation, amount round-trip.

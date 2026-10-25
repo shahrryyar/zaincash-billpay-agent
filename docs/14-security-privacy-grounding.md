@@ -17,6 +17,23 @@
 
 Execution endpoints require a server-issued token that only the confirm action can redeem. A compromised model cannot pay autonomously. A user could still approve a wrong pending card; readable approval, source checks and wrong-payload evaluation remain necessary.
 
+## OWASP LLM Top 10 (2025) walk-through (2026-10-25)
+
+The organisers' resources guide points to this list for the risks section (docs/35 RS-11). Each row names the control and its evidence. "Not applicable" means the design has no such component. This is a design walk-through, not a penetration test or a red-team result.
+
+| Risk | How this system handles it | Evidence | Residual risk |
+|---|---|---|---|
+| LLM01 Prompt injection | Structural: the model has no payment tool. User text and tool results are wrapped as data. Zod, the source-span cross-check and the resolver run on every output, and a card needs a human tap | FM-09; `injection` rows in dev, heldout and code-switch sets; `packages/llm/test/understand.test.ts` (hostile contact name passed as data) | A user can still approve a wrong pending card; it is readable and cancellable |
+| LLM02 Sensitive information disclosure | Synthetic data only. Tools return masked phones and session handles. Tokens and keys are never in the prompt. ASR key is server-side | §Privacy below; `packages/orchestrator/src/tool-host.ts` | Raw user text, including any number typed, goes to the provider; free tiers may train on it, which is why data is synthetic |
+| LLM03 Supply chain | Pinned lockfile; OSV-Scanner and gitleaks in CI; few runtime dependencies on the money path | `.github/workflows/ci.yml`; DISCLOSURE.md libraries | Hosted model behaviour can change without notice; the model id is recorded with every result |
+| LLM04 Data and model poisoning | No fine-tuning. The Kurdish retrieval bank is a static file, tested against both Kurdish test sets | `eval/test/ku-bank.test.ts` | Not applicable to a fine-tuned model; provider-side training is out of our control |
+| LLM05 Improper output handling | Every model output passes Zod, then deterministic checks: amount re-parsed from the user's words, recipient and biller resolved from wallet data, time re-parsed. Failure means ask or rephrase, never execute | `packages/core/src/schema.ts`; FM-06; `packages/core/test/schema.test.ts`, `codeswitch.test.ts` | None known on the money path |
+| LLM06 Excessive agency | Read-only tools plus `propose`; no execute, confirm, schedule-write or cancel tool. Token issuance and redemption happen outside the model | §Model capability boundaries above; docs/07; wallet invariant tests | As LLM01 |
+| LLM07 System prompt leakage | The prompt holds no secrets, keys or user data beyond the current session's synthetic context. The prompt source is public in this repo | `packages/llm/src/prompt.ts` | None material |
+| LLM08 Vector and embedding weaknesses | Not applicable: there is no vector database or embedding store. Kurdish retrieval is a local lexical match | AGENTS.md stack rules | — |
+| LLM09 Misinformation | Every fact on a card or receipt comes from the wallet, not model text. Failures say plainly that nothing was sent; unknown outcomes are rechecked, never guessed | §Grounding above; FM-03, FM-12 | Read-only answers phrase wallet data. Copy has not been reviewed by a native speaker |
+| LLM10 Unbounded consumption | At most 4 tool calls per turn; bounded output tokens; one cut-off retry; per-session turn limit (`TURNS_PER_10_MIN`, default 60); sandbox cap (`SANDBOX_MAX`); per-process daily token cap (`LLM_DAILY_TOKEN_CAP`); request pacing; voice clips at most 30 s. Upstream requests per turn are recorded (`model_requests`) | `packages/llm/src/understand.ts`, `apps/web/server/engine.ts`, `packages/llm/src/wrappers.ts` | The free Gemini quota (about 500 requests a day per project) is shared by all judges and processes. It can run out mid-demo (docs/35 FA-15) |
+
 ## Prompt injection
 - User text, contact names and notes are wrapped as data in the prompt. The system prompt says data is never instructions.
 - Structural defence matters more than prompt wording: no tool, Zod, resolver against real data, mandatory card.
