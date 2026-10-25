@@ -2,6 +2,12 @@
 
 Updated 2026-10-21. The author removed the paid Claude key and supplied a Google AI Studio key. The current laptop configuration is `LLM_PROVIDER=gemini`, `GEMINI_MODEL=gemini-3.5-flash-lite`, tools mode, no configured fallback. Keys stay in `.env`/host secrets. Historical Claude results describe their recorded commits, not Gemini.
 
+## Change from the design brief (recorded 2026-10-25)
+
+The design brief (22/10) named Claude Haiku 5.5 as the live model, Claude Sonnet 5.5 for hard cases, and Groq and Gemini 3 Flash-Lite as free fallbacks. What actually runs is **Gemini 3.5 Flash-Lite alone**, with no configured fallback. The paid Claude key was removed on 21/10, before the brief's date, and of the Gemini 3 models probed, only 3.5 Flash-Lite answered reliably (table below). Sonnet escalation was never built; Groq has no key. The organisers' free-access guide (docs/35 FA-01, FA-06) recommends Flash-Lite for volume and notes Anthropic has no free tier. The consequence: **every held-out number in the repo was measured on Claude**, and the deployed model has only development results until heldout2 runs. Full list: [DISCLOSURE.md](../DISCLOSURE.md#changes-since-the-design-brief).
+
+Free-tier quota is a live-demo risk: about 15 requests a minute and 500 a day per project for Flash-Lite (organiser guide, checked September and October 2026; the console is authoritative). Tools mode can make several model requests per user turn, so traces and eval reports now record `model_requests` (upstream requests including retries, excluding cache hits). Measure it on Gemini before estimating how many demo turns a day allows.
+
 ## Provider choice and evidence
 
 | Provider | Current evidence | Constraint |

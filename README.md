@@ -33,7 +33,9 @@ top bar. Kurdish amounts, time words, relation words and names are read by the s
 Arabic ones (`packages/core/src/kurdish.ts`); the model gets a Kurdish rules block plus local retrieval from a small
 example bank and glossary (`packages/llm/src/kurdish.ts`). No fine-tuning, no vector DB.
 
-**Current Gemini deployment checks:** [production API/browser checks, editable voice verification and known limits](docs/33-production-improvements.md). The held-out scores below describe the older Claude builds; they are not Gemini accuracy estimates.
+**Live model: Gemini 3.5 Flash-Lite** (Google AI Studio, free tier). The design brief named Claude Haiku 5.5. The paid Claude key was removed on 21/10, so the live demo and every current check run on Gemini. k6 and promptfoo from the brief were never used: a plain Node script does the stress test, and our own harness does evaluation. [Everything that changed since the brief](DISCLOSURE.md#changes-since-the-design-brief) · [organiser requirements matrix](docs/35-organiser-requirements-matrix.md).
+
+**Current Gemini deployment checks:** [production API/browser checks, editable voice verification and known limits](docs/33-production-improvements.md). The held-out scores below describe the older Claude builds; they are not Gemini accuracy estimates. Gemini development results (not held-out) are in [docs/30](docs/30-readiness-execution.md).
 
 **Public evidence in this repo:** [DISCLOSURE.md](DISCLOSURE.md) (models, tools, data, conflict of interest) · [FAILURE_MODES.md](FAILURE_MODES.md) (21 documented failure modes with handling and test references) · [eval/results/](eval/results/) (every measured run).
 
@@ -85,7 +87,7 @@ the agent. Free tiers may train on prompts (all data here is synthetic) and have
   time have independent balances and the demo panel only affects the caller.
   ```bash
   docker build -t zc-billpay .
-  docker run -p 3000:3000 -e ANTHROPIC_API_KEY=... zc-billpay    # put the key in the host's secret store, not the image
+  docker run -p 3000:3000 -e LLM_PROVIDER=gemini -e GEMINI_MODEL=gemini-3.5-flash-lite -e GEMINI_API_KEY=... -e LLM_REQUEST_INTERVAL_MS=5000 zc-billpay    # key in the host's secret store, not the image
   docker run -p 3000:3000 -e LLM_PROVIDER=fake zc-billpay        # no key: scripted sentences only
   ```
   **Render:** [the live demo](https://zc-billpay-agent.onrender.com) runs on one **free** Docker instance in Frankfurt.
@@ -142,6 +144,7 @@ The numbered docs, brief and evidence are committed. Initial audit: [docs/29](do
 | 26 | [docs/26-verification-plan.md](docs/26-verification-plan.md) | Threat model, machine-checked invariants, independent verification |
 | R | [docs/research/](docs/research/) | App-review mining (raw data + script) and standards/teardown |
 | 25 | [docs/25-open-questions.md](docs/25-open-questions.md) | Answered + still-open questions |
+| 35 | [docs/35-organiser-requirements-matrix.md](docs/35-organiser-requirements-matrix.md) | Every requirement in the organisers' October pack, with status and evidence |
 
 ---
 
