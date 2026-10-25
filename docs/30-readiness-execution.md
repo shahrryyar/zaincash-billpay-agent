@@ -117,3 +117,27 @@ KU-0093 produced an apparent S1=1 event in the first Sorani run: the row was tag
 ### Editable voice and production recovery release, 2026-10-23
 
 Application commit `648e368` is deployed on the same free Render service. Voice now fills an editable unsent composer after recording; original transcript is accessible, explicit request submission precedes Gemini, and payment approval remains separate. Lost confirmation responses hide stale cards and block fresh sends until recovery. GitHub CI passed 943 unit/integration tests, 20 browser scenarios and image/dependency/secret checks. Full deployment observations, production results (including a laptop network interruption and its separate recheck), synthetic voice limitations and a technical backup clip are recorded in [docs/33](33-production-improvements.md); human follow-ups are in [docs/34](34-author-checklist.md). Live words while speaking remain queued.
+
+## October organiser pack alignment, 2026-10-25
+
+Claude Code compared the three October organiser documents with the repo ([docs/35](35-organiser-requirements-matrix.md)). No PDF, doc and code disagreement was found that changes payment behaviour.
+
+**Gemini evaluation not run.** No `GEMINI_API_KEY` (or any other provider key) was available in that cloud environment, so no dev evaluation was run and **no new model numbers exist** for this date. The latest Gemini 3.5 Flash-Lite development results remain those in the CURRENT-DEV-RESULTS block above (Arabic dev 93/120, 77.5% [69.2, 84.1] at `97f9d93`; Sorani dev 54/60, 90.0% [79.9, 95.3] at `8b8fe86`). Both commits were dirty, and both sets were tuned on. To run next, sequentially with the key in `.env`:
+
+```bash
+LLM_REQUEST_INTERVAL_MS=5000 pnpm eval -- --split dev --mode tools --concurrency 1 --tag gemini35-ar-dev-<date>
+LLM_REQUEST_INTERVAL_MS=5000 pnpm eval -- --split dev-ku --mode tools --concurrency 1 --tag gemini35-ku-dev-<date>
+LLM_REQUEST_INTERVAL_MS=5000 pnpm eval -- --split codeswitch-dev --mode tools --concurrency 1 --tag gemini35-codeswitch-dev-<date>
+```
+
+Those reports will include the new "upstream model requests per model turn" row, which sizes the daily free-tier budget for a demo. Never use `--allow-heldout` for these.
+
+**Changes made (tests first; no change to payment logic):**
+
+- Mixed Arabic-English deterministic tests (`packages/core/test/codeswitch.test.ts`, 24 cases). "50k", "50 الف", "50,000 IQD" and "2 million" parse exactly. English number words ("fifty thousand") are not parsed, so a model value for them is refused with a rephrase request. A bare number under 1,000 asks. Dollars and USD written in English refuse a transfer. Limitation recorded, not fixed: euro is not detected as a foreign currency, but its span still cannot pass as an IQD amount.
+- Code-switch dev set: 25 rows written and labelled by Claude Code against the seed, not human reviewed (`eval/data/codeswitch-dev.final.jsonl`), with a data-consistency test.
+- Upstream model requests per turn: counted in the understander (transport retries included, cache hits excluded), returned as `trace.model_requests`, summed per eval case, and reported. Tests in `packages/llm`, `packages/orchestrator`, `eval`.
+- Submission-format test (`eval/test/submission-docs.test.ts`): MVP update sections and length, per-component disclosure, brief-drift table, `.env` ignored, no organiser documents committed.
+- Docs: disclosure tables, MVP update restructure (PDF draft regenerated, one page, checked with `pdfinfo` and a rendered preview), OWASP LLM Top 10 walk-through (docs/14), checklist (docs/22).
+
+**Verification at `69bd78a`** (local, Node 22, scripted providers only): `pnpm install --frozen-lockfile`, `pnpm typecheck` and `pnpm test` all exited 0. That is 992 tests: core 502, ASR 67, LLM 89, wallet 104, orchestrator 154, web 16, eval 60. `pnpm smoke -- --fake` passed 15/15 (mechanics only). Browser end-to-end tests and Docker were not rerun. Nothing was deployed: the live demo still runs `648e368`.

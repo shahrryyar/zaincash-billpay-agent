@@ -25,6 +25,14 @@ Use `research/usability-log.csv` (one row per task; no invented sample participa
 
 If you want a voice-accuracy claim, collect the separate consented task corpus: 40–60 fictional utterances from at least five speakers, with human transcripts and the name/amount labels. Follow `eval/voice/README.md`. Current synthetic transport checks establish no WER or human task accuracy.
 
+## Organiser pack items only you can do (docs/35)
+
+- Tell the organisers early if free-tier limits could affect your demo (Free LLM guide). Gemini Flash-Lite allows about 15 requests a minute and 500 a day per project, shared by every judge using the hosted demo. Run the dev evals first so the reports show model requests per turn.
+- Confirm you use one account per provider, with no extra accounts to get around limits.
+- Watch for the MVP booking link and the Espresso Lab date; book the 20-minute session.
+- Ask the questions listed in docs/35 (submission channel and time, gates, contact, quota, licence permission, voice input).
+- Approve the restructured MVP_UPDATE.md and its PDF draft before submitting.
+
 ## Disclosure and presentation
 
 - Confirm the hosted ASR model/checkpoint version and training-data provenance you can disclose as RegaLabs' founder. The endpoint has not supplied a version; do not label it Stage-11 without evidence.

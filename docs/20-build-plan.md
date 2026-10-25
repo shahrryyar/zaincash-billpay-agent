@@ -1,12 +1,13 @@
 # 20 — Build plan and delivery status
 
-Updated 2026-10-21. Only 22/10 and 08/11 are fixed in the organiser pack recorded locally; later dates remain TBC.
+Updated 2026-10-25. The October organiser pack (docs/35) confirms that only 22/10 and 08/11 are fixed; every other date is tentative. It adds an Espresso Lab meet and greet (date TBC) and a booking link for the 20-minute MVP sessions, to be sent before sessions open. No date changed.
 
 | Date | Deliverable | Current evidence |
 |---|---|---|
 | 22/10/2026 | Design brief, <=5 slides / 2 pages, PDF/PPTX, EN/AR, Name_Topic, GitHub link, Typeform | Brief files committed; author previously reported upload. Retain the receipt. |
 | 08/11/2026 | Scored MVP: E2E core, repo/history, first measured test results, one-page update; 20-minute session when booking opens | Core built; dev/historical held-out evidence exists. Final update, rehearsal, live-host decision and human review still need evidence. Top 10 continue. |
 | TBC | Progress review | Live judge input, independent held-out results, >=3 failure modes, full disclosure |
+| TBC | Meet and greet (Espresso Lab) | Informal; after the design brief deadline |
 | TBC | Demo Day | Live demo plus surprise input, final repo, one-page summary and measured results |
 
 ## Implemented
