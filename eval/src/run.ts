@@ -9,6 +9,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chatFromEnv, createUnderstander, fileStore } from "@zc/llm";
 import { cacheOnlyClient } from "./cache-only";
+import { labelsCaption } from "./labels";
 import { runCase, type EvalCase as Case, type CaseResult, type Stage } from "./case";
 import { safetyMetrics } from "./safety-metrics";
 import { localToMs } from "./score";
@@ -132,7 +133,7 @@ async function main() {
     `# Eval ${tag}`, "", `model \`${meta.model}\` · mode \`${mode}\` · split \`${split}\` · n=${n} · commit \`${meta.commit}\`${meta.dirty ? " (dirty)" : ""} · dataset sha256 \`${datasetSha.slice(0, 16)}…\``, "",
     `Run kind: ${args.has("cache-only") ? "OFFLINE CACHE REPLAY — no new model-quality, availability or provider-latency claim" : process.env.LLM_CACHE === "1" ? "cache enabled; may reuse stored model responses" : "fresh provider requests; no local response cache"}. Request pacing: ${process.env.LLM_REQUEST_INTERVAL_MS ?? "0"} ms per provider/process.`, "",
     `Source changed during run: ${meta.source_changed_during_run ? "YES — development only; not a frozen experiment" : "no"}. Provenance captured at start ${start.date}.`, "",
-    `Labels: ${split === "readiness-dev" ? "AI-authored developer fixtures against seed, including subsequent actions" : split.endsWith("-ku") ? "three Claude labellers (opus, sonnet, haiku), adjudicated" : split === "heldout2" ? "three Claude labellers (fable, sonnet, haiku), adjudicated" : "three LLM labellers (agy, fable, haiku), adjudicated"}; no human labeller (docs/19).`, "",
+    labelsCaption(split), "",
     "| Metric | Value (Wilson 95% CI) |", "|---|---|",
     `| State accuracy, first turn | ${fmtRate(metrics.state_accuracy_first_turn)} |`, `| State and payload accuracy, first turn (composite) | ${fmtRate(metrics.state_and_payload_accuracy_first_turn)} |`,
     `| Intent accuracy | ${fmtRate(metrics.intent_accuracy)} |`, `| Ambiguity recall | ${fmtRate(metrics.ambiguity_recall)} |`, `| Ambiguity precision | ${fmtRate(metrics.ambiguity_precision)} |`,
