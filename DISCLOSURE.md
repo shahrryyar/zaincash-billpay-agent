@@ -12,6 +12,40 @@ Using AI is expected; this file lists every model, tool, library and data source
 - No voice accuracy number is claimed yet. RegaLabs' own figures come from its own test sets; WER/CER on this task
   will be measured on consented recordings (`eval/voice/`) before any voice claim is made.
 
+## Provider and model per component
+
+Current as of 2026-10-25. The organisers ask for the provider and model behind each part of the system at every review.
+
+| Component | Provider and model | Where | Status |
+|---|---|---|---|
+| Intent understanding (live demo, current dev runs) | Google AI Studio, `gemini-3.5-flash-lite`, tools mode, temperature 0, free tier, `LLM_REQUEST_INTERVAL_MS=5000`, no fallback configured | `packages/llm`; host secrets | Current |
+| Intent understanding (historical results) | Anthropic `claude-haiku-5-5` (both held-out runs); `claude-sonnet-5-5` (one dev comparison) | `eval/results/heldout-*.md`, `dev-sonnet-tools.md` | Paid key removed 2026-10-21; not used since |
+| Intent understanding (backup, no model) | `LLM_PROVIDER=fake`: scripted demo sentences only | `packages/orchestrator/src/demo-script.ts` | Disclosed backup, not model quality |
+| Speech to text (hosted demo, optional) | RegaLabs streaming recognizer `/v1/audio/transcriptions/stream`, automatic language; checkpoint/version not supplied | `packages/asr/src/regalabs-stream.ts` | Current; accuracy not measured |
+| Speech to text (laptop, optional) | RegaLabs Stage-11 checkpoint behind a local OpenAI-compatible wrapper (hash below) | external, `packages/asr` client | Local only |
+| Test data: Arabic dev and first held-out requests | Gemini 3.8 Flash via `agy` | `eval/gen` | Historical |
+| Test data: heldout2 and Sorani requests | Claude Opus (Claude Code subagent) | `eval/gen` | heldout2 unspent |
+| Test data: developer fixtures | OpenAI Codex (readiness set); Claude Code (code-switch set, 2026-10-25) | `eval/data/readiness.dev.jsonl`, `codeswitch-dev.final.jsonl` | Dev only, not human reviewed |
+| Labels | Arabic: `agy` + Claude Fable + Claude Haiku 5.5. heldout2: Fable + Sonnet 5.5 + Haiku 5.5. Sorani: Opus + Sonnet 5.5 + Haiku 5.5. Adjudicated by script; no human labeller | `eval/data` | Native review pending |
+| Synthetic speech for transport tests | RegaLabs Deng Flash (voice `hamza`), eSpeak NG | local `.cache` | Test fixtures only |
+| AI coding assistants | Claude Code (Anthropic), OpenAI Codex, DeepSeek Harness running Claude, `agy` | see below | — |
+
+## Changes since the design brief
+
+The design brief (slides in `brief/`, dated 22/10/2026) is left as submitted. The repo differs from it as follows.
+
+| The brief said | The repo now | Why |
+|---|---|---|
+| Claude Haiku 5.5 does live understanding (paid, spend-capped) | **Gemini 3.5 Flash-Lite** (Google AI Studio, free tier) runs the live demo and all current development checks. Claude Haiku 5.5 numbers stay as historical held-out results for their commits | The author removed the paid Claude key on 2026-10-21 during testing, one day before the brief's date. Later Claude calls returned 401 (docs/10, docs/30). Of the Gemini models probed, 3.5 Flash-Lite was the one that worked: 2.5 Flash-Lite returned 404, while 3.1 Flash-Lite and 3.8 Flash were overloaded or timed out. The organisers' free-access guide also says Anthropic has no free tier. **No held-out result exists yet for Gemini** |
+| Claude Sonnet 5.5 for hard cases | Not used at runtime; one dev comparison only | No escalation path was built. One model path is simpler |
+| Groq and Gemini 3 Flash-Lite as free fallbacks and comparison | Gemini is the primary, with no fallback configured. The Groq adapter exists but has no key and no measurement | No Groq key is configured |
+| k6 for concurrency tests | A plain Node script (`pnpm stress`): 1,000 concurrent requests on 50 keys across 4 processes, 0 duplicate debits | docs/research/03 (2026-10-15) chose a plain script over k6, which is an AGPL external CLI. The brief was not updated |
+| promptfoo to compare prompts and models | Own TypeScript harness (`eval/src/run.ts`). It drives the real orchestrator and checks the mock-wallet ledger after confirmation, with Wilson CIs and frozen-hash guards. No promptfoo configuration exists | Dropped during the build (docs/19). The harness covers model comparison too |
+| About 300 requests "edited and labelled by hand" | 300 Arabic requests by Gemini 3.8 Flash; labels from three LLM labellers, adjudicated. **No hand edits or hand labels yet** | Needs a human (docs/34) |
+| Iraqi speakers review a sample; a second Iraqi labeller | Not done yet | Needs a human |
+| 3–5 user tests and a red-team session | Five interviews (docs/17) and an informal three-person tryout reported by the author. No red-team session yet; injection rows are in the test sets | Needs a human |
+| 40% dev, 60% held-out, hash-frozen | Same (120/180), plus Sorani 60/90 and a fresh heldout2 (180). The original sets are spent | Unchanged |
+
 ## Models
 | Purpose | Model | Where |
 |---|---|---|
@@ -59,6 +93,7 @@ voice and dropped: push-to-talk over one HTTPS call is simpler and needs no medi
 | DeepSeek Harness running Claude (claude-opus-5-5) | voice path, eval WER/CER, CI hardening, docs refresh (2026-10-17) |
 | `agy` (Antigravity CLI, Gemini 3.8 Flash) | generated the 300 test candidates and the primary labels; never ran our system |
 | Claude Code (Anthropic, cloud session, 2026-10-19) | gap review and plan; no-key demo mode; honest unknown-outcome recheck; accuracy fixes from the held-out error analysis; per-session sandboxes, Docker image, Playwright tests; built the `heldout2` set with the subagents listed above |
+| Claude Code (Anthropic, cloud session, 2026-10-25) | organiser requirements matrix (docs/35); mixed Arabic-English tests and code-switch dev set; per-turn model-request count for free-tier quota planning; disclosure and MVP-update alignment with the October pack. No model evaluation was run (no key in that environment); no held-out file was read or run |
 
 ## Data
 - **Wallet and task requests are synthetic.** Wallet seed written for this project; contacts, numbers and balances are fictional.
