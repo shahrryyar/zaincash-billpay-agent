@@ -28,6 +28,10 @@ def render(source):
             parts.append('<h1>' + inline(block[2:]) + '</h1>')
         elif block.startswith('## '):
             parts.append('<h2>' + inline(block[3:]) + '</h2>')
+        elif re.match(r'(- |\d+\. )', block):
+            tag = 'ul' if block.startswith('- ') else 'ol'
+            items = re.split(r'\n(?=- |\d+\. )', block)
+            parts.append('<' + tag + '>' + ''.join('<li>' + inline(re.sub(r'^(- |\d+\. )', '', i).replace('\n', ' ')) + '</li>' for i in items) + '</' + tag + '>')
         elif block.startswith('|'):
             rows = []
             for i, line in enumerate(block.splitlines()):
@@ -40,14 +44,16 @@ def render(source):
             parts.append('<p>' + inline(' '.join(block.splitlines())) + '</p>')
     return '''<!doctype html><html lang="en"><meta charset="utf-8">
 <title>Topic 04 — MVP update draft</title><style>
-@page {size:A4; margin:13mm 16mm}
+@page {size:A4; margin:11mm 15mm}
 * {box-sizing:border-box}
-body {font:10pt/1.35 Arial,sans-serif; color:#192e2a; margin:0; background:white}
+body {font:9.6pt/1.3 Arial,sans-serif; color:#192e2a; margin:0; background:white}
 h1 {font-size:19pt; line-height:1.12; margin:0 0 7pt; color:#006649; letter-spacing:-.4pt}
-h2 {font-size:11.5pt; margin:11pt 0 3pt; color:#006649; break-after:avoid}
+h2 {font-size:11pt; margin:9pt 0 3pt; color:#006649; break-after:avoid}
 p {margin:0 0 7pt; orphans:3; widows:3}
-table {border-collapse:collapse; width:100%; font-size:9.5pt; margin:7pt 0; break-inside:avoid}
-th,td {padding:5pt 7pt; text-align:left; vertical-align:top; border-bottom:1px solid #c8d8d2}
+table {border-collapse:collapse; width:100%; font-size:9pt; margin:5pt 0; break-inside:avoid}
+th,td {padding:3pt 6pt; text-align:left; vertical-align:top; border-bottom:1px solid #c8d8d2}
+ul,ol {margin:0 0 7pt; padding-left:15pt}
+li {margin:0 0 2pt}
 th {background:#e8f3ed; color:#004e39}
 td:first-child {width:55%}
 a {color:#006649; text-decoration:none}
