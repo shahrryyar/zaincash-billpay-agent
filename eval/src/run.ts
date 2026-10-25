@@ -13,7 +13,7 @@ import { labelsCaption } from "./labels";
 import { runCase, type EvalCase as Case, type CaseResult, type Stage } from "./case";
 import { safetyMetrics } from "./safety-metrics";
 import { localToMs } from "./score";
-import { fmtRate, percentile, wilson } from "./stats";
+import { fmtRate, percentile, requestsPerTurn, wilson } from "./stats";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, "../..");
@@ -123,7 +123,9 @@ async function main() {
     unlabelled_queued_cases: cnt((r) => r.unlabelled_queue),
     llm_errors: cnt((r) => r.llm_error !== null), tokens_total: results.reduce((a, r) => a + r.tokens, 0),
     usage_total: results.reduce((a, r) => ({ input: a.input + r.usage.input, output: a.output + r.usage.output, cacheRead: a.cacheRead + r.usage.cacheRead, cacheWrite: a.cacheWrite + r.usage.cacheWrite }), { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }), lookups_total: results.reduce((a, r) => a + r.lookups, 0),
+    model_requests_per_turn: requestsPerTurn(results),
   };
+  const rpt = metrics.model_requests_per_turn;
   const cats = [...new Set(results.map((r) => r.category))].sort().map((cat) => { const rs = results.filter((r) => r.category === cat); return { category: cat, n: rs.length, e2e: rs.filter((r) => r.e2e).length }; });
   const meta = { split, mode, model: chat.id, commit: start.commit, dirty: start.dirty, started_at: start.date, dataset: dataPath.replace(root + "/", ""), dataset_sha256: datasetSha, n, date: new Date().toISOString(), scorer_version: "2.1", seed_sha256: start.seed_sha256, prompt_sha256: start.prompt_sha256, scorer_sha256: start.scorer_sha256, source_sha256: start.source_sha256, source_changed_during_run: sourceHash() !== start.source_sha256, configuration: { primary: process.env.LLM_PROVIDER ?? "anthropic", fallbacks: process.env.LLM_FALLBACKS ?? "", request_interval_ms: Number(process.env.LLM_REQUEST_INTERVAL_MS ?? 0), response_cache: args.has("cache-only") || process.env.LLM_CACHE === "1", cache_only: args.has("cache-only"), temperature: (process.env.LLM_PROVIDER ?? "anthropic") === "anthropic" ? "provider default (omitted)" : 0, concurrency: conc } };
   mkdirSync(resolve(root, "eval/results"), { recursive: true });
@@ -144,7 +146,8 @@ async function main() {
     `| Later actions without independent labels (not complete E2E) | ${metrics.unlabelled_queued_cases} |`,
     `| Card shown on must-not-execute case | ${fmtRate(metrics.unsafe_card_on_must_not_execute)} |`, `| p50 / p95 request to actual card (incl. clarification computation, excludes human time) | ${metrics.latency_ms_to_card.p50} / ${metrics.latency_ms_to_card.p95} ms, n=${metrics.latency_ms_to_card.n} |`,
     `| p50 / p95 first response (all states) | ${metrics.latency_ms_first_response.p50} / ${metrics.latency_ms_first_response.p95} ms |`,
-    `| LLM errors | ${metrics.llm_errors} |`, `| Tokens (billed at normal rate / output / cache read / cache write) | ${metrics.usage_total.input} / ${metrics.usage_total.output} / ${metrics.usage_total.cacheRead} / ${metrics.usage_total.cacheWrite} |`, "",
+    `| LLM errors | ${metrics.llm_errors} |`,
+    `| Upstream model requests per model turn (retries included, cache hits excluded; mean / max per case) | ${rpt ? `${rpt.mean.toFixed(2)} / ${rpt.max_per_case}, ${rpt.requests} requests over ${rpt.turns} turns` : "not counted"} |`, `| Tokens (billed at normal rate / output / cache read / cache write) | ${metrics.usage_total.input} / ${metrics.usage_total.output} / ${metrics.usage_total.cacheRead} / ${metrics.usage_total.cacheWrite} |`, "",
     "| Category | e2e | n |", "|---|---|---|", ...cats.map((x) => `| ${x.category} | ${x.e2e} | ${x.n} |`), "",
     `## Failures (${failures.length})`, ...failures.map((r) => `- ${r.id} [${r.category}] «${r.text}» → ${r.failure}${r.llm_error ? ` (llm error: ${r.llm_error.slice(0, 120)})` : ""}`), "",
   ].join("\n");

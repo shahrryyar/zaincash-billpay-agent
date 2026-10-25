@@ -17,3 +17,12 @@ export function percentile(xs: number[], q: number): number {
 
 export const fmtRate = (w: { rate: number; lo: number; hi: number; n: number }): string =>
   Number.isNaN(w.rate) ? "n/a" : `${(w.rate * 100).toFixed(1)}% [${(w.lo * 100).toFixed(1)}, ${(w.hi * 100).toFixed(1)}] n=${w.n}`;
+
+/** Upstream model requests per model turn over the cases that counted them; null when none did. */
+export function requestsPerTurn(rs: { model_requests: number | null; model_turns: number }[]):
+  { cases: number; turns: number; requests: number; mean: number; max_per_case: number } | null {
+  const m = rs.filter((r) => r.model_requests !== null && r.model_turns > 0);
+  if (m.length === 0) return null;
+  const turns = m.reduce((a, r) => a + r.model_turns, 0), requests = m.reduce((a, r) => a + (r.model_requests as number), 0);
+  return { cases: m.length, turns, requests, mean: requests / turns, max_per_case: Math.max(...m.map((r) => r.model_requests as number)) };
+}
