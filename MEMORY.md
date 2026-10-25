@@ -1,6 +1,6 @@
 # MEMORY.md — current project state
 
-Updated 2026-10-23. No secrets. Read README.md, AGENTS.md and the relevant numbered doc; docs/ and brief/ are tracked. The full readiness audit is docs/29; follow-up verification and outstanding evidence are docs/30.
+Updated 2026-10-25. No secrets. Read README.md, AGENTS.md and the relevant numbered doc; docs/ and brief/ are tracked. The full readiness audit is docs/29; follow-up verification and outstanding evidence are docs/30.
 
 Solo entry: Shahryar Sabir Muhammed (RegaLabs), ZainCash Topic 04. Design brief reported uploaded (22/10); MVP due 08/11. Mock wallet, synthetic data, no real rails. The model understands; deterministic code moves money.
 
@@ -30,6 +30,15 @@ Solo entry: Shahryar Sabir Muhammed (RegaLabs), ZainCash Topic 04. Design brief 
 - Five real interviews: Sulaymaniyah, ages 19–22, native Kurdish speakers; automation/scheduling/typing wanted, 2/5 wrong-person experience, 3/5 would use, 2/5 not (reason absent). Language preference not asked. No invented quotations or extra participants.
 - Still human-only: native sample/copy review, broader interviews/usability, consented task recordings/references, author delivery rehearsal, organiser response/licence permission. Public audio transport checks are not consented task WER.
 - Current verification evidence and API failures are in docs/30; public one-page draft is MVP_UPDATE.md (docs/28 points there). Disclosure in docs/19 and DISCLOSURE.md.
+
+## October organiser pack (2026-10-25)
+
+- Three organiser documents (Next Steps; Resources, 11/10; Free LLM API Access, 11/10) were mapped row by row in docs/35. They are not committed (public repo). Fixed dates are unchanged: brief 22/10, MVP 08/11. Everything else is tentative: Espresso Lab meet and greet, 20-minute MVP session with a booking link to come, progress review, Demo Day. The same judging weights apply at MVP, progress review and Demo Day.
+- MVP needs: working core, repo with history, first test results, and a one-page update with exactly "what works / what does not work yet / what comes next" (MVP_UPDATE.md restructured; eval/test/submission-docs.test.ts guards it). Demo Day also needs a separate one-page summary.
+- Brief drift disclosed (DISCLOSURE.md "Changes since the design brief"): live model is Gemini 3.5 Flash-Lite, not Claude Haiku 5.5; k6 → Node stress script; promptfoo → own harness; no hand labels, native review or red-team session yet. Brief files untouched.
+- Added: mixed Arabic-English deterministic tests and a 25-row codeswitch-dev set (Claude-labelled, not run); `trace.model_requests` and an eval row for upstream requests per turn (free-tier daily quota planning); OWASP LLM Top 10 walk-through in docs/14.
+- No key in that cloud session: no Gemini numbers were produced on 2026-10-25. The live demo still runs 648e368 and nothing was deployed.
+- Author-only follow-ups: tell organisers early about free-tier demo risk, confirm one account per provider, book the MVP session, and send the docs/35 questions.
 
 ## Working rules
 
