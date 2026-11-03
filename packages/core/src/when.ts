@@ -47,26 +47,40 @@ const NUM_WORDS: Record<string, number> = {
 };
 const WEEKDAYS: Record<string, number> = { الاحد: 0, الاثنين: 1, الاتنين: 1, الثلاثاء: 2, الاربعاء: 3, الخميس: 4, الجمعه: 5, السبت: 6 };
 
-/** «بعد ساعة», «بعد 10 دقايق», «بعد يومين», «بعد نص ساعة». Returns a delay in ms, or null. */
+/** «بعد ساعة», «بعد 10 دقايق», «بعد يومين», «بعد نص ساعة», «بعد ساعة ونص». Returns a delay in ms, or null. */
 function parseRelative(s: string): number | null {
-  const m = /(?:^| )بعد ((?:[^ ]+ ){0,2}?)(دقيق\S*|دقايق|دقائق|ساع\S*|يوم\S*|ايام|اسبوع\S*|اسابيع|شهر\S*)(?: |$)/.exec(s);
+  const m = /(?:^| )بعد ((?:[^ ]+ ){0,2}?)(دقيق\S*|دقايق|دقائق|ساع\S*|يوم\S*|ايام|اسبوع\S*|اسابيع|شهر\S*)(?= |$)/.exec(s);
   if (!m) return null;
   const qty = (m[1] ?? "").trim();
   const unitWord = m[2] as string;
+  // what follows the unit: «ونص» (+30), «وربع» (+15), «وثلث» (+20), «الا ربع» (-15), «الا ثلث» (-20), only after hours.
+  // Anything else number-like («و 10 دقايق», «يومين ونص») is not guessed: null, so the user is asked.
+  const tail = s.slice(m.index + m[0].length);
+  const mod = /^ (?:و ?(نص|نصف|ربع|ثلث)|الا ?(ربع|ثلث))(?= |$)/.exec(tail);
+  if (!mod && /^ (?:و ?)?(?:\d|نص|نصف|ربع|ثلث|الا|دقيق|دقايق|دقائق)/.test(tail)) return null;
   let unitMs: number, dual = false;
   if (/^دقيق|^دقايق|^دقائق/.test(unitWord)) { unitMs = 60_000; dual = /تين$|ين$/.test(unitWord); }
   else if (/^ساع/.test(unitWord)) { unitMs = 3_600_000; dual = /تين$|ين$/.test(unitWord); }
   else if (/^يوم|^ايام/.test(unitWord)) { unitMs = DAY; dual = /ين$/.test(unitWord); }
   else if (/^اسبوع|^اسابيع/.test(unitWord)) { unitMs = 7 * DAY; dual = /ين$/.test(unitWord); }
   else return null; // months are not supported: ask for a date
-  if (qty === "") return (dual ? 2 : 1) * unitMs;
-  if (/^(نص|نصف)$/.test(qty) && unitMs === 3_600_000) return 30 * 60_000;
-  if (qty === "ربع" && unitMs === 3_600_000) return 15 * 60_000;
-  const digits = /^(\d{1,6})$/.exec(qty);
-  if (digits) return Number(digits[1]) * unitMs;
-  const word = NUM_WORDS[qty];
-  if (word) return word * unitMs;
-  return null;
+  let extra = 0;
+  if (mod) {
+    if (unitMs !== 3_600_000) return null;
+    const w = (mod[1] ?? mod[2]) as string;
+    const mins = w === "ربع" ? 15 : w === "ثلث" ? 20 : 30;
+    extra = (mod[1] ? mins : -mins) * 60_000;
+  }
+  let base: number | null = null;
+  if (qty === "") base = (dual ? 2 : 1) * unitMs;
+  else if (/^(نص|نصف)$/.test(qty) && unitMs === 3_600_000) base = mod ? null : 30 * 60_000;
+  else if (qty === "ربع" && unitMs === 3_600_000) base = mod ? null : 15 * 60_000;
+  else {
+    const digits = /^(\d{1,6})$/.exec(qty);
+    const word = NUM_WORDS[qty];
+    base = digits ? Number(digits[1]) * unitMs : word ? word * unitMs : null;
+  }
+  return base === null ? null : base + extra;
 }
 
 const AM = /(?:^| )(?:ال)?(?:صبح|صباحا|صباح|فجر|فجرا)(?: |$)/;
@@ -76,17 +90,18 @@ const PM = /(?:^| )(?:ال)?(?:مساء|عصر|عصرا|مغرب)(?: |$)/;
 type Meridiem = "am" | "noon" | "pm" | "night";
 const meridiemOf = (s: string): Meridiem | undefined => (AM.test(s) ? "am" : NIGHT.test(s) ? "night" : NOON.test(s) ? "noon" : PM.test(s) ? "pm" : undefined);
 
-type Clock = { hour: number; minute: number; meridiem?: Meridiem; clear: boolean };
+/** `back`: «9 الا ربع» is kept as hour 9 minus 15 minutes, so AM/PM is read from the hour the user said (9), not 8. */
+type Clock = { hour: number; minute: number; meridiem?: Meridiem; clear: boolean; back?: number };
 
 /** Pull an hour/minute out of the text. `clear` = the 24h value is certain (21:00, 13, 0:30). */
 function parseClock(s: string, bareHour = false): Clock | null {
   const mer = meridiemOf(s);
-  let h: number | undefined, mi = 0, m: RegExpExecArray | null;
+  let h: number | undefined, mi = 0, back = 0, m: RegExpExecArray | null;
   if ((m = /(\d{1,2}):(\d{2})/.exec(s))) { h = Number(m[1]); mi = Number(m[2]); }
   else if ((m = /(?:^| )(?:الساع\S*|ساع\S*) ?(\d{1,2})(?: و ?(نص|نصف|ربع|ثلث)| ?الا ?(ربع|ثلث)| و ?(\d{1,2}) ?دقيق\S*)?/.exec(s))) {
     h = Number(m[1]);
     if (m[2]) mi = m[2] === "ربع" ? 15 : m[2] === "ثلث" ? 20 : 30;
-    else if (m[3]) { mi = m[3] === "ربع" ? 45 : 40; h = h - 1; }
+    else if (m[3]) back = m[3] === "ربع" ? 15 : 20; // «1 الا ربع الظهر» = 12:45, not 00:45
     else if (m[4]) mi = Number(m[4]);
   } else if ((m = /(?:^| )(\d{1,2})(?: و ?(نص|نصف|ربع))? ?(?:ال)?(?:صبح|صباحا|صباح|مساء|بالليل|ليل|ليلا|عصر|عصرا|ظهر|ظهرا|مغرب|فجر)/.exec(s))) {
     h = Number(m[1]);
@@ -98,15 +113,15 @@ function parseClock(s: string, bareHour = false): Clock | null {
   } else if (NOON.test(s) && !/(?:^| )بعد (?:ال)?ظهر(?: |$)/.test(s) && !/\d/.test(s)) {
     return { hour: 12, minute: 0, meridiem: "noon", clear: true };
   }
-  if (h === undefined || h < 0 || h >= 24 || mi < 0 || mi > 59) return null;
-  return { hour: h, minute: mi, ...(mer ? { meridiem: mer } : {}), clear: h === 0 || h >= 13 };
+  if (h === undefined || h < 0 || h >= 24 || mi < 0 || mi > 59 || (back && h === 0)) return null;
+  return { hour: h, minute: mi, ...(mer ? { meridiem: mer } : {}), clear: h === 0 || h >= 13, ...(back ? { back } : {}) };
 }
 
 /** 12-hour value + marker to 24h. Null = still ambiguous (needs AM/PM): «9» alone, «12 بالليل». */
 function to24(hour: number, meridiem: Meridiem | undefined, clear: boolean): number | null {
   if (clear) return hour;
   switch (meridiem) {
-    case "am": return hour === 12 ? 0 : hour;
+    case "am": return hour === 12 ? null : hour; // «12 الصبح»: midnight or noon? ask, like «12 بالليل»
     case "noon": return hour === 12 ? 12 : hour >= 1 && hour <= 6 ? hour + 12 : hour === 10 || hour === 11 ? hour : null;
     case "pm": return hour === 12 ? 12 : hour + 12;
     case "night": return hour >= 6 && hour <= 11 ? hour + 12 : null; // «9 بالليل» = 21:00; «12 بالليل» / «2 بالليل» are ambiguous
@@ -178,7 +193,16 @@ export function parseWhen(text: string, now: number, prior: WhenPrior = {}, opts
   if (clock) {
     minute = clock.minute;
     hour = to24(clock.hour, clock.meridiem, clock.clear);
-    if (hour === null) hourHint = clock.hour;
+    if (hour !== null && clock.back) {
+      const total = hour * 60 - clock.back;
+      if (total < 0) return { kind: "unparsed" };
+      hour = Math.floor(total / 60); minute = total % 60;
+    }
+    if (hour === null) {
+      // still needs AM/PM: remember the clock as said («9 الا ربع» -> 8:45; «1 الا ربع» -> 12:45)
+      hourHint = clock.back ? clock.hour - 1 || 12 : clock.hour;
+      if (clock.back) minute = 60 - clock.back;
+    }
   } else if (prior.hour !== undefined) {
     const mer = meridiemOf(s);
     if (mer) hour = to24(prior.hour, mer, false);
@@ -217,13 +241,33 @@ export function parseWhen(text: string, now: number, prior: WhenPrior = {}, opts
   return { kind: "unparsed" };
 }
 
+// «اليوم», «هسه» mean now (commit 8d982a2), and greetings are not times.
+const NOW_WORDS = /(?:^| )(?:اليوم|هاليوم|هسه|هسا|هالحين|الان|حالا|فورا)(?= |$)/g;
+const GREETINGS = /(?:^| )(?:صباح|مساء) (?:الخير|النور|الورد)(?= |$)/g;
+/** Fixed reference instant for mentionsWhen: only "is there a time?" matters, not which one. */
+const ANY_NOW = Date.UTC(2026, 0, 5, 9) - BAGHDAD_OFFSET_MS;
+
+/**
+ * True if a whole message says something about WHEN («باچر», «بعد ساعة», «الساعة 9», «الليلة», «العصر», «يوم الجمعة», and
+ * the Kurdish words). A bare «اليوم» / «هسه» is immediate, not a schedule. crossCheck uses it: time words with no when_text
+ * from the model must never become an immediate transfer.
+ */
+export function mentionsWhen(text: string): boolean {
+  const s = prep(looksKurdishTime(text) ? kurdishTimeToArabic(text) : text).replace(GREETINGS, " ").replace(NOW_WORDS, " ").replace(/\s+/g, " ").trim();
+  if (!s) return false;
+  if (meridiemOf(s) !== undefined) return true; // «العصر», «بالليل»
+  if (/(?:^| )بعد (?:[^ ]+ ){0,2}?(?:دقيق\S*|دقايق|دقائق|ساع\S*|يوم\S*|ايام|اسبوع\S*|اسابيع|شهر\S*)(?= |$)/.test(s)) return true;
+  return parseWhen(s, ANY_NOW).kind !== "unparsed";
+}
+
 const WEEKDAY_AR = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
 
 /** «الجمعة 17/10/2026، الساعة 9:00 صباحاً». The confirmation card shows this so a wrong date is visible. */
 export function formatWhenAr(dueAt: number): string {
   const t = local(dueAt);
   const h12 = t.h % 12 === 0 ? 12 : t.h % 12;
-  const part = t.h < 12 ? "صباحاً" : "مساءً";
+  // <!-- VERIFY-DIALECT --> 12:xx is «ظهراً»; exactly 0:00 is «منتصف الليل» (12:05 stays «صباحاً»)
+  const part = t.h === 12 ? "ظهراً" : t.h === 0 && t.mi === 0 ? "منتصف الليل" : t.h < 12 ? "صباحاً" : "مساءً";
   return `${WEEKDAY_AR[t.dow]} ${t.d}/${t.m}/${t.y}، الساعة ${h12}:${String(t.mi).padStart(2, "0")} ${part}`;
 }
 

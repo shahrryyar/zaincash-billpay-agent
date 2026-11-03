@@ -96,3 +96,29 @@ describe("scheduled payments in the state machine", () => {
     }
   });
 });
+
+describe("time words the model left out of when_text", () => {
+  it("are asked about, never paid now", () => {
+    const text = "دز خمسين ألف لأحمد علي باچر الساعة 9 الصبح";
+    const r = run([{ type: "INPUT_RECEIVED", text }, { type: "LLM_OUTPUT", raw: intent([transfer()]), input: text }]);
+    expect(r.state.phase).toBe("CLARIFYING");
+    expect(r.state.clarifySlot).toBe("time");
+    expect(r.effects.some((e) => e.type === "RESOLVE")).toBe(false);
+    const r2 = run([{ type: "SLOT_ANSWER", slot: "time", filled: true, dueAt: at(2026, 10, 17, 9, 0) }], r.state);
+    expect(r2.state.schedule).toEqual({ dueAt: at(2026, 10, 17, 9, 0) });
+  });
+  it("two actions and nobody knows which one is later: rephrase", () => {
+    const text = "دز خمسين ألف لأحمد علي وادفع المولدة باچر";
+    const r = run([{ type: "LLM_OUTPUT", raw: intent([transfer(), bill()]), input: text }]);
+    expect(r.state.phase).toBe("NEEDS_REPHRASE");
+  });
+  it("a scheduled transfer whose amount is asked first still asks the time after the amount", () => {
+    const text = "دز لأحمد علي باچر";
+    const r1 = run([{ type: "LLM_OUTPUT", raw: intent([transfer({ amount: null, when_text: "باچر" })]), input: text }]);
+    expect(r1.state.clarifySlot).toBe("amount");
+    const r2 = run([{ type: "SLOT_ANSWER", slot: "amount", filled: true }], r1.state);
+    expect(r2.state.phase).toBe("CLARIFYING");
+    expect(r2.state.clarifySlot).toBe("time");
+    expect(r2.effects.some((e) => e.type === "RESOLVE")).toBe(false);
+  });
+});

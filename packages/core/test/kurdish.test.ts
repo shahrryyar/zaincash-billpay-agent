@@ -236,3 +236,10 @@ describe("crossCheck on Kurdish messages", () => {
     expect(crossCheck(d, "سەد دۆلار بنێرە بۆ هێمن")).toMatchObject({ ok: false, issues: [{ code: "currency_unsupported" }] });
   });
 });
+
+describe("formatWhenKu: noon and midnight", () => {
+  it("12:00 is noon, 0:00 is midnight", () => {
+    expect(formatWhenKu(at(2026, 10, 17, 12))).toBe("شەممە 17/10/2026، کاتژمێر 12:00ی نیوەڕۆ");
+    expect(formatWhenKu(at(2026, 10, 18, 0))).toBe("یەکشەممە 18/10/2026، کاتژمێر 12:00ی نیوەشەو");
+  });
+});

@@ -140,7 +140,9 @@ export function createOrchestrator(opts: OrchestratorOptions) {
           const res = await u.understand({ text: tc.text, context: { billers: await billerContext(tc.lang), awaiting: awaitingText(s), recent: s.recent ?? undefined, lang: tc.lang } });
           tc.reply.trace = { ...tc.reply.trace, intent: res.raw, model: res.model, mode: res.mode, tool_calls: res.toolCalls, usage: res.usage,
             ...(res.requests === undefined ? {} : { model_requests: (tc.reply.trace.model_requests ?? 0) + res.requests }) };
-          return [{ type: "LLM_OUTPUT", raw: res.raw, input: tc.text }];
+          // the contact the user already picked («أحمد علي» by tap) may appear in a restatement of the pending request
+          const known = s.draft?.recipient ? [s.draft.recipient.display_name] : [];
+          return [{ type: "LLM_OUTPUT", raw: res.raw, input: tc.text, known }];
         } catch (e) {
           // provider down / budget reached: honest "busy", nothing changes, nothing was sent
           tc.reply.trace.llm_error = (e as Error).message;
@@ -218,7 +220,7 @@ export function createOrchestrator(opts: OrchestratorOptions) {
           const firsts = new Set(r.candidates.map((c) => c.display_name.split(" ")[0]));
           return [{ type: "RESOLUTION", slot, result: "ambiguous", count: r.candidates.length, name: firsts.size === 1 ? [...firsts][0] as string : m.text }]; // «محمد حسا» -> «عندك 3 باسم محمد»
         }
-        if (r.status === "fuzzy") { s.candidates = r.candidates; s.fuzzy = r.candidates[0] as Contact; return [{ type: "RESOLUTION", slot, result: "fuzzy", name: (r.candidates[0] as Contact).display_name }]; }
+        if (r.status === "fuzzy") { s.candidates = r.candidates; s.fuzzy = r.candidates[0] as Contact; s.book = contacts; return [{ type: "RESOLUTION", slot, result: "fuzzy", name: (r.candidates[0] as Contact).display_name }]; }
         if (r.status === "unknown_number") return [{ type: "RESOLUTION", slot, result: "unknown_number", phone: mask(r.phone) }]; // never a new contact
         if (r.status === "history") return [{ type: "RESOLUTION", slot, result: "history" }];
         return [{ type: "RESOLUTION", slot, result: "none", name: m.text }]; // unknown contact: ask, never guess
@@ -435,11 +437,13 @@ export function createOrchestrator(opts: OrchestratorOptions) {
    */
   async function answerUnknownContact(s: Session, text: string, tc: TurnCtx): Promise<MachineEvent[] | null> {
     if (s.candidates.length > 0 && !s.fuzzy) return null; // a real candidate list is answered by matchChoice only
-    if (s.fuzzy && (isYes(text) || isNo(text))) return null; // yes/no belong to the «تقصد X؟» question
+    if (s.fuzzy && (isYes(text) || isNo(text) || yesWithName(text, s.fuzzy, s.book ?? [], tc.lang))) return null; // yes/no belong to the «تقصد X؟» question
     const d = ensureDraft(s);
     if (!d || d.action.type !== "transfer") return null;
-    const digits = normaliseDigits(text).replace(/[\s\-()]/g, "");
-    const mention = /^07[3-9]\d{8}$/.test(digits) ? { kind: "phone" as const, text: digits } : { kind: "name" as const, text: text.trim() };
+    // «اي حسن» to «تقصد حسين؟» names someone else: read it as the correction «حسن» (a yes for حسين itself is handled later)
+    const said = s.fuzzy ? afterYes(text) ?? text : text;
+    const digits = normaliseDigits(said).replace(/[\s\-()]/g, "");
+    const mention = /^07[3-9]\d{8}$/.test(digits) ? { kind: "phone" as const, text: digits } : { kind: "name" as const, text: said.trim() };
     if (!mention.text || mention.text.length > 40) return null;
     try {
       const contacts = toContacts((await wallet.contacts(userId)).json.contacts);
@@ -454,12 +458,22 @@ export function createOrchestrator(opts: OrchestratorOptions) {
     }
   }
 
-  /** «بەڵێ موحسین» / «اي حسين» to «تقصد X؟»: a yes word, then words that point at X itself (never at anyone else). */
-  function yesWithName(text: string, proposed: Contact, lang: Lang): boolean {
+  /** «اي حسن» -> «حسن»: the words after a leading yes word, or null when the text does not start with one. */
+  function afterYes(text: string): string | null {
     const [first, ...rest] = text.trim().split(/\s+/);
-    if (!first || rest.length === 0 || !isYes(first.replace(/[،,.!]/g, ""))) return false;
-    const r = resolveContact({ kind: "name", text: rest.join(" ") }, [proposed], { lang });
-    return (r.status === "resolved" || r.status === "fuzzy") && (r.status === "resolved" ? r.contact.id : r.candidates[0]?.id) === proposed.id;
+    return first && rest.length > 0 && isYes(first.replace(/[،,.!]/g, "")) ? rest.join(" ") : null;
+  }
+  /**
+   * «بەڵێ موحسین» / «اي حسين» to «تقصد X؟»: a yes word, then words that point at X and at nobody else in the WHOLE book.
+   * «اي حسن» after «تقصد حسين؟» resolves to حسن (another contact), so it is not a yes for حسين. A look-alike still counts
+   * when X is its only candidate («بەڵێ موحسین»: the user repeats their own spelling).
+   */
+  function yesWithName(text: string, proposed: Contact, book: readonly Contact[], lang: Lang): boolean {
+    const rest = afterYes(text);
+    if (rest === null) return false;
+    const r = resolveContact({ kind: "name", text: rest }, book.length ? book : [proposed], { lang });
+    if (r.status === "resolved") return r.contact.id === proposed.id;
+    return r.status === "fuzzy" && r.candidates.length === 1 && r.candidates[0]?.id === proposed.id;
   }
 
   function answerClarification(s: Session, text: string, tc: TurnCtx, allowFallback: boolean): MachineEvent[] | null {
@@ -470,7 +484,7 @@ export function createOrchestrator(opts: OrchestratorOptions) {
 
     if (slot === "recipient") {
       if (s.fuzzy) {
-        if (isYes(text) || yesWithName(text, s.fuzzy, tc.lang)) { d.recipient = s.fuzzy; s.fuzzy = null; s.candidates = []; return [{ type: "RESOLUTION", slot, result: "resolved" }]; }
+        if (isYes(text) || yesWithName(text, s.fuzzy, s.book ?? [], tc.lang)) { d.recipient = s.fuzzy; s.fuzzy = null; s.candidates = []; return [{ type: "RESOLUTION", slot, result: "resolved" }]; }
         if (isNo(text)) { s.fuzzy = null; s.candidates = []; return [{ type: "RESOLUTION", slot, result: "none", name: rawName }]; }
       }
       const m = matchChoice(text, s.candidates, tc.lang);
@@ -559,14 +573,15 @@ export function createOrchestrator(opts: OrchestratorOptions) {
 
     if (phase === "AWAITING_CONFIRM") {
       if (wantsSchedule(text)) await dispatch(s, { type: "SCHEDULE_THIS", when: parseWhen(text, now()) }, tc); // «جدولها» (+ maybe a time): same payment, later
-      else if (isCancel(text) || isNo(text)) await dispatch(s, { type: "CANCEL" }, tc);
+      else if (isCancel(text)) await dispatch(s, { type: "CANCEL", all: true }, tc); // typed «الغي»: the whole plan (docs/04)
+      else if (isNo(text)) await dispatch(s, { type: "CANCEL" }, tc); // «لا» to this card: like the button, the next action still comes
       else if (isYes(text)) say(tc, "info", tr(tc, "press_confirm_button")); // a typed or spoken «yes» never executes
       else await dispatch(s, { type: "INPUT_RECEIVED", text, asrConfidence: asr }, tc); // an edit: new request replaces the card
       return finalize(s, tc);
     }
 
     if (phase === "CLARIFYING") {
-      if (isCancel(text)) { await dispatch(s, { type: "CANCEL" }, tc); return finalize(s, tc); }
+      if (isCancel(text)) { await dispatch(s, { type: "CANCEL", all: true }, tc); return finalize(s, tc); }
       if (asr !== undefined && asr < (opts.config?.asrLow ?? 0.5)) { await dispatch(s, { type: "INPUT_RECEIVED", text, asrConfidence: asr }, tc); return finalize(s, tc); }
       await billerNames();
       const fresh = s.machine.clarifySlot === "recipient" ? await answerUnknownContact(s, text, tc) : null;

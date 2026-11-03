@@ -218,3 +218,32 @@ describe("resolveContact: near misses only ever propose (held-out C-0109, C-0124
     expect(ids(r)).toEqual(want);
   });
 });
+
+describe("fuzzy proposals rank by similarity, not by name", () => {
+  it("«حسينن» proposes حسين (0.96) over حسن (0.89)", () => {
+    const r = resolveContact(name("حسينن"), book);
+    expect(r.status).toBe("fuzzy");
+    expect(r.candidates?.map((c) => c.id)).toEqual(["c_husain"]);
+  });
+  it("«لحسينن» (with the preposition) too", () => expect(resolveContact(name("لحسينن"), book)).toMatchObject({ status: "fuzzy", candidates: [{ id: "c_husain" }] }));
+  it("two look-alikes with nearly the same score: ask which, never propose one", () => {
+    const r = resolveContact(name("زينبه"), book); // زينب 0.960, زينة 0.953
+    expect(r.status).toBe("ambiguous");
+    expect(ids(r)).toEqual(["c_zaina", "c_zainab"]);
+  });
+});
+
+describe("a leading ل is only a preposition when what is left is a real name", () => {
+  const withMai = [...book, C("c_mai", "مي", "07700001101"), C("c_wi", "وي", "07700001102")];
+  it.each([["لمى", "c_mai"], ["لؤي", "c_wi"]])("«%s» with no such contact only PROPOSES %s", (said, id) => {
+    const r = resolveContact(name(said), withMai);
+    expect(r.status).toBe("fuzzy");
+    expect(r.candidates?.map((c) => c.id)).toEqual([id]);
+  });
+  it.each([["لأحمد علي", "c_ahmed_ali"], ["لعلي كريم", "c_ali_karim"], ["لحسن", "c_hasan"], ["لزينب", "c_zainab"]])("«%s» still resolves", (said, id) =>
+    expect(resolveContact(name(said), withMai)).toMatchObject({ status: "resolved", contact: { id } }));
+  it("a saved «لمى» is matched as she is", () => {
+    const r = resolveContact(name("لمى"), [...withMai, C("c_lama", "لمى", "07700001103")]);
+    expect(r).toMatchObject({ status: "resolved", contact: { id: "c_lama" } });
+  });
+});

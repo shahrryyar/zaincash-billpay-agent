@@ -1,8 +1,10 @@
 // The LLM <-> code contract (docs/05). Provider structured output is NOT trusted: always re-validate here.
 import { z } from "zod";
 import { normaliseArabic, normaliseDigits } from "./normalise";
-import { mentionsForeignCurrency, parseAmount } from "./amount";
+import { isAmountToken, mentionsForeignCurrency, parseAmount } from "./amount";
 import { hasKurdishLetters, isPreviousAmountKu, kurdishNameKey } from "./kurdish";
+import { relationKey } from "./resolver";
+import { mentionsWhen } from "./when";
 
 /** Mock cap. ZainCash's own wallet balance cap is 10M IQD/month (docs/research/02). */
 export const MAX_AMOUNT_IQD = 10_000_000;
@@ -92,7 +94,9 @@ export type IssueCode =
   | "phone_invalid"
   | "when_not_in_input"
   | "amount_ref_invalid"
-  | "recipient_not_in_input";
+  | "recipient_not_in_input"
+  | "amount_partial" // «50 الف» out of «250 الف», «مليون» out of «مليون ونص»: the span is not the whole amount
+  | "when_missing"; // «باچر», «بعد ساعة» in the message but no when_text: never an immediate payment
 
 export type Issue = { code: IssueCode; actionIndex: number; candidates?: [number, number] };
 export type CrossCheckResult = { ok: true } | { ok: false; issues: Issue[] };
@@ -101,15 +105,94 @@ const PHONE = /^07[3-9]\d{8}$/;
 /** What «same as last time» sounds like (after normaliseArabic). A closed list: anything else is not a reference. <!-- VERIFY-DIALECT --> */
 const PREVIOUS = /نفس (?:المبلغ|الشي|المبلغ اللي)|مثل (?:المره|اخر مره|ذيج المره|كل مره)|المره الفاتت|المره الماضيه|اخر مره|ذيج المره|مثل ما دزيت/;
 
+const SEP = /[.,،٬:;!?؟"'“”()«»]/;
+const isSpace = (c: string | undefined) => c === undefined || /\s/.test(c) || SEP.test(c);
+const isDigit = (c: string | undefined) => c !== undefined && /\d/.test(c);
+/** Kurdish endings glued to an amount word («هەزارێک», «هەزاری») after normaliseArabic. */
+const KU_SUFFIX = /^(?:ێك|يك|ي|يەك|يهك)$/;
+
+/** The neighbour word, skipping a standalone «و» («مليون و نص»). */
+function neighbour(tokens: string[], from: number, step: 1 | -1): string | undefined {
+  for (let i = from; i >= 0 && i < tokens.length; i += step) if (!/^(?:و|w|u)$/.test(tokens[i] as string)) return tokens[i];
+  return undefined;
+}
+
+/**
+ * The span sits on word boundaries of the input AND is the whole amount there: «حول لأحمد 250 الف» with «50 الف», «1,500,000»
+ * with «500,000», «خمسة وعشرين الف» with «عشرين الف», «مليون ونص» with «مليون» all fail. Glued in front only «ب» / «ل» / «و»
+ * («بخمسين ألف», «وعشرة آلاف لعلي»); then the word before must not be a number. Any clean occurrence is enough.
+ */
+function wholeAmountIn(input: string, span: string): boolean {
+  for (let at = input.indexOf(span); at >= 0; at = input.indexOf(span, at + 1)) {
+    const end = at + span.length;
+    // left: walk back over a glued prefix to the start of the word
+    let ws = at;
+    while (ws > 0 && !isSpace(input[ws - 1])) ws--;
+    const prefix = input.slice(ws, at);
+    if (prefix && !/^[وبل]{1,2}$/.test(prefix)) continue; // «1250», «ستة» etc.
+    if (isDigit(input[at - 1]) || (SEP.test(input[at - 1] ?? "") && isDigit(input[at - 2]))) continue; // «1,500,000»
+    // right: the word must end here (a Kurdish ending is part of the word, not another number)
+    let we = end;
+    while (we < input.length && !isSpace(input[we])) we++;
+    const suffix = input.slice(end, we);
+    if (suffix && !KU_SUFFIX.test(suffix)) continue;
+    if (SEP.test(input[end] ?? "") && isDigit(input[end + 1])) continue; // «500,000» out of «500,000,000»
+    const before = input.slice(0, ws).split(/\s+/).filter(Boolean);
+    const after = input.slice(we).split(/\s+/).filter(Boolean);
+    const prev = neighbour(before, before.length - 1, -1), next = neighbour(after, 0, 1);
+    if ((prev !== undefined && isAmountToken(prev)) || (next !== undefined && isAmountToken(next))) continue;
+    return true;
+  }
+  return false;
+}
+
+/** «عبد الله» == «عبدالله», punctuation off, one space. */
+const nameKey = (s: string): string => normaliseArabic(s).replace(/[.,،!؟?:;"'«»()]/g, " ").replace(/\s+/g, " ").trim().replace(/(^| )([ول]{0,2}عبد) (?=\S)/g, "$1$2");
+/** What may be glued to the first word of a name in the message: «لأحمد», «للحجي», «ولعلي», «الحجي». */
+const NAME_PREFIXES = ["", "ل", "لل", "ال", "و", "ول", "ولل", "وال"];
+
+/**
+ * An Arabic-script recipient («أحمد علي», «أمي») is words the user wrote, in order, on word boundaries. The first word may
+ * carry «ل»/«لل»/«ال»; a relation word may be the user's synonym («لماما» for «أمي», «خوي» for «أخوي»). A model that adds a
+ * surname («أحمد» -> «أحمد علي») or "fixes" a typo («حسينن» -> «حسين») fails: the resolver must see the user's own words.
+ */
+function recipientSaid(name: string, input: string): boolean {
+  const want = nameKey(name).split(" ").filter(Boolean);
+  const have = nameKey(input).split(" ").filter(Boolean);
+  if (!want.length) return false;
+  const same = (h: string, w: string, first: boolean): boolean =>
+    (first ? NAME_PREFIXES : [""]).some((p) => {
+      if (p && !h.startsWith(p)) return false;
+      const bare = h.slice(p.length);
+      if (bare === w || (p.endsWith("لل") && `ال${bare}` === w)) return true; // «للحجي» = ل + «الحجي»
+      const rw = relationKey(w);
+      return rw !== undefined && relationKey(bare) === rw;
+    });
+  for (let i = 0; i + want.length <= have.length; i++)
+    if (want.every((w, j) => same(have[i + j] as string, w, j === 0))) return true;
+  return false;
+}
+
+export type CrossCheckOptions = {
+  /** Recipient texts of the request still pending (already checked against the message that introduced them). */
+  knownRecipients?: readonly string[];
+};
+
 /**
  * Deterministic checks after Zod (docs/05): source_text must be in the input,
  * parseAmount(source_text) must equal the model's value, amount is a multiple of 250,
  * phone mentions are valid. Anything else is a question or a rephrase, never a guess.
  */
-export function crossCheck(intent: Intent, inputText: string): CrossCheckResult {
+export function crossCheck(intent: Intent, inputText: string, opts: CrossCheckOptions = {}): CrossCheckResult {
   const input = normaliseArabic(inputText);
   const kurdishInput = hasKurdishLetters(inputText);
+  const latinInput = /[a-z]/i.test(inputText);
+  const known = new Set((opts.knownRecipients ?? []).map(nameKey));
   const issues: Issue[] = [];
+  // the model saw no time at all, yet the message has one («دز لأحمد خمسين الف باچر»): ask, never pay now.
+  // Any when_text on any action means it did see the time (which action it belongs to is the model's reading, checked below).
+  const sawWhen = intent.actions.some((a) => a.type !== "info" && a.when_text);
+  const missedWhen = !sawWhen && intent.actions.some((a) => a.type !== "info") && mentionsWhen(inputText);
 
   intent.actions.forEach((a, actionIndex) => {
     if (a.type === "transfer" && a.recipient?.kind === "phone") {
@@ -118,10 +201,17 @@ export function crossCheck(intent: Intent, inputText: string): CrossCheckResult 
     }
     // A Kurdish message: the person must be someone the user actually wrote («ئەحمەد» covers «أحمد»), never a name the
     // model brought in. (Arabic-script Iraqi messages keep the old rule: Arabizi names are rewritten in Arabic letters.)
-    if (a.type === "transfer" && kurdishInput && a.recipient && (a.recipient.kind === "name" || a.recipient.kind === "relation")) {
-      const who = kurdishNameKey(a.recipient.text);
-      if (!who || !kurdishNameKey(inputText).includes(who)) issues.push({ code: "recipient_not_in_input", actionIndex });
+    const named = a.type === "transfer" && a.recipient && (a.recipient.kind === "name" || a.recipient.kind === "relation") ? a.recipient.text : undefined;
+    if (named !== undefined && !known.has(nameKey(named))) {
+      if (kurdishInput) {
+        const who = kurdishNameKey(named);
+        if (!who || !kurdishNameKey(inputText).includes(who)) issues.push({ code: "recipient_not_in_input", actionIndex });
+      } else if (!latinInput && !recipientSaid(named, inputText)) {
+        // Arabic script: same rule. Latin letters (Arabizi «l ahmad») are skipped: the model writes those names in Arabic.
+        issues.push({ code: "recipient_not_in_input", actionIndex });
+      }
     }
+    if (missedWhen && a.type !== "info") issues.push({ code: "when_missing", actionIndex });
     if (a.type !== "info" && a.when_text) {
       const w = normaliseArabic(a.when_text);
       if (!w || !input.includes(w)) issues.push({ code: "when_not_in_input", actionIndex });
@@ -140,6 +230,10 @@ export function crossCheck(intent: Intent, inputText: string): CrossCheckResult 
     const span = normaliseArabic(a.amount.source_text);
     if (!span || !input.includes(span)) {
       issues.push({ code: "source_not_in_input", actionIndex });
+      return;
+    }
+    if (!wholeAmountIn(input, span)) {
+      issues.push({ code: "amount_partial", actionIndex });
       return;
     }
     const p = parseAmount(a.amount.source_text);

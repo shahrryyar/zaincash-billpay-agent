@@ -156,7 +156,7 @@ export const COPY = {
   ui_card_expired: { ar: "انتهى الوقت", en: "Time is up", ku: "کات تەواو بوو" },
   ui_card_schedule: { ar: "🕒 جدولها لوقت ثاني (ناقشها مع المساعد)", en: "🕒 Schedule it for later (with the assistant)", ku: "🕒 بۆ کاتێکی تر خشتەی بکە (لەگەڵ یاریدەدەر)" },
   sched_fail_INSUFFICIENT_BALANCE: { ar: "الرصيد ما يكفي", en: "balance not enough", ku: "باڵانس بەش ناکات" },
-  sched_fail_LIMIT_EXCEEDED: { ar: "تجاوز الحد الشهري", en: "monthly limit reached", ku: "لە سنووری مانگانە زیاترە" },
+  sched_fail_LIMIT_EXCEEDED: { ar: "تجاوز الحد المسموح (اليومي أو الشهري)", en: "daily or monthly limit reached", ku: "لە سنووری ڕۆژانە یان مانگانە زیاترە" },
   sched_fail_BILLER_UNAVAILABLE: { ar: "الخدمة واگفة", en: "service down", ku: "خزمەتگوزارییەکە ڕاوەستاوە" },
   sched_fail_BILL_ALREADY_PAID: { ar: "الفاتورة مدفوعة من قبل", en: "bill already paid", ku: "پسوولەکە پێشتر دراوە" },
   sched_fail_AMOUNT_CHANGED: { ar: "مبلغ الفاتورة تغيّر", en: "bill amount changed", ku: "بڕی پسوولەکە گۆڕاوە" },

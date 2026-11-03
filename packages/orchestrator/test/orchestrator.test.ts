@@ -701,3 +701,83 @@ describe("trace: upstream model requests per turn (free-tier quota planning, doc
     expect((await e.orch.turn("s", { text: "الغي" })).trace.model_requests).toBeUndefined();
   });
 });
+
+describe("review fixes: fuzzy ranking, yes-with-name, typed cancel, recipient check, partial amounts", () => {
+  it("«لحسينن» proposes the closest look-alike (حسين), not the first by name (حسن)", async () => {
+    const msg = "دز عشرة آلاف لحسينن";
+    const e = setup({ script: { [msg]: transferIntent("حسينن", 10_000, "عشرة آلاف") } });
+    const r = await e.orch.turn("s", { text: msg });
+    expect(text(r)).toContain("تقصد حسين؟");
+    expect(r.candidates.map((c) => c.id)).toEqual(["c_husain"]);
+  });
+  it("«اي حسن» to «تقصد حسين؟» is not a yes for حسين (it names someone else)", async () => {
+    const msg = "دز عشرة آلاف لحسيين";
+    const e = setup({ script: { [msg]: transferIntent("حسيين", 10_000, "عشرة آلاف") } });
+    expect(text(await e.orch.turn("s", { text: msg }))).toContain("تقصد حسين؟");
+    const r = await e.orch.turn("s", { text: "اي حسن" });
+    expect(r.card?.recipient?.name).not.toBe("حسين");
+    expect(r.card?.recipient?.name).toBe("حسن"); // read as the correction «حسن»: a card the user still has to confirm
+    expect(e.txCount()).toBe(SEED_TX);
+  });
+  it("«اي حسين» to «تقصد حسين؟» is a yes", async () => {
+    const msg = "دز عشرة آلاف لحسيين";
+    const e = setup({ script: { [msg]: transferIntent("حسيين", 10_000, "عشرة آلاف") } });
+    await e.orch.turn("s", { text: msg });
+    expect((await e.orch.turn("s", { text: "اي حسين" })).card?.recipient?.name).toBe("حسين");
+  });
+  it("a typed «الغي» on the first of two cards clears the plan (docs/04); the button keeps the next one", async () => {
+    const msg = "ادفع الكهرباء ودز لعلي كريم عشرة آلاف";
+    const script = { [msg]: twoActions(billIntent("electricity", "الكهرباء"), transferIntent("علي كريم", 10_000, "عشرة آلاف")) };
+    const e = setup({ script });
+    expect((await e.orch.turn("s", { text: msg })).card).toMatchObject({ kind: "bill_pay" });
+    const r = await e.orch.turn("s", { text: "الغي" });
+    expect(r.phase).toBe("CANCELLED");
+    expect(r.card).toBeNull();
+    expect(e.orch.inspect("s").machine.queue).toEqual([]);
+    expect(e.balance()).toBe(200_000);
+  });
+  it("a typed cancel while a question is open also drops the queued action", async () => {
+    const msg = "دز خمسين ألف لأحمد ودز لعلي كريم عشرة آلاف";
+    const e = setup({ script: { [msg]: twoActions(transferIntent("أحمد", 50_000, "خمسين ألف"), transferIntent("علي كريم", 10_000, "عشرة آلاف")) } });
+    expect((await e.orch.turn("s", { text: msg })).phase).toBe("CLARIFYING");
+    const r = await e.orch.turn("s", { text: "الغي" });
+    expect(r.phase).toBe("CANCELLED");
+    expect(r.card).toBeNull();
+  });
+  it("a name the model brought in (not in the message) asks to rephrase; nothing moves", async () => {
+    const msg = "دز خمسين ألف لزيدان";
+    const e = setup({ script: { [msg]: transferIntent("علي كريم", 50_000, "خمسين ألف") } });
+    const r = await e.orch.turn("s", { text: msg });
+    expect(r.card).toBeNull();
+    expect(r.phase).toBe("NEEDS_REPHRASE");
+    expect(text(r)).toContain("تعيدها");
+  });
+  it("multi-turn slot filling still works: «دز لعلي كريم» -> amount asked -> «خمسين ألف» -> card", async () => {
+    const e = setup({ script: { "دز لعلي كريم": transferIntent("علي كريم", null, null) } });
+    expect((await e.orch.turn("s", { text: "دز لعلي كريم" })).phase).toBe("CLARIFYING");
+    const r = await e.orch.turn("s", { text: "خمسين ألف" });
+    expect(r.card).toMatchObject({ amount_iqd: 50_000, recipient: { name: "علي كريم" } });
+    expect(e.llm.calls).toBe(1); // the answer was read deterministically
+  });
+  it("multi-turn via the model: the restated request carries the pending recipient", async () => {
+    const e = setup({ script: { "دز لعلي كريم": transferIntent("علي كريم", null, null), "خليها خمسين ألف": transferIntent("علي كريم", 50_000, "خمسين ألف") } });
+    await e.orch.turn("s", { text: "دز لعلي كريم" });
+    const r = await e.orch.turn("s", { text: "خليها خمسين ألف" });
+    expect(r.card).toMatchObject({ amount_iqd: 50_000, recipient: { name: "علي كريم" } });
+  });
+  it("a partial amount span («50 الف» out of «250 الف») never makes a card", async () => {
+    const msg = "حول لعلي كريم 250 الف";
+    const e = setup({ script: { [msg]: transferIntent("علي كريم", 50_000, "50 الف") } });
+    const r = await e.orch.turn("s", { text: msg });
+    expect(r.card).toBeNull();
+    expect(r.phase).toBe("NEEDS_REPHRASE");
+  });
+  it("time words the model dropped are asked about, not paid now", async () => {
+    const msg = "دز لعلي كريم خمسين ألف باچر الساعة 9 الصبح";
+    const e = setup({ script: { [msg]: transferIntent("علي كريم", 50_000, "خمسين ألف") } });
+    const r = await e.orch.turn("s", { text: msg });
+    expect(r.card).toBeNull();
+    expect(r.phase).toBe("CLARIFYING");
+    expect(e.txCount()).toBe(SEED_TX);
+  });
+});

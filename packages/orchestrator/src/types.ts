@@ -79,6 +79,8 @@ export type Session = {
   draft: Draft | null;
   candidates: Contact[];
   fuzzy: Contact | null;
+  /** The contact book the fuzzy proposal was made against: «اي <name>» must point at the proposed person in ALL of it. */
+  book?: Contact[] | undefined;
   amountCandidates: [number, number] | null;
   card: CardInfo | null;
   exec: any | null;

@@ -40,14 +40,14 @@ export type MachineState = {
 
 export type MachineEvent =
   | { type: "INPUT_RECEIVED"; text: string; asrConfidence?: number | undefined }
-  | { type: "LLM_OUTPUT"; raw: unknown; input: string }
+  | { type: "LLM_OUTPUT"; raw: unknown; input: string; known?: string[] | undefined } // known: recipient names the user already chose (a tapped candidate)
   | { type: "RESOLUTION"; slot: "recipient" | "biller"; result: "resolved" | "ambiguous" | "fuzzy" | "none" | "unknown_number" | "history"; count?: number; name?: string; phone?: string; needAmount?: boolean }
   | { type: "SLOT_ANSWER"; slot: Slot; filled: boolean; dueAt?: number; prior?: WhenPrior; why?: "need_time" | "too_soon" | "too_far" | "unparsed" }
   | { type: "PRECHECK"; ok: boolean; code?: string | undefined }
   | { type: "CARD_ISSUED"; payloadHash: string; token: string; idempotencyKey: string }
   | { type: "CONFIRM"; token: string; payloadHash: string }
   | { type: "EDIT" }
-  | { type: "CANCEL" }
+  | { type: "CANCEL"; all?: boolean } // all: a typed «الغي» clears the whole plan; the button only ends the current action (docs/04)
   | { type: "TICK" }
   | { type: "EXEC_RESULT"; outcome: "ok" | "rejected" | "timeout"; code?: string | undefined }
   | { type: "LOOKUP_RESULT"; found: "executed" | "not_found" | "unknown" }
@@ -133,7 +133,12 @@ function processAction(state: MachineState, cfg: Config): Result {
   } else if (a.biller === "unknown") {
     return ask(state, "biller", "ask_biller", {}, cfg);
   }
-  // scheduled payment: the instant must be exact before anything is resolved or shown
+  return toResolve(state, cfg);
+}
+
+/** Slots are filled: a scheduled payment still needs its exact instant before anything is resolved or shown. */
+function toResolve(state: MachineState, cfg: Config): Result {
+  const a = state.current;
   if (whenTextOf(a) || state.scheduling) {
     if (state.schedule === null && state.when?.kind === "ok") state = { ...state, schedule: { dueAt: state.when.dueAt } };
     if (state.schedule === null) {
@@ -145,7 +150,7 @@ function processAction(state: MachineState, cfg: Config): Result {
 }
 
 /** A fresh request: Zod gate, deterministic cross-checks, then slot checks. Never executes. */
-function fromIntent(raw: unknown, input: string, cfg: Config, now: number): Result {
+function fromIntent(raw: unknown, input: string, cfg: Config, now: number, knownRecipients: string[] = []): Result {
   const v = validateIntent(raw);
   if (!v.ok) return rephrase("invalid_output");
   let intent = v.intent;
@@ -156,7 +161,8 @@ function fromIntent(raw: unknown, input: string, cfg: Config, now: number): Resu
   // A dropped-«ألف» amount (e.g. «40») in a LATER action must not be asked now: the answer would be applied to the
   // action that is current (the first one). A transfer gets its amount cleared so it asks for it when its turn comes
   // («شكد تريد تدز لـ…»); anything else fails closed (rephrase) rather than guessing.
-  const early = crossCheck(intent, input);
+  const ccOpts = { knownRecipients };
+  const early = crossCheck(intent, input, ccOpts);
   if (!early.ok) {
     const late = new Set(early.issues.filter((i) => i.actionIndex > 0 && i.code === "amount_ambiguous").map((i) => i.actionIndex));
     if (late.size > 0) {
@@ -170,9 +176,12 @@ function fromIntent(raw: unknown, input: string, cfg: Config, now: number): Resu
   const whens = intent.actions.map((a) => (whenTextOf(a) ? parseWhen(whenTextOf(a) as string, now) : null));
   const base: MachineState = { ...initialState(), current: first, queue: rest, when: whens[0] ?? null, queueWhen: whens.slice(1) };
   const many: Effect[] = rest.length > 0 ? [{ type: "SAY", key: "two_actions" }] : [];
-  const cc = crossCheck(intent, input);
+  const cc = crossCheck(intent, input, ccOpts);
   if (!cc.ok) {
     if (cc.issues.some((i) => i.code === "currency_unsupported")) return failSafe(base, "currency", [{ type: "SAY", key: "usd_unsupported" }]);
+    // the message has time words the model did not copy: one action -> it is a schedule, ask «متى؟» (never pay now);
+    // several actions -> which one is later is unknown: rephrase
+    if (cc.issues.every((i) => i.code === "when_missing") && rest.length === 0) return processAction({ ...base, scheduling: true }, cfg);
     const amb = cc.issues[0];
     if (cc.issues.every((i) => i.code === "amount_ambiguous") && amb)
       return withEffects(ask(base, "amount", "ask_amount_thousands", { value: amb.candidates?.[0] ?? 0 }, cfg), many);
@@ -228,8 +237,10 @@ function step(state: MachineState, ev: MachineEvent, ctx: Ctx, cfg: Config): Res
       }
       if (status === "clarify_reply")
         return phase === "CLARIFYING" ? out(state, [{ type: "APPLY_CLARIFY", choice_text: v.intent.clarify_reply?.choice_text ?? "" }]) : out(state, [{ type: "SAY", key: "ask_rephrase" }]);
-      // a new request replaces the pending one; any live token is revoked
-      const r = fromIntent(ev.raw, ev.input, cfg, ctx.now);
+      // a new request replaces the pending one; any live token is revoked. Recipients of the pending request were checked
+      // against the message that named them: a restatement from «خليها خمسين ألف» may carry them («أحمد علي»).
+      const known = [...[state.current, ...state.queue].flatMap((a) => (a?.type === "transfer" && a.recipient ? [a.recipient.text] : [])), ...(ev.known ?? [])];
+      const r = fromIntent(ev.raw, ev.input, cfg, ctx.now, known);
       return withEffects({ state: r.state, effects: [] }, [...revoke(state.card), ...r.effects]);
     }
 
@@ -255,8 +266,7 @@ function step(state: MachineState, ev: MachineEvent, ctx: Ctx, cfg: Config): Res
         const q = timeQuestion(ev.why === "need_time" ? { kind: "need_time", prior: ev.prior ?? {} } : ev.why === "too_soon" ? { kind: "too_soon" } : ev.why === "too_far" ? { kind: "too_far" } : { kind: "unparsed" });
         return ask({ ...state, whenPrior: ev.prior ?? q.prior }, "time", q.key, q.vars, cfg);
       }
-      if (ev.filled)
-        return out({ ...state, phase: "VALIDATED", clarifySlot: null, reason: null }, [{ type: "RESOLVE", slot: resolveSlot(state.current) }]);
+      if (ev.filled) return toResolve({ ...state, clarifySlot: null }, cfg); // «دز لأحمد باچر» + «خمسين ألف»: the time is still asked
       const again = state.lastAsk;
       return again ? ask(state, ev.slot, again.key, again.vars, cfg) : ask(state, ev.slot, "ask_rephrase", {}, cfg);
     }
@@ -300,7 +310,8 @@ function step(state: MachineState, ev: MachineEvent, ctx: Ctx, cfg: Config): Res
     case "CANCEL": {
       if (phase === "EXECUTING" || phase === "UNKNOWN_OUTCOME") return reject(state, "already_sent"); // cannot undo
       if (phase === "IDLE" || phase === "NEEDS_REPHRASE") return reject(state, "nothing_to_cancel");
-      return out({ ...state, phase: "CANCELLED", card: null, clarifySlot: null }, [...revoke(state.card), { type: "SAY", key: "cancelled" }]);
+      const plan = ev.all ? { queue: [], queueWhen: [] } : {}; // typed cancel: nothing queued runs after it
+      return out({ ...state, ...plan, phase: "CANCELLED", card: null, clarifySlot: null }, [...revoke(state.card), { type: "SAY", key: "cancelled" }]);
     }
 
     case "TICK": {

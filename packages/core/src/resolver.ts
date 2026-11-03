@@ -39,6 +39,8 @@ const RELATION_WORDS: Record<string, string> = {
 const relationOf = (s: string): string | undefined => RELATION_WORDS[key(s)] ?? kurdishRelation(s); // «دایکم», «براکەم»
 /** True if the text is a relation word (أمي, أخوي, خوي...). Exported so tests can state the resolver's oracle. */
 export const isRelationWord = (s: string): boolean => relationOf(s) !== undefined;
+/** The canonical relation of a word («لامي», «ماما», «امي» -> «ام»), or undefined. */
+export const relationKey = (s: string): string | undefined => relationOf(s);
 
 const KUNYA_PARTICLES = new Set(["ابو", "ابن", "بنت"]);
 
@@ -149,14 +151,24 @@ function nearMisses(m: string, contacts: Contact[], k: KeyFn = key): Contact[] {
   return [];
 }
 
-function fuzzyCandidates(mention: string, contacts: Contact[], k: KeyFn = key): Contact[] {
+/** Look-alikes at or above the threshold, best first (score = the better of full name and first name). */
+function fuzzyScored(mention: string, contacts: Contact[], k: KeyFn = key): { c: Contact; score: number }[] {
   const m = k(mention);
-  return contacts.filter((c) => {
-    const full = k(c.display_name);
-    const first = full.split(" ")[0] ?? "";
-    return jaroWinkler(m, full) >= FUZZY_CANDIDATE_THRESHOLD || jaroWinkler(m, first) >= FUZZY_CANDIDATE_THRESHOLD;
-  });
+  return contacts
+    .map((c) => { const full = k(c.display_name); return { c, score: Math.max(jaroWinkler(m, full), jaroWinkler(m, full.split(" ")[0] ?? "")) }; })
+    .filter((x) => x.score >= FUZZY_CANDIDATE_THRESHOLD)
+    .sort((a, b) => b.score - a.score || byNameThenId(a.c, b.c));
 }
+function fuzzyCandidates(mention: string, contacts: Contact[], k: KeyFn = key): Contact[] {
+  return fuzzyScored(mention, contacts, k).map((x) => x.c);
+}
+
+/**
+ * Only propose ONE look-alike («تقصد حسين؟») when it is clearly closer than the next one. 0.05 of Jaro-Winkler is about one
+ * more letter in common on a short Arabic name: «حسينن» is حسين 0.960 vs حسن 0.893 (propose حسين); «زينبه» is زينب 0.960 vs
+ * زينة 0.953 (a coin toss: ask which).
+ */
+export const FUZZY_PROPOSE_MARGIN = 0.05;
 
 export type ResolveOptions = { lang?: "ar" | "ku" | "en" | undefined };
 
@@ -223,9 +235,15 @@ export function resolveContact(mention: Mention, contacts: readonly Contact[], o
   if (mention.kind === "relation" && relationOf(text) !== undefined) return { status: "none" };
 
   let cands = matchName(text, all);
-  // «لأحمد»: drop the preposition ل only if the literal form matched nobody
+  // «لأحمد»: drop the preposition ل only if the literal form matched nobody. What is left must look like a name of its own:
+  // «لأحمد», «لعلي», «لحسن» leave 3+ letters and resolve. «لمى», «ليث», «لؤي» are names themselves; dropping ل leaves 2
+  // letters («مي», «يث», «وي»), so a match there is only PROPOSED («تقصد مي؟»), never taken silently.
   const k = key(text);
-  if (cands.length === 0 && k.startsWith("ل") && k.length > 2) cands = matchName(k.slice(1), all);
+  let viaShortStrip = false;
+  if (cands.length === 0 && k.startsWith("ل") && k.length > 2) {
+    cands = matchName(k.slice(1), all);
+    viaShortStrip = cands.length > 0 && (k.slice(1).split(" ")[0] as string).length <= 2;
+  }
   // «خوي كرار» and «أخوي كرار»: preserve both the explicit kinship and name.
   // Collect every matching family contact; a shorter stored name must not hide a second brother.
   if (cands.length === 0) {
@@ -240,6 +258,7 @@ export function resolveContact(mention: Mention, contacts: readonly Contact[], o
     });
   }
   const kurdish = opts.lang === "ku" || hasKurdishLetters(text);
+  if (cands.length && viaShortStrip) return finish(cands, mention.qualifier, true);
   if (cands.length) {
     const res = finish(cands, mention.qualifier);
     // «ئاراس» + «كريم» typed on an Arabic keyboard: the surname only meets «ئاراس کەریم» under the Kurdish key
@@ -254,5 +273,11 @@ export function resolveContact(mention: Mention, contacts: readonly Contact[], o
     if (near.length > 1) return { status: "ambiguous", candidates: [...near].sort(byNameThenId).slice(0, MAX_CANDIDATES) };
     if (near.length === 1) return { status: "fuzzy", candidates: near };
   }
-  return finish(fuzzyCandidates(k.startsWith("ل") && k.length > 2 ? k.slice(1) : k, all), mention.qualifier, true);
+  const scored = fuzzyScored(k.startsWith("ل") && k.length > 2 ? k.slice(1) : k, all);
+  const r = finish(scored.map((x) => x.c), mention.qualifier, true);
+  if (r.status !== "fuzzy" || r.candidates.length < 2) return r;
+  // several look-alikes: propose the best only when it clearly beats the next one, else ask which (like the Kurdish path)
+  const left = scored.filter((x) => r.candidates.includes(x.c));
+  const [a, b] = left as [{ c: Contact; score: number }, { c: Contact; score: number }];
+  return a.score - b.score >= FUZZY_PROPOSE_MARGIN ? { status: "fuzzy", candidates: [a.c] } : { status: "ambiguous", candidates: r.candidates };
 }

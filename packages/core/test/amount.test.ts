@@ -114,3 +114,12 @@ describe("parseAmount: Arabizi money words", () => {
   });
   it("an Arabizi word that is not money stays unparsed", () => expect(parseAmount("nos")).toMatchObject({ kind: "none" }));
 });
+
+describe("parseAmount: scales must go down (an ASR repeat or a garbled order is not an amount)", () => {
+  it.each(["الف مليون", "نص مليون الف", "خمسين الف خمسين الف", "مليون الف", "الف ونص مليون", "الفين الف"])("«%s» is none", (t) =>
+    expect(parseAmount(t)).toEqual({ kind: "none" }));
+  it.each([
+    ["مليون والف", 1_001_000], ["مليون وخمسين الف", 1_050_000], ["مليون ونص", 1_500_000], ["مليون و نص", 1_500_000],
+    ["مية وخمسين الف", 150_000], ["مليونين وميتين الف", 2_200_000], ["نص مليون", 500_000], ["مليون والفين", 1_002_000],
+  ])("«%s» = %d", (t, v) => expect(parseAmount(t)).toEqual(ok(v)));
+});

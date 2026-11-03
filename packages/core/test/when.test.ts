@@ -132,3 +132,26 @@ describe("formatWhenAr and relativeAr (what the confirmation card shows)", () =>
     expect(r(3 * 1440)).toBe("بعد 3 أيام"); expect(r(30 * 1440)).toBe("بعد 30 يوم");
   });
 });
+
+describe("parseWhen: «الا ربع» and modifiers after a relative unit", () => {
+  it("«1 الا ربع الظهر» is 12:45 (the hour is read before subtracting)", () => {
+    ok("باجر الساعة 1 الا ربع الظهر", at(2026, 10, 17, 12, 45));
+    ok("باجر الساعة 3 الا ربع العصر", at(2026, 10, 17, 14, 45));
+  });
+  it("«9 الا ربع» without AM/PM asks, remembering 8:45", () => {
+    expect(parseWhen("باجر الساعة 9 الا ربع", NOW)).toEqual({ kind: "need_time", prior: { date: { y: 2026, m: 10, d: 17 }, hour: 8, minute: 45 } });
+  });
+  it.each([["بعد ساعة ونص", 90], ["بعد ساعتين ونص", 150], ["بعد ساعة الا ربع", 45], ["بعد ساعة وربع", 75], ["بعد ساعة و نص", 90], ["بعد 2 ساعة ونص", 150]])(
+    "«%s» = %d min", (t, mins) => ok(t, NOW + mins * 60_000));
+  it.each(["بعد ساعة و 10 دقايق", "بعد يومين ونص", "بعد 10 دقايق ونص"])("«%s» is not guessed", (t) => expect(parseWhen(t, NOW).kind).toBe("unparsed"));
+});
+
+describe("12 o'clock", () => {
+  it("«12 الصبح» is ambiguous like «12 بالليل»", () => expect(parseWhen("باجر الساعة 12 الصبح", NOW).kind).toBe("need_time"));
+  it("noon and midnight read as such on the card", () => {
+    expect(formatWhenAr(at(2026, 10, 17, 12, 0))).toBe("السبت 17/10/2026، الساعة 12:00 ظهراً");
+    expect(formatWhenAr(at(2026, 10, 17, 12, 30))).toBe("السبت 17/10/2026، الساعة 12:30 ظهراً");
+    expect(formatWhenAr(at(2026, 10, 18, 0, 0))).toBe("الأحد 18/10/2026، الساعة 12:00 منتصف الليل");
+    expect(formatWhenAr(at(2026, 10, 18, 0, 5))).toBe("الأحد 18/10/2026، الساعة 12:05 صباحاً");
+  });
+});

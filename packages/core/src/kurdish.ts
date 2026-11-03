@@ -141,6 +141,13 @@ function parseWords(t: string): KuAmount {
   return finish(total + cur, scaleUsed);
 }
 
+/** One token of a message is a Kurdish number/scale/fraction word («پەنجا», «وپێنج», «هەزارێک»); Latin spellings excluded (Arabizi clash). */
+export function isAmountTokenKu(tok: string): boolean {
+  const t = stripAmount(nk(tok));
+  if (!t || /[a-zâêîûô]/.test(t)) return false;
+  return isNum(canon(t));
+}
+
 /** Parse the exact span the model quoted as the amount, in Kurdish words, digits + «هەزار», or Latin Kurdish. */
 export function parseAmountKu(raw: string): KuAmount {
   const t = stripAmount(nk(raw).replace(/(\d)[٬،](?=\d)/g, "$1,"));
@@ -228,7 +235,10 @@ const BAGHDAD = 3 * 3_600_000;
 export function formatWhenKu(dueAt: number): string {
   const t = new Date(dueAt + BAGHDAD);
   const h = t.getUTCHours(), h12 = h % 12 === 0 ? 12 : h % 12;
-  return `${WEEKDAY_KU[t.getUTCDay()]} ${t.getUTCDate()}/${t.getUTCMonth() + 1}/${t.getUTCFullYear()}، کاتژمێر ${h12}:${String(t.getUTCMinutes()).padStart(2, "0")}ی ${h < 12 ? "پێش نیوەڕۆ" : "دوای نیوەڕۆ"}`;
+  const mi = t.getUTCMinutes();
+  // <!-- VERIFY-DIALECT --> 12:xx is «نیوەڕۆ» (noon), exactly 0:00 is «نیوەشەو» (midnight)
+  const part = h === 12 ? "نیوەڕۆ" : h === 0 && mi === 0 ? "نیوەشەو" : h < 12 ? "پێش نیوەڕۆ" : "دوای نیوەڕۆ";
+  return `${WEEKDAY_KU[t.getUTCDay()]} ${t.getUTCDate()}/${t.getUTCMonth() + 1}/${t.getUTCFullYear()}، کاتژمێر ${h12}:${String(mi).padStart(2, "0")}ی ${part}`;
 }
 
 /** «دوای 2 خولەک», «دوای 3 کاتژمێر», «دوای 4 ڕۆژ». */

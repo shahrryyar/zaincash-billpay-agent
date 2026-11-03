@@ -76,14 +76,14 @@ describe("invalid / unsafe model output never reaches execution", () => {
   });
   it("«same amount as last time»: no amount question; the amount is filled from wallet history after resolution", () => {
     const text = "دز لعلي كريم نفس المبلغ مال اخر مرة";
-    const raw = intent([transfer({ amount: null, amount_ref: { kind: "previous", source_text: "نفس المبلغ مال اخر مرة" } })]);
+    const raw = intent([transfer({ recipient: { kind: "name", text: "علي كريم" }, amount: null, amount_ref: { kind: "previous", source_text: "نفس المبلغ مال اخر مرة" } })]);
     const r = run([[{ type: "LLM_OUTPUT", raw, input: text }]]);
     expect(r.state.phase).toBe("VALIDATED");
     expect(r.effects).toContainEqual({ type: "RESOLVE", slot: "recipient" });
   });
   it("no earlier transfer to that person: asks for the amount, never guesses", () => {
     const text = "دز لعلي كريم نفس المبلغ مال اخر مرة";
-    const raw = intent([transfer({ amount: null, amount_ref: { kind: "previous", source_text: "نفس المبلغ مال اخر مرة" } })]);
+    const raw = intent([transfer({ recipient: { kind: "name", text: "علي كريم" }, amount: null, amount_ref: { kind: "previous", source_text: "نفس المبلغ مال اخر مرة" } })]);
     const r = run([[{ type: "LLM_OUTPUT", raw, input: text }], [{ type: "RESOLUTION", slot: "recipient", result: "resolved", needAmount: true, name: "علي كريم" }]]);
     expect(r.state).toMatchObject({ phase: "CLARIFYING", clarifySlot: "amount" });
     expect(r.effects).toContainEqual({ type: "ASK", slot: "amount", key: "ask_amount_no_history", vars: { name: "علي كريم" } });
@@ -116,7 +116,7 @@ describe("ask, never guess (ambiguity and missing slots)", () => {
     expect(r.state).toMatchObject({ phase: "CLARIFYING", clarifySlot: "recipient" });
   });
   it("dropped ألف (خمسة وعشرين) -> CLARIFYING amount with the thousands question", () => {
-    const raw = intent([transfer({ amount: { value: 25, currency: "IQD", source_text: "خمسة وعشرين" } })]);
+    const raw = intent([transfer({ recipient: { kind: "name", text: "علي" }, amount: { value: 25, currency: "IQD", source_text: "خمسة وعشرين" } })]);
     const r = run([[{ type: "LLM_OUTPUT", raw, input: "دز خمسة وعشرين لعلي" }]]);
     expect(r.state).toMatchObject({ phase: "CLARIFYING", clarifySlot: "amount" });
     expect(r.effects).toContainEqual({ type: "ASK", slot: "amount", key: "ask_amount_thousands", vars: { value: 25 } });
@@ -516,5 +516,46 @@ describe("model-based: invariants hold for ANY event sequence", () => {
     // anti-vacuity: the property is meaningless if it never gets here
     for (const phase of ["AWAITING_CONFIRM", "EXECUTING", "UNKNOWN_OUTCOME", "EXECUTED", "EXPIRED", "FAILED_SAFE", "CLARIFYING"])
       expect(visited.get(phase) ?? 0, `${phase} visits`).toBeGreaterThan(200);
+  });
+});
+
+describe("cancel with a queue (docs/04 «Multi-action»)", () => {
+  const two = intent([transfer(), transfer({ recipient: { kind: "name", text: "علي" }, amount: { value: 10000, currency: "IQD", source_text: "عشرة آلاف" } })]);
+  const TWO = "دز خمسين ألف لأحمد ودز عشرة آلاف لعلي";
+  const pending: Step[] = [[{ type: "INPUT_RECEIVED", text: TWO }], [{ type: "LLM_OUTPUT", raw: two, input: TWO }], [{ type: "RESOLUTION", slot: "recipient", result: "resolved" }], [{ type: "PRECHECK", ok: true }], [{ type: "CARD_ISSUED", payloadHash: "h1", token: "ct_1", idempotencyKey: "k1" }]];
+  it("the Cancel button ends the current action and keeps the next one", () => {
+    const r = run([...pending, [{ type: "CANCEL" }]]);
+    expect(r.state.phase).toBe("CANCELLED");
+    expect(r.state.queue).toHaveLength(1);
+  });
+  it("a typed cancel clears the whole plan", () => {
+    const r = run([...pending, [{ type: "CANCEL", all: true }]]);
+    expect(r.state.phase).toBe("CANCELLED");
+    expect(r.state.queue).toEqual([]);
+    expect(r.state.queueWhen).toEqual([]);
+    expect(types(r.effects)).toContain("REVOKE_TOKEN");
+  });
+});
+
+describe("follow-up messages: the pending recipient was already checked", () => {
+  it("awaiting the amount, the model restates the request from a message that only has the amount", () => {
+    const steps: Step[] = [
+      [{ type: "INPUT_RECEIVED", text: "دز لأحمد" }],
+      [{ type: "LLM_OUTPUT", raw: intent([transfer({ amount: null })]), input: "دز لأحمد" }],
+      [{ type: "INPUT_RECEIVED", text: "خليها خمسين ألف" }],
+      [{ type: "LLM_OUTPUT", raw: intent([transfer()]), input: "خليها خمسين ألف" }],
+    ];
+    const r = run(steps);
+    expect(r.trace[1]?.state.phase).toBe("CLARIFYING");
+    expect(r.state.phase).toBe("VALIDATED");
+  });
+  it("a name the user never wrote is still refused on a follow-up", () => {
+    const steps: Step[] = [
+      [{ type: "INPUT_RECEIVED", text: "دز لأحمد" }],
+      [{ type: "LLM_OUTPUT", raw: intent([transfer({ amount: null })]), input: "دز لأحمد" }],
+      [{ type: "INPUT_RECEIVED", text: "خليها خمسين ألف" }],
+      [{ type: "LLM_OUTPUT", raw: intent([transfer({ recipient: { kind: "name", text: "زيدان" } })]), input: "خليها خمسين ألف" }],
+    ];
+    expect(run(steps).state.phase).toBe("NEEDS_REPHRASE");
   });
 });
