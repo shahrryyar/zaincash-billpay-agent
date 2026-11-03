@@ -34,3 +34,6 @@ __pycache__/
 # Playwright output
 test-results/
 playwright-report/
+
+# Author-only notes (meeting prep); the repo is public
+private/
