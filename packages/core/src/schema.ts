@@ -4,7 +4,7 @@ import { normaliseArabic, normaliseDigits } from "./normalise";
 import { isAmountToken, mentionsForeignCurrency, parseAmount } from "./amount";
 import { hasKurdishLetters, isPreviousAmountKu, kurdishNameKey } from "./kurdish";
 import { relationKey } from "./resolver";
-import { mentionsWhen } from "./when";
+import { isNowOnly, mentionsWhen } from "./when";
 
 /** Mock cap. ZainCash's own wallet balance cap is 10M IQD/month (docs/research/02). */
 export const MAX_AMOUNT_IQD = 10_000_000;
@@ -214,7 +214,8 @@ export function crossCheck(intent: Intent, inputText: string, opts: CrossCheckOp
     if (missedWhen && a.type !== "info") issues.push({ code: "when_missing", actionIndex });
     if (a.type !== "info" && a.when_text) {
       const w = normaliseArabic(a.when_text);
-      if (!w || !input.includes(w)) issues.push({ code: "when_not_in_input", actionIndex });
+      // an invented «هسه» changes nothing (now is the default); an invented «باچر» would, so only "now" is let through
+      if (!w || (!input.includes(w) && !isNowOnly(a.when_text))) issues.push({ code: "when_not_in_input", actionIndex });
     }
     if (a.type === "transfer" && mentionsForeignCurrency(inputText)) {
       issues.push({ code: "currency_unsupported", actionIndex }); // «حول ورقة لأحمد»: refuse even with no amount

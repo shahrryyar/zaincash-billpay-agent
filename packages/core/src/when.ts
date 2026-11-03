@@ -244,6 +244,11 @@ export function parseWhen(text: string, now: number, prior: WhenPrior = {}, opts
 // «اليوم», «هسه» mean now (commit 8d982a2), and greetings are not times.
 const NOW_WORDS = /(?:^| )(?:اليوم|هاليوم|هسه|هسا|هالحين|الان|حالا|فورا)(?= |$)/g;
 const GREETINGS = /(?:^| )(?:صباح|مساء) (?:الخير|النور|الورد)(?= |$)/g;
+/** «هسه», «الان» and nothing else: a when_text that only says "now" (the default), so it schedules nothing. */
+export const isNowOnly = (text: string): boolean => {
+  const s = prep(text);
+  return s.length > 0 && s.replace(NOW_WORDS, " ").trim() === "";
+};
 /** Fixed reference instant for mentionsWhen: only "is there a time?" matters, not which one. */
 const ANY_NOW = Date.UTC(2026, 0, 5, 9) - BAGHDAD_OFFSET_MS;
 

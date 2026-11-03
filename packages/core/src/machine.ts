@@ -235,12 +235,16 @@ function step(state: MachineState, ev: MachineEvent, ctx: Ctx, cfg: Config): Res
         // a spoken/typed "yes" NEVER executes; only the Confirm action with the token does (docs/05, docs/07)
         return phase === "AWAITING_CONFIRM" ? out(state, [{ type: "SAY", key: "press_confirm_button" }]) : out(state, [{ type: "SAY", key: "ask_rephrase" }]);
       }
-      if (status === "clarify_reply")
-        return phase === "CLARIFYING" ? out(state, [{ type: "APPLY_CLARIFY", choice_text: v.intent.clarify_reply?.choice_text ?? "" }]) : out(state, [{ type: "SAY", key: "ask_rephrase" }]);
+      if (status === "clarify_reply" && phase === "CLARIFYING")
+        return out(state, [{ type: "APPLY_CLARIFY", choice_text: v.intent.clarify_reply?.choice_text ?? "" }]);
+      // «لا خليها ستين الف» on an open card, labelled clarify_reply by the model: with actions it is a restated request
+      // (re-checked below, old token revoked, a new card needed); without actions there is nothing to apply.
+      if (status === "clarify_reply" && v.intent.actions.length === 0) return out(state, [{ type: "SAY", key: "ask_rephrase" }]);
       // a new request replaces the pending one; any live token is revoked. Recipients of the pending request were checked
       // against the message that named them: a restatement from «خليها خمسين ألف» may carry them («أحمد علي»).
       const known = [...[state.current, ...state.queue].flatMap((a) => (a?.type === "transfer" && a.recipient ? [a.recipient.text] : [])), ...(ev.known ?? [])];
-      const r = fromIntent(ev.raw, ev.input, cfg, ctx.now, known);
+      const raw = status === "clarify_reply" ? { ...(ev.raw as object), status: "ok" } : ev.raw; // restated: see above
+      const r = fromIntent(raw, ev.input, cfg, ctx.now, known);
       return withEffects({ state: r.state, effects: [] }, [...revoke(state.card), ...r.effects]);
     }
 

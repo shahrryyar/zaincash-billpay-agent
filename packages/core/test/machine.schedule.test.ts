@@ -87,9 +87,13 @@ describe("scheduled payments in the state machine", () => {
       expect(r.effects.some((e) => e.type === "EXECUTE")).toBe(false);
     }
   });
-  it("invented 'now' still fails its source check; future/mixed time words never bypass scheduling", () => {
+  it("an invented 'now' alone schedules nothing (now is the default); future/mixed time words never bypass scheduling", () => {
+    // was NEEDS_REPHRASE: live Gemini adds «هسه» to plain requests, and refusing them changed no money outcome (2026-11-03)
     const r = run([{ type: "LLM_OUTPUT", raw: intent([transfer({ when_text: "هسه" })]), input: "دز خمسين ألف لأحمد علي" }]);
-    expect(r.state.phase).toBe("NEEDS_REPHRASE");
+    expect(r.state.phase).toBe("VALIDATED");
+    expect(r.state.schedule).toBeNull();
+    const later = run([{ type: "LLM_OUTPUT", raw: intent([transfer({ when_text: "باچر" })]), input: "دز خمسين ألف لأحمد علي" }]);
+    expect(later.state.phase).toBe("NEEDS_REPHRASE"); // an invented future word is still refused
     for (const when_text of ["اليوم الساعة 9 الصبح", "هسه باچر", "بعد ساعة", "باچر بعد الظهر"]) {
       const future = run([{ type: "LLM_OUTPUT", raw: intent([transfer({ when_text })]), input: `دز خمسين ألف لأحمد علي ${when_text}` }]);
       expect(future.state.schedule !== null || future.state.clarifySlot === "time", when_text).toBe(true);

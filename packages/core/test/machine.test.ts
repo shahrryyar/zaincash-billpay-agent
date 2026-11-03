@@ -559,3 +559,37 @@ describe("follow-up messages: the pending recipient was already checked", () => 
     expect(run(steps).state.phase).toBe("NEEDS_REPHRASE");
   });
 });
+
+describe("a correction on an open card that the model labels clarify_reply (live Gemini, 2026-11-03)", () => {
+  const onCard: Step[] = [
+    [{ type: "INPUT_RECEIVED", text: HERO }], [{ type: "LLM_OUTPUT", raw: intent([transfer()]), input: HERO }],
+    [{ type: "RESOLUTION", slot: "recipient", result: "resolved" }], [{ type: "PRECHECK", ok: true }],
+    [{ type: "CARD_ISSUED", payloadHash: "h1", token: "ct_1", idempotencyKey: "k1" }],
+  ];
+  const SAID = "لا لحظة خليها ستين الف مو خمسين";
+  const sixty = transfer({ recipient: { kind: "name", text: "أحمد محمد" }, amount: { value: 60000, currency: "IQD", source_text: "ستين الف" } });
+  it("is a restated request: old token revoked, re-checked, a NEW card is needed (never executes)", () => {
+    const r = run([...onCard, [{ type: "INPUT_RECEIVED", text: SAID }],
+      [{ type: "LLM_OUTPUT", raw: intent([sixty], { status: "clarify_reply" }), input: SAID, known: ["أحمد محمد"] }]]);
+    expect(r.state.phase).toBe("VALIDATED");
+    expect(r.state.card).toBeNull();
+    expect(types(r.effects)).toContain("REVOKE_TOKEN");
+    expect(types(r.effects)).not.toContain("EXECUTE");
+  });
+  it("a now-word the model invented («هسه» not said) does not block it; now is the default anyway", () => {
+    const r = run([...onCard, [{ type: "INPUT_RECEIVED", text: SAID }],
+      [{ type: "LLM_OUTPUT", raw: intent([{ ...sixty, when_text: "هسه" }], { status: "clarify_reply" }), input: SAID, known: ["أحمد محمد"] }]]);
+    expect(r.state.phase).toBe("VALIDATED");
+    expect(r.state.schedule ?? null).toBeNull();
+  });
+  it("still refuses a name the user never wrote", () => {
+    const r = run([...onCard, [{ type: "INPUT_RECEIVED", text: SAID }],
+      [{ type: "LLM_OUTPUT", raw: intent([{ ...sixty, recipient: { kind: "name", text: "زيدان" } }], { status: "clarify_reply" }), input: SAID }]]);
+    expect(r.state.phase).toBe("NEEDS_REPHRASE");
+  });
+  it("an invented schedule word is still refused («باچر» not said)", () => {
+    const r = run([...onCard, [{ type: "INPUT_RECEIVED", text: SAID }],
+      [{ type: "LLM_OUTPUT", raw: intent([{ ...sixty, when_text: "باچر" }], { status: "clarify_reply" }), input: SAID, known: ["أحمد محمد"] }]]);
+    expect(r.state.phase).toBe("NEEDS_REPHRASE");
+  });
+});
