@@ -71,7 +71,8 @@ export function createOpenAICompatTranscriber(o: OpenAICompatOptions): Transcrib
       try { body = text ? JSON.parse(text) : null; } catch { body = { text }; }
       return { status: res.status, body };
     } catch (e) {
-      if (ctl.signal.aborted && !signal?.aborted) throw new AsrError("timeout", `no answer within ${timeoutMs} ms`);
+      if (signal?.aborted) throw new AsrError("cancelled", "the caller cancelled the request");
+      if (ctl.signal.aborted) throw new AsrError("timeout", `no answer within ${timeoutMs} ms`);
       throw new AsrError("unavailable", (e as Error).message);
     } finally {
       clearTimeout(timer);
@@ -87,6 +88,7 @@ export function createOpenAICompatTranscriber(o: OpenAICompatOptions): Transcrib
       let last: AsrError | null = null;
       for (let attempt = 0; attempt <= retries; attempt++) {
         if (attempt > 0) await sleep(300 * attempt);
+        if (opts.signal?.aborted) throw new AsrError("cancelled", "the caller cancelled the request"); // never retried
         try {
           const { status, body } = await once(wav, key, opts.signal);
           if (status >= 200 && status < 300) {
@@ -102,6 +104,7 @@ export function createOpenAICompatTranscriber(o: OpenAICompatOptions): Transcrib
           last = classify(status, body);
         } catch (e) {
           last = e instanceof AsrError ? e : new AsrError("unavailable", (e as Error).message);
+          if (last.code === "cancelled") throw last;
         }
         if (!["unavailable", "rate_limited", "timeout"].includes(last.code)) break; // auth/quota/bad audio: retrying cannot help
       }

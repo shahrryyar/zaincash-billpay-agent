@@ -69,6 +69,21 @@ describe("OpenAI-compatible transcriber (RegaLabs developer API shape)", () => {
     const hang = (async (_u: string, init: RequestInit) => new Promise((_r, rej) => init.signal?.addEventListener("abort", () => rej(new Error("aborted"))))) as unknown as typeof fetch;
     await expect(mk(hang, { timeoutMs: 20, retries: 0 }).transcribe(wav)).rejects.toMatchObject({ code: "timeout" });
   });
+  it("a caller abort is cancelled, never retried with a fresh signal", async () => {
+    const ctl = new AbortController();
+    let n = 0;
+    const hang = (async (_u: string, init: RequestInit) => { n++; return new Promise((_r, rej) => init.signal?.addEventListener("abort", () => rej(new Error("aborted")))); }) as unknown as typeof fetch;
+    const p = mk(hang, { retries: 2 }).transcribe(wav, { signal: ctl.signal });
+    setTimeout(() => ctl.abort(), 5);
+    await expect(p).rejects.toMatchObject({ code: "cancelled" });
+    expect(n).toBe(1);
+  });
+  it("an already-aborted signal makes no request at all", async () => {
+    const { f, calls } = fakeFetch([json(200, { text: "x" })]);
+    const ctl = new AbortController(); ctl.abort();
+    await expect(mk(f).transcribe(wav, { signal: ctl.signal })).rejects.toMatchObject({ code: "cancelled" });
+    expect(calls).toHaveLength(0);
+  });
   it("sends model and response_format when configured (Whisper baseline)", async () => {
     const { f, calls } = fakeFetch([json(200, { text: "x", segments: [{ avg_logprob: -0.1 }] })]);
     const t = await mk(f, { model: "whisper-large-v3", responseFormat: "verbose_json" }).transcribe(wav);

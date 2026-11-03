@@ -1,8 +1,9 @@
 // Anthropic adapter (primary: Claude Haiku/Sonnet). Native tool use; our neutral blocks ARE Anthropic's blocks.
 import Anthropic from "@anthropic-ai/sdk";
 import type { Block, ChatClient, CompleteRequest, CompleteResponse } from "./types";
+import { CancelledError } from "./wrappers";
 
-export type AnthropicLike = { messages: { create(params: any): Promise<any> } };
+export type AnthropicLike = { messages: { create(params: any, options?: { signal?: AbortSignal }): Promise<any> } };
 export type AnthropicOptions = { client: AnthropicLike; model: string; temperature?: number | undefined };
 
 /** With a stable prefix, send two system blocks and mark the first for caching (tools come first in the cache order, so they are cached with it). */
@@ -30,7 +31,8 @@ export function anthropicChat(opts: AnthropicOptions): ChatClient {
         tool_choice: req.toolChoice === "auto" ? { type: "auto" } : { type: "tool", name: req.toolChoice.name },
       };
       if (opts.temperature !== undefined) params.temperature = opts.temperature;
-      const res = await opts.client.messages.create(params);
+      if (req.signal?.aborted) throw new CancelledError();
+      const res = await opts.client.messages.create(params, ...(req.signal ? [{ signal: req.signal }] : [])).catch((e: unknown) => { throw req.signal?.aborted ? new CancelledError() : e; });
       const content: Block[] = [];
       for (const b of res.content ?? []) {
         if (b.type === "text") content.push({ type: "text", text: b.text });

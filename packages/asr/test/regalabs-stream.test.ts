@@ -131,7 +131,7 @@ describe("dedicated RegaLabs streaming ASR, server-side adapter", () => {
 
   it("aborting stops audio and never reconnects", async () => {
     const { socket, client, connect } = setup(); const abort = new AbortController();
-    const result = client.transcribe(wav(), { signal: abort.signal }); const rejected = expect(result).rejects.toMatchObject({ code: "unavailable" });
+    const result = client.transcribe(wav(), { signal: abort.signal }); const rejected = expect(result).rejects.toMatchObject({ code: "cancelled" });
     socket.open(); socket.message({ type: "ready" }); abort.abort(); const sent = socket.sent.length;
     await vi.advanceTimersByTimeAsync(300); await rejected;
     expect(socket.sent).toHaveLength(sent); expect(connect).toHaveBeenCalledTimes(1);
@@ -139,7 +139,7 @@ describe("dedicated RegaLabs streaming ASR, server-side adapter", () => {
 
   it("already-aborted requests open no socket", async () => {
     const { client, connect } = setup(); const abort = new AbortController(); abort.abort();
-    await expect(client.transcribe(wav(), { signal: abort.signal })).rejects.toMatchObject({ code: "unavailable" }); expect(connect).not.toHaveBeenCalled();
+    await expect(client.transcribe(wav(), { signal: abort.signal })).rejects.toMatchObject({ code: "cancelled" }); expect(connect).not.toHaveBeenCalled();
   });
 
   it.each([new Uint8Array([1, 2]), encodeWav(new Float32Array(100), 8000), wav().subarray(0, 80)])("rejects invalid format before connecting %#", async (audio) => {

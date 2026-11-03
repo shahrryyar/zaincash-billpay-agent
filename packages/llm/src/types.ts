@@ -12,8 +12,9 @@ export type Msg = { role: "user" | "assistant"; content: Block[] };
 export type ToolDef = { name: string; description: string; input_schema: Record<string, unknown> };
 export type ToolChoice = "auto" | { name: string };
 
-/** `systemPrefix`: the leading part of `system` that never changes between requests; providers that support prompt caching cache it together with the tools. */
-export type CompleteRequest = { system: string; systemPrefix?: string; messages: Msg[]; tools: ToolDef[]; toolChoice: ToolChoice; maxTokens: number };
+/** `systemPrefix`: the leading part of `system` that never changes between requests; providers that support prompt caching cache it together with the tools.
+ * `deadline` (epoch ms) bounds waits for a slot or a retry; `signal` is the caller's cancel. Neither is part of the cache key. */
+export type CompleteRequest = { system: string; systemPrefix?: string; messages: Msg[]; tools: ToolDef[]; toolChoice: ToolChoice; maxTokens: number; deadline?: number; signal?: AbortSignal };
 /** input = tokens billed at the normal rate; cacheRead / cacheWrite = prompt-cache tokens (read at a fraction of the price, write at a small premium). */
 export type Usage = { input: number; output: number; cacheRead?: number; cacheWrite?: number };
 /** `attempts`: upstream requests behind this answer (retries included, 0 for a cache hit); absent means one. Free tiers count each. */

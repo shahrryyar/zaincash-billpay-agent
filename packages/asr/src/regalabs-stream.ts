@@ -49,7 +49,7 @@ export function createRegalabsStreamTranscriber(o: RegalabsStreamOptions): Trans
       try { url = new URL(o.url); } catch { throw new AsrError("rejected", "Invalid ASR stream URL"); }
       if (url.protocol !== "wss:" || url.username || url.password) throw new AsrError("rejected", "ASR stream URL must use secure WebSocket without URL credentials");
       const pcm = pcmFromWav(wav);
-      if (opts.signal?.aborted) throw new AsrError("unavailable", "Streaming ASR cancelled");
+      if (opts.signal?.aborted) throw new AsrError("cancelled", "Streaming ASR cancelled");
       const started = Date.now();
       // No automatic retry: the socket is billed in audio windows and has no documented replay key.
       return new Promise<Transcript>((resolve, reject) => {
@@ -71,7 +71,7 @@ export function createRegalabsStreamTranscriber(o: RegalabsStreamOptions): Trans
           if (error) reject(error);
           else resolve({ text: finals.filter(Boolean).join(" "), provider, latencyMs: Date.now() - started, ...(spokenLanguage ? { language: spokenLanguage } : {}) });
         };
-        const abort = () => finish(new AsrError("unavailable", "Streaming ASR cancelled"));
+        const abort = () => finish(new AsrError("cancelled", "Streaming ASR cancelled"));
         const send = (data: string | ArrayBuffer) => {
           if (settled) return false;
           try { socket.send(data); return true; }

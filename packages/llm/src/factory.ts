@@ -2,7 +2,7 @@
 // The selected provider first, with optional fallbacks. Keys are never printed.
 import { anthropicChat, createAnthropicChat } from "./anthropic";
 import { openAIChat, type FetchLike } from "./openai";
-import { fileStore, withBudget, withCache, withFallback, withRetry, withPacing } from "./wrappers";
+import { fileStore, withBudget, withCache, withCircuitBreaker, withFallback, withRateLimit, withRetry } from "./wrappers";
 import type { ChatClient } from "./types";
 
 export type Env = Record<string, string | undefined>;
@@ -19,7 +19,11 @@ export function chatFromEnv(env: Env, o: FactoryOptions = {}): { chat: ChatClien
   const fallbacks = (env.LLM_FALLBACKS ?? "").split(",").map((x) => x.trim()).filter(Boolean);
   const order = [primary, ...fallbacks.filter((f) => f !== primary)];
   const cap = Number(env.LLM_DAILY_TOKEN_CAP ?? 2_000_000);
+  // Free tier (Gemini Flash-Lite ~15/min per project): a rolling-minute cap with a bounded wait, per provider and process.
+  // LLM_REQUEST_INTERVAL_MS still adds a minimum spacing between starts (0 = none).
   const intervalMs = Number(env.LLM_REQUEST_INTERVAL_MS ?? 0);
+  const perMinute = Number(env.LLM_REQUESTS_PER_MIN ?? 14);
+  const maxWaitMs = Number(env.LLM_MAX_WAIT_MS ?? 20_000);
   const description: string[] = [];
   const clients: ChatClient[] = [];
 
@@ -40,10 +44,11 @@ export function chatFromEnv(env: Env, o: FactoryOptions = {}): { chat: ChatClien
       if (!key || !model) { description.push(`${name}: skipped (set ${p.keyVar} and ${p.modelVar})`); continue; }
       c = openAIChat({ baseUrl: p.base, apiKey: key, model, label: name, ...(o.fetch ? { fetch: o.fetch } : {}) });
     } else { description.push(`${name}: unknown provider, ignored`); continue; }
-    clients.push(withBudget(withRetry(withPacing(c, { intervalMs })), { maxTokensPerDay: cap, ...(o.now ? { now: o.now } : {}) }));
+    const limited = withRateLimit(c, { perMinute, intervalMs, maxWaitMs, ...(o.now ? { now: o.now } : {}) });
+    clients.push(withBudget(withRetry(withCircuitBreaker(limited, o.now ? { now: o.now } : {}), { maxDelayMs: maxWaitMs, ...(o.now ? { now: o.now } : {}) }), { maxTokensPerDay: cap, ...(o.now ? { now: o.now } : {}) }));
     description.push(`${c.id}: enabled (budget ${cap} tokens/day)`);
   }
-  if (intervalMs > 0) description.push(`request pacing: ${intervalMs} ms per provider in this process (other processes share the upstream quota)`);
+  description.push(`request limit: ${perMinute > 0 ? `${perMinute} requests per rolling minute` : "no per-minute cap"}${intervalMs > 0 ? `, ${intervalMs} ms apart` : ""}, wait at most ${maxWaitMs} ms, then busy (per provider in this process; other processes share the upstream quota)`);
   if (clients.length === 0) throw new Error(`No LLM configured. ${description.join("; ")}. Set ANTHROPIC_API_KEY in .env (see .env.example).`);
 
   let chat: ChatClient = clients.length === 1 ? (clients[0] as ChatClient) : withFallback(clients);

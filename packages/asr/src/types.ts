@@ -16,7 +16,7 @@ export interface Transcriber {
   transcribe(wav: Uint8Array, opts?: TranscribeOptions): Promise<Transcript>;
 }
 
-export type AsrErrorCode = "auth" | "quota" | "rate_limited" | "bad_audio" | "unsupported_language" | "rejected" | "unavailable" | "timeout";
+export type AsrErrorCode = "auth" | "quota" | "rate_limited" | "bad_audio" | "unsupported_language" | "rejected" | "unavailable" | "timeout" | "cancelled";
 
 /** Every provider failure becomes one of these. The voice route fails closed on all of them: nothing is sent. */
 export class AsrError extends Error {
