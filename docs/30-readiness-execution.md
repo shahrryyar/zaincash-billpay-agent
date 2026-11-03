@@ -153,3 +153,25 @@ At the author's request, Claude Code ran 8 sequential checks against https://zc-
 - Model turns took 4.7–10.1 s, because the server spaces requests 5 s apart. That is well above the brief's 3 s aim. The deployed build predates `trace.model_requests`. Input tokens (about 2,700 per turn with no lookup, about 5,500 with one) suggest one to two Gemini requests per typed turn, so roughly 250–500 typed turns a day on a 500-request quota. That is an estimate from 8 checks, not a measurement.
 
 These are transport and behaviour checks on five code-switch sentences, not an accuracy result for the code-switch set. The health endpoint does not report the commit; the last recorded deployment is `648e368`.
+
+## Review, hardening and live check, 2026-11-03
+
+Three independent code reviews (core/orchestrator, LLM/web, wallet/eval) reproduced their findings with scripts; every fix
+got a failing test first. Main findings: the amount cross-check was a substring match (a model quoting «50 الف» out of
+«250 الف» passed at 50,000), Arabic-script recipients were never checked against the message, fuzzy look-alikes were
+proposed alphabetically, «اي حسن» counted as yes for حسين, several time-parsing gaps, sandbox eviction by strangers, an
+unbounded request queue, a scheduler key collision, an unenforced daily limit, and two eval metrics that model output could
+shift. See FAILURE_MODES.md FM-22 to FM-27 and commits `86d1caf`..`55a1a43`. Rescoring the two spent held-out result files
+offline with scorer 2.2 flipped no case (`eval/results/heldout*-rescored.md`).
+
+**Verification at `8133d3f`:** `pnpm typecheck` and `pnpm test` exit 0 (1,180 tests), 23/23 browser scenarios, green CI
+(including gitleaks with `.gitleaks.toml`), deployed to the free Render service; health reports `8133d3f`.
+
+**Gemini dev runs (tuned on, LLM-made labels):** Arabic dev at `ffdc8ad` 81.7% [73.8, 87.6] n=120, 0/50 unsafe, 8 provider
+timeouts at the old 8 s request limit counted as failures (limit now 15 s; not rerun to save quota). Sorani dev at `389fb7f`
+88.3% [77.8, 94.2] n=60, 0/26. Code-switch dev at `389fb7f` 92.0% [75.0, 97.8] n=25, 0/12. The first Sorani and code-switch
+attempts at `ffdc8ad` failed on busy errors (the harness did not wait for slots) and are kept as attempts, not results.
+
+**Live chat in Chrome** found two bugs (a mid-card correction answered "rephrase"; a stray "no contact named <message>" after a
+new request during an open question). Both fixed with tests, redeployed and re-checked live:
+`eval/results/live-check-render-2026-11-03.md`. heldout2 was not run.

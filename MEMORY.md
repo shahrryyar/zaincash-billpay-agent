@@ -1,6 +1,6 @@
 # MEMORY.md — current project state
 
-Updated 2026-10-25. No secrets. Read README.md, AGENTS.md and the relevant numbered doc; docs/ and brief/ are tracked. The full readiness audit is docs/29; follow-up verification and outstanding evidence are docs/30.
+Updated 2026-11-03. No secrets. Read README.md, AGENTS.md and the relevant numbered doc; docs/ and brief/ are tracked. The full readiness audit is docs/29; follow-up verification and outstanding evidence are docs/30.
 
 Solo entry: Shahryar Sabir Muhammed (RegaLabs), ZainCash Topic 04. Design brief reported uploaded (22/10); MVP due 08/11. Mock wallet, synthetic data, no real rails. The model understands; deterministic code moves money.
 
@@ -19,11 +19,12 @@ Solo entry: Shahryar Sabir Muhammed (RegaLabs), ZainCash Topic 04. Design brief 
 - Local ASR: http://127.0.0.1:8790/v1, ASR_PROVIDER=regalabs, language auto, separate local key. Stage-11 avg3-36k44k48k checkpoint SHA256 e9de02a14d531d79c531d442e6d7294d175cda55d118cf34fa4ab6efb052b02c; CPU context [56,13], blank penalty .9. No hosted-service credit needed locally. External server: /home/jackal/storage/Desktop/idk/rega-asr-work/local-asr/server.py, Python /home/jackal/Desktop/idk/nemo-venv/bin/python. Manual startup, roughly 70–85 seconds warm-up; check /healthz. Keep the process alive; it does not auto-start.
 - The model supports streaming chunks of 80/320/400 ms; current local wrapper is final HTTP only. Hosted recognition uses wss://api.regalabs.dev/v1/audio/transcriptions/stream, server-side key, auto language. Editable post-recording drafts are implemented: explicit send before Gemini, independent payment approval, raw transcript accessible, stale responses ignored. Live words while recording remain queued in docs/32.
 - The user cancelled phone-IP allowlisting/LAN-origin changes. Render is now authorised and live at https://zc-billpay-agent.onrender.com, service srv-dbdk0l7avr4c73abjdq0, one FREE Frankfurt instance, auto deploy off. Preserve the free plan. Temporary Cloudflare tunnel and local backup container were stopped after Render became live. No laptop ASR tunnel is needed.
-- Hosted demo sandboxes are in-memory: balances, tokens, receipts, schedules and session traces vanish on restart/eviction. No durable/full replay claim. Render sleeps after inactivity; open it early. Current application commit 648e3687081501f98bc5eedc415d59123ba08dc4, deployment dep-dbdojf59fdbs73brp75g observed live; GitHub CI passed (943 tests, 20 browser scenarios). Production release checks/results and human follow-ups: docs/33 and docs/34.
+- Hosted demo sandboxes are in-memory: balances, tokens, receipts, schedules and session traces vanish on restart/eviction. No durable/full replay claim. Render sleeps after inactivity; open it early. Deployed commit 8133d3f (health reports it; deploy with `render deploys create srv-dbdk0l7avr4c73abjdq0 --commit <sha> --wait --confirm`), GitHub CI green (1,180 tests, 23 browser scenarios, gitleaks with .gitleaks.toml).
 
 ## Evaluation and human evidence
 
-- Original Arabic held-out: Claude Haiku 5.5 at 1445bff, 81.1% E2E n=180. Sorani: at 49319bd, 92.2% n=90. Both spent. Historical v1 zero counts were all-case unconfirmed debits, not the current must-not-execute S1. Historical E2E/latency have documented scorer limitations.
+- Gemini dev 2026-11-03 (tuned on): Arabic 81.7% at ffdc8ad (8 timeouts counted), Sorani 88.3% and code-switch 92.0% at 389fb7f; ~1.2–1.5 model requests per turn. Evals wait for slots (LLM_MAX_WAIT_MS=120000 default in run.ts); do not run evals on demo days.
+- Original Arabic held-out: Claude Haiku 5.5 at 1445bff, 81.1% E2E n=180 (payment rows 79.4%; scorer 2.2 rescoring flipped no case). Sorani: at 49319bd, 92.2% n=90. Both spent. Historical v1 zero counts were all-case unconfirmed debits, not the current must-not-execute S1. Historical E2E/latency have documented scorer limitations.
 - Never rerun/tune on spent held-out; heldout2 remains unspent. Human review/editing of fresh labels/copy comes before re-freezing, code/prompt/scorer freeze and the single final run. Do not run it simply because a key is now available.
 - Scorer v2 verifies recipient credit, fees/ledger and labelled queued actions; independent must-not-execute, no-confirm and wrong-payload metrics. --cache-only is offline dev replay only, not new quality/latency evidence.
 - Date/vague afternoon/24:00 and Kurdish lossy-vowel ambiguity bugs fixed with tests first. Scheduling preserved.

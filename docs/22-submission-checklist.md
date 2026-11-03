@@ -20,7 +20,7 @@ Fixed: design brief 22/10, MVP 08/11. Tentative: Espresso Lab meet and greet, MV
 - [x] One-page update with the three required sections: what works, what does not work yet, what comes next (`MVP_UPDATE.md`, checked by `eval/test/submission-docs.test.ts`). PDF draft regenerated 2026-10-25 and checked at one page.
 - [ ] **(human)** Review and approve the MVP update wording, then submit it.
 - [ ] **(human)** Demo and discuss in the 20-minute session; rehearse first.
-- [ ] Run the code-switch dev set and record model requests per turn on Gemini (needs a key; not run on 2026-10-25).
+- [x] Code-switch dev set run on Gemini at `389fb7f`: E2E 92.0% [75.0, 97.8] n=25, 0/12 unsafe; 1.23 model requests per model turn (Arabic dev 1.37, Sorani dev 1.53).
 
 ## Progress review, finalists, date TBC (NS-21–NS-25)
 
@@ -84,4 +84,4 @@ Fixed: design brief 22/10, MVP 08/11. Tentative: Espresso Lab meet and greet, MV
 - [x] Hosted voice uses the RegaLabs streaming ASR endpoint, with a server-side key and explicit transcript review before Gemini.
 - [x] Keys kept in ignored server-side secrets; no keys in image, source or history scans.
 - [ ] **(human)** Resolve organiser/author permission for judges to run the proprietary repo. Do not silently change the licence.
-- [x] CI green on deployed application commit `648e368` (943 tests, 20 browser scenarios, image/dependency/secret checks). Recheck on the final submission commit. The 2026-10-25 changes (tests, eval report, docs) are not deployed.
+- [x] CI green on `8133d3f`, deployed to Render (`/api/health` reports the commit): 1,180 unit/integration tests, 23 scripted browser scenarios, image, dependency and secret checks. Recheck on the actual final submission commit.
