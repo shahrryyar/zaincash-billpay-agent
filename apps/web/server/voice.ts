@@ -24,12 +24,17 @@ export type VoiceResult =
   | { status: 400 | 413 | 502 | 503; error: string; message: string };
 
 const MIN_SECONDS = 0.3;
+/** Largest WAV accepted: 16 kHz mono PCM16 + header slack. */
+const wavLimit = (asr: AsrConfig) => (asr.maxSeconds + 1) * 32_000 + 4_096;
+/** The whole multipart upload (WAV + a few short fields); the route refuses more before buffering it. */
+export const voiceBodyLimit = (asr: AsrConfig) => wavLimit(asr) + 16 * 1024;
 
 export function createVoiceHandler(d: VoiceDeps) {
   const log = d.log ?? ((m: string) => console.error(m));
-  const maxBytes = (d.asr.maxSeconds + 1) * 32_000 + 4_096; // 16 kHz mono PCM16 + header slack
+  const maxBytes = wavLimit(d.asr);
 
-  return async function handle(form: FormData): Promise<VoiceResult> {
+  /** `signal`: the request's own; a closed tab cancels the ASR call (never retried). */
+  return async function handle(form: FormData, signal?: AbortSignal): Promise<VoiceResult> {
     const selected = form.get("lang");
     const lang: Lang = isLang(selected) ? selected : "ar";
     const fail = (status: 400 | 413 | 502 | 503, error: string, key: CopyKey): VoiceResult => ({ status, error, message: t(key, {}, lang) });
@@ -53,7 +58,7 @@ export function createVoiceHandler(d: VoiceDeps) {
     const id = d.newId();
     let heard: Transcript;
     try {
-      heard = await d.asr.transcriber.transcribe(wav, { requestId: `zc-${id}`, ...(hint ? { hint } : {}) });
+      heard = await d.asr.transcriber.transcribe(wav, { requestId: `zc-${id}`, ...(hint ? { hint } : {}), ...(signal ? { signal } : {}) });
     } catch (e) {
       const code = e instanceof AsrError ? e.code : "unavailable";
       log(`[voice] asr failed: ${code}${e instanceof AsrError && e.status ? ` HTTP ${e.status}` : ""}: ${(e as Error).message}`);

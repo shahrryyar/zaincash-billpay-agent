@@ -21,14 +21,28 @@ services:
         value: gemini-3.5-flash-lite
       - key: LLM_FALLBACKS       # add only providers whose keys/models are configured in host secrets
         value: ""
-      - key: LLM_REQUEST_INTERVAL_MS # process-local only; multiple processes still share upstream quota
-        value: "5000"
+      - key: LLM_REQUEST_INTERVAL_MS # optional fixed spacing; the rolling-minute cap below replaces it
+        value: "0"
+      - key: LLM_REQUESTS_PER_MIN # under Gemini's ~15/min; process-local, other processes still share the quota
+        value: "14"
+      - key: LLM_MAX_WAIT_MS     # wait for a slot / a 429 retry hint at most this, then "busy"
+        value: "20000"
+      - key: LLM_TURN_DEADLINE_MS # all model requests of one turn (the browser gives up at 60 s)
+        value: "30000"
       - key: LLM_DAILY_TOKEN_CAP
         value: "2000000"
       - key: TURNS_PER_10_MIN    # per browser session
         value: "60"
+      - key: TURNS_PER_10_MIN_IP # per client IP; judges behind one venue NAT share it
+        value: "100"
+      - key: TURNS_PER_10_MIN_GLOBAL # whole instance
+        value: "150"
       - key: SANDBOX_MAX         # one in-memory wallet per browser session; the free plan has 512 MB
         value: "60"
+      - key: SANDBOX_PROTECT_MIN # recently used or card pending: never evicted; full house answers "busy"
+        value: "10"
+      - key: SANDBOX_NEW_PER_IP_10_MIN
+        value: "40"
       - key: DEMO_MODE
         value: "1"
       - key: LLM_CACHE

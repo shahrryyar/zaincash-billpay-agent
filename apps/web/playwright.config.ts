@@ -22,6 +22,7 @@ export default defineConfig({
     url: `http://127.0.0.1:${PORT}/api/health`,
     timeout: 300_000,
     reuseExistingServer: !process.env.CI,
-    env: { PORT: String(PORT), HOSTNAME: "127.0.0.1", LLM_PROVIDER: "fake", ASR_PROVIDER: "fake", DEMO_MODE: "1", LLM_CACHE: "0" },
+    env: { PORT: String(PORT), HOSTNAME: "127.0.0.1", LLM_PROVIDER: "fake", ASR_PROVIDER: "fake", DEMO_MODE: "1", LLM_CACHE: "0",
+      SANDBOX_NEW_PER_IP_10_MIN: "1000", TURNS_PER_10_MIN_IP: "10000", TURNS_PER_10_MIN_GLOBAL: "10000" }, // every spec shares 127.0.0.1
   },
 });

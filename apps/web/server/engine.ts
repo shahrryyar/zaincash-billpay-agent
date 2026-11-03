@@ -8,7 +8,7 @@ import { chatFromEnv, createUnderstander } from "@zc/llm";
 import { formatWhenAr, formatWhenKu, isLang, relativeAr, relativeKu, t, KU_BILLER_NAMES, type CopyKey, type Lang } from "@zc/core";
 import { asrFromEnv } from "@zc/asr";
 import { createScriptedUnderstander, type Reply } from "@zc/orchestrator";
-import { createSandboxes, type Sandbox } from "./sandboxes";
+import { createSandboxes, SandboxGoneError, type Sandbox } from "./sandboxes";
 
 function loadRootEnv(): void {
   let dir = process.cwd();
@@ -42,6 +42,8 @@ const failReason = (code: string | null | undefined, lang: Lang) => t((FAIL_CODE
 const KU_BY_AR: Record<string, string> = { "الكهرباء (تجريبي)": "electricity", "اشتراك المولدة (تجريبي)": "generator", "شركة النور للإنترنت (تجريبي)": "internet", "الماء (تجريبي)": "water", "شحن الرصيد (تجريبي)": "mobile_topup" };
 const billLabel = (name: string, lang: Lang) => (lang === "ku" ? KU_BILLER_NAMES[KU_BY_AR[name] ?? ""] ?? name : name);
 
+const num = (v: string | undefined, d: number) => (v && Number.isFinite(Number(v)) && Number(v) > 0 ? Number(v) : d);
+
 function build() {
   loadRootEnv();
   const mode = (process.env.LLM_MODE ?? "tools") as "tools" | "workflow";
@@ -52,7 +54,9 @@ function build() {
       return { understanderFor: () => createScriptedUnderstander(), id: "fake (scripted demo sentences)", description: ["fake: scripted demo sentences only (LLM_PROVIDER=fake)"] };
     try {
       const { chat, description } = chatFromEnv(process.env, { cacheDir: resolve(process.cwd(), "../../.cache/llm") });
-      return { understanderFor: (host: never) => createUnderstander({ chat, mode, host }), id: chat.id, description };
+      // One deadline for all of a turn's model requests (slot waits, retries): the browser gives up at 60 s.
+      const deadlineMs = num(process.env.LLM_TURN_DEADLINE_MS, 30_000);
+      return { understanderFor: (host: never) => createUnderstander({ chat, mode, host, deadlineMs }), id: chat.id, description: [...description, `turn deadline: ${deadlineMs} ms`] };
     } catch (e) {
       const why = (e as Error).message;
       console.error(`[llm] ${why}`);
@@ -66,13 +70,17 @@ function build() {
   const cap = process.env.VOICE_CAPTURE_DIR?.trim();
   const voiceCaptureDir = cap ? (isAbsolute(cap) ? cap : join(/* turbopackIgnore: true */ repoRoot, cap)) : undefined;
   console.log(`[voice] ${asr.description}`);
-  const num = (v: string | undefined, d: number) => (v && Number.isFinite(Number(v)) && Number(v) > 0 ? Number(v) : d);
+  const TEN_MIN = 10 * 60_000;
   const boxes = createSandboxes({
     understanderFor: llm.understanderFor as never,
     env: process.env,
     idleMs: num(process.env.SANDBOX_IDLE_MIN, 30) * 60_000,
     maxSandboxes: num(process.env.SANDBOX_MAX, 200),
-    rate: { limit: num(process.env.TURNS_PER_10_MIN, 60), windowMs: 10 * 60_000 },
+    protectMs: num(process.env.SANDBOX_PROTECT_MIN, 10) * 60_000,
+    rate: { limit: num(process.env.TURNS_PER_10_MIN, 60), windowMs: TEN_MIN },
+    ipRate: { limit: num(process.env.TURNS_PER_10_MIN_IP, 100), windowMs: TEN_MIN },
+    globalRate: { limit: num(process.env.TURNS_PER_10_MIN_GLOBAL, 150), windowMs: TEN_MIN },
+    newPerIp: { limit: num(process.env.SANDBOX_NEW_PER_IP_10_MIN, 40), windowMs: TEN_MIN },
   });
 
   /** A sandbox's schedules from its wallet, with the notice for finished ones, in the session's language. */
@@ -108,11 +116,17 @@ function build() {
   const timer = setInterval(() => boxes.runAllDue(), 3000);
   timer.unref?.();
 
+  const withLang = (b: Sandbox, lang?: unknown) => { if (isLang(lang)) b.orch.setLang(b.id, lang); return b; };
   return {
-    /** The caller's own sandbox (created on first use). `lang` (the picker, sent with every request) sets its reply language. */
-    box: (sessionId: unknown, lang?: unknown) => { const b = boxes.get(sessionId); if (isLang(lang)) b.orch.setLang(b.id, lang); return b; },
-    /** One model-backed request for this session; false when it hit its per-session limit. */
-    allow: (sessionId: unknown) => boxes.allow(sessionId),
+    /** The caller's own sandbox (created on first use; SandboxBusyError when none can be had). `lang` (the picker, sent with every request) sets its reply language. */
+    box: (sessionId: unknown, lang?: unknown, ip?: string) => withLang(boxes.get(sessionId, ip), lang),
+    /** One action on the caller's sandbox: it cannot be evicted while `fn` runs. */
+    use: <T>(sessionId: unknown, lang: unknown, ip: string | undefined, fn: (b: Sandbox) => Promise<T>) => boxes.use(sessionId, ip, (b) => fn(withLang(b, lang))),
+    /** The live sandbox, never created. */
+    peek: (sessionId: unknown) => boxes.peek(sessionId),
+    live: (b: Sandbox) => boxes.live(b),
+    /** One model-backed request; false when the session, the client IP or the process hit its limit. */
+    allow: (sessionId: unknown, ip?: string) => boxes.allow(sessionId, ip),
     snapshot, schedules, model: llm.id, mode, description: llm.description, asr, demo, voiceCaptureDir,
     /** What the browser may know about voice: never the key or the base URL. */
     voice: () => ({ enabled: asr.transcriber !== null, provider: asr.provider, max_seconds: asr.maxSeconds, simulator: asr.provider === "fake" && demo }),
@@ -123,16 +137,24 @@ type Engine = ReturnType<typeof build>;
 const g = globalThis as unknown as { __zcEngine?: Engine };
 export const engine = (): Engine => (g.__zcEngine ??= build());
 
-/** Everything the browser needs about its sandbox; the balance on screen is always read from the wallet. */
-export async function sessionState(sessionId: unknown, lang?: unknown) {
+/** Everything the browser needs about this sandbox; the balance on screen is always read from its wallet. */
+export async function stateOf(b: Sandbox) {
   const e = engine();
-  const b = e.box(sessionId, lang);
   return { wallet: await e.snapshot(b), schedules: await e.schedules(b, b.orch.langOf(b.id)), fault: b.fault(), model: e.model, mode: e.mode, voice: e.voice(), server_now: b.now() };
 }
 
-/** A reply goes to the browser together with its sandbox's fresh wallet snapshot. */
-export async function withWallet(reply: Reply) {
-  return { reply, ...(await sessionState(reply.session_id)) };
+/** The caller's sandbox state (created on first use: the page's first load). */
+export async function sessionState(sessionId: unknown, lang?: unknown, ip?: string) {
+  return stateOf(engine().box(sessionId, lang, ip));
+}
+
+/** A reply goes to the browser with the wallet of the SAME sandbox that produced it. A sandbox is never recreated here:
+ * if it is gone, this fails closed (SandboxGoneError) instead of showing a freshly seeded balance next to a real result. */
+export async function withWallet(reply: Reply, b?: Sandbox) {
+  const e = engine();
+  const box = b ?? e.peek(reply.session_id);
+  if (!box || !e.live(box)) throw new SandboxGoneError(`sandbox ${reply.session_id} is gone`);
+  return { reply, ...(await stateOf(box)) };
 }
 
 /** The honest answer when a session has used its turn budget: nothing was sent. */

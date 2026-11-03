@@ -1,7 +1,8 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { t, type CopyKey, type Lang } from "@zc/core";
 import type { Reply } from "./types";
+import { countdownMilestone } from "./countdown";
 
 type Card = NonNullable<Reply["card"]>;
 const fmt = (n: number) => n.toLocaleString("en-US");
@@ -21,6 +22,10 @@ export function ConfirmCard({ card, lang = "ar", busy, skewMs = 0, onConfirm, on
   // if the app was busy when the time ran out, tell the server as soon as it is free
   useEffect(() => { if (left === 0 && !busy) onExpire(); }, [left, busy]); // eslint-disable-line react-hooks/exhaustive-deps
   const expired = left === 0;
+  // a new card takes focus (its heading), so keyboard and screen-reader users land on what needs a decision
+  const heading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => { heading.current?.focus(); }, [card.card_id]);
+  const milestone = countdownMilestone(left);
   const mm = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`;
   const sched = card.schedule;
 
@@ -34,7 +39,7 @@ export function ConfirmCard({ card, lang = "ar", busy, skewMs = 0, onConfirm, on
   return (
     <section aria-label={card.title} className={`rise rounded-2xl bg-[var(--card)] border-2 ${expired ? "border-[var(--line)] opacity-60" : "border-[var(--accent)]"} p-4 shadow-sm`}>
       <header className="flex flex-wrap items-center justify-between gap-2 mb-2">
-        <h2 className="text-xl font-bold">{card.title}</h2>
+        <h2 ref={heading} tabIndex={-1} className="text-xl font-bold focus:outline-none focus-visible:outline-2 focus-visible:outline-[var(--accent)]">{card.title}</h2>
         <span className="rounded-full bg-[#fff3d6] text-[var(--warn)] px-3 py-0.5 text-sm font-semibold">{card.nothing_sent}</span>
       </header>
       <dl>
@@ -52,7 +57,9 @@ export function ConfirmCard({ card, lang = "ar", busy, skewMs = 0, onConfirm, on
       {card.first_time_recipient && (
         <p role="note" className="mt-2 rounded-lg bg-[#fff3d6] px-3 py-2 text-[var(--warn)] font-semibold">⚠ {tt("first_time_recipient")}</p>
       )}
-      <p className="mt-2 text-[var(--muted)] text-base" aria-live="polite">{expired ? tt("ui_card_expired") : <>⏱ <span className="nums">{mm}</span></>}</p>
+      {/* the visible timer ticks every 500 ms inside the chat's live log: hidden from screen readers, which hear only 0:30, 0:10 and expiry */}
+      <p data-testid="card-timer" aria-hidden="true" className="mt-2 text-[var(--muted)] text-base">{expired ? tt("ui_card_expired") : <>⏱ <span className="nums">{mm}</span></>}</p>
+      <p data-testid="card-timer-announce" className="sr-only" aria-live="polite" aria-atomic="true">{milestone === "expired" ? tt("ui_card_expired") : milestone ? `⏱ 0:${milestone}` : ""}</p>
       <div className="mt-3 flex flex-wrap gap-3">
         <button disabled={busy || expired} onClick={onConfirm} className="flex-1 min-h-14 rounded-xl bg-[var(--accent)] text-[var(--accent-ink)] font-bold text-lg px-4">
           {card.labels.confirm}

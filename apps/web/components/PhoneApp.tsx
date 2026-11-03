@@ -4,6 +4,7 @@ import { initialVoiceDraft, reduceVoiceDraft, voiceDraftCanSubmit, t, type CopyK
 import { ConfirmCard } from "./ConfirmCard";
 import { MicButton } from "./MicButton";
 import { simulatorWav } from "./recorder";
+import { HttpError, httpErrorKey, httpErrorText, type HttpErrorKey } from "./http-errors";
 import type { Bubble, Envelope, Reply, ScheduleItem, VoiceInfo, WalletView } from "./types";
 
 const fmt = (n: number) => n.toLocaleString("en-US");
@@ -16,7 +17,7 @@ const LANGS: { id: "ar" | "ku"; label: string; html: string }[] = [{ id: "ar", l
 
 async function post(path: string, body: unknown): Promise<Envelope> {
   const r = await fetch(path, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body), signal: AbortSignal.timeout(60_000) });
-  if (!r.ok) throw new Error(`${path} ${r.status}`);
+  if (!r.ok) throw new HttpError(r.status, await r.json().then((j: { error?: unknown }) => (typeof j?.error === "string" ? j.error : null), () => null));
   return r.json();
 }
 
@@ -47,6 +48,8 @@ export function PhoneApp() {
   const [sim, setSim] = useState<{ text: string; conf: string }>({ text: EXAMPLES.ar[0] as string, conf: "" });
   const inputRef = useRef<HTMLInputElement>(null);
   const [offline, setOffline] = useState(false);
+  /** The page's own state poll was refused (busy / session gone): said once, in place of "offline". */
+  const [refused, setRefused] = useState<HttpErrorKey | null>(null);
   const [panel, setPanel] = useState(false);
   const [schedPanel, setSchedPanel] = useState(false);
   const [schedules, setSchedules] = useState<ScheduleItem[]>([]);
@@ -71,8 +74,11 @@ export function PhoneApp() {
     if (fresh.length) setBubbles((b) => [...b, ...fresh]);
   }, []);
   const refresh = useCallback(async () => {
-    try { const d = await (await fetch(`/api/wallet?session_id=${encodeURIComponent(sidRef.current)}&lang=${langRef.current}`, { cache: "no-store" })).json(); setWallet(d.wallet); setMeta({ model: d.model, mode: d.mode, fault: d.fault }); setVoice(d.voice ?? null); syncSchedules(d.schedules ?? []); if (typeof d.server_now === "number") setSkewMs(Date.now() - d.server_now); setOffline(false); }
-    catch { setOffline(true); }
+    try {
+      const r = await fetch(`/api/wallet?session_id=${encodeURIComponent(sidRef.current)}&lang=${langRef.current}`, { cache: "no-store" });
+      if (!r.ok) throw new HttpError(r.status, await r.json().then((j: { error?: unknown }) => (typeof j?.error === "string" ? j.error : null), () => null));
+      const d = await r.json(); setRefused(null); setWallet(d.wallet); setMeta({ model: d.model, mode: d.mode, fault: d.fault }); setVoice(d.voice ?? null); syncSchedules(d.schedules ?? []); if (typeof d.server_now === "number") setSkewMs(Date.now() - d.server_now); setOffline(false); }
+    catch (e) { const k = httpErrorKey(e); if (k) setRefused(k); else setOffline(true); }
   }, [syncSchedules]);
   // one sandbox per tab: the id survives a reload of this tab (sessionStorage), a new tab gets a fresh wallet
   useEffect(() => {
@@ -121,7 +127,10 @@ export function PhoneApp() {
     if (userText) setBubbles((b) => [...b, { id: ++n.current, from: "user", kind: "info", text: userText }]);
     setBusy(true); setWaiting(kind);
     try { apply(await fn()); }
-    catch {
+    catch (e) {
+      // a refusal the server answered (busy, too large, session gone): honest copy, no "maybe sent" state. busy/413 ran nothing.
+      const known = httpErrorKey(e);
+      if (known) { if (known === "http_session_lost") setReply(null); /* its card belonged to the gone sandbox */ setBubbles((b) => [...b, { id: ++n.current, from: "agent", kind: "error", text: httpErrorText(known, langRef.current as Lang) }]); return; }
       setOffline(true);
       if (afterConfirm) setUncertain(afterConfirm);
       setBubbles((b) => [...b, { id: ++n.current, from: "agent", kind: "error", text: afterConfirm ? tt("unknown_outcome") : tt("busy") }]);
@@ -129,6 +138,8 @@ export function PhoneApp() {
     finally { setBusy(false); setWaiting(null); }
   }, [apply, tt]);
   const confirmCard = (cardId: string) => run(() => post("/api/confirm", { session_id: sid, card_id: cardId, lang }), undefined, "confirm", cardId);
+  // «Check what happened»: never a second Confirm. The wallet is asked by the same key, or the still-live card comes back.
+  const recheckCard = (cardId: string) => run(() => post("/api/recheck", { session_id: sid, card_id: cardId, lang }), undefined, "confirm", cardId);
 
   // While the wallet has not told us what happened to a payment, ask it again every few seconds (by the same key; never re-sends).
   const phase = reply?.phase;
@@ -376,13 +387,14 @@ export function PhoneApp() {
             </section>
           )}
           {uncertain && !busy && (
-            <button onClick={() => confirmCard(uncertain)} className="rise w-full min-h-12 rounded-xl border-2 border-[var(--warn)] text-[var(--warn)] bg-white font-semibold">
+            <button onClick={() => recheckCard(uncertain)} className="rise w-full min-h-12 rounded-xl border-2 border-[var(--warn)] text-[var(--warn)] bg-white font-semibold">
               {tt("ui_recheck")}
             </button>
           )}
           {busy && waiting === "voice" && <p className="text-[var(--muted)] text-center" role="status">{tt("mic_transcribing")}</p>}
           {busy && waiting === "confirm" && <p className="text-[var(--muted)] text-center" role="status">{tt("ui_checking")}</p>}
-          {offline && !busy && <p className="text-center text-[var(--bad)]" role="alert">{tt("ui_offline")}</p>}
+          {refused && !busy && <p className="text-center text-[var(--bad)]" role="alert">{httpErrorText(refused, lang as Lang)}</p>}
+          {offline && !refused && !busy && <p className="text-center text-[var(--bad)]" role="alert">{tt("ui_offline")}</p>}
           <div ref={endRef} />
         </div>
 

@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { AsrError, asrFromEnv, createFakeTranscriber, encodeWav } from "@zc/asr";
 import type { Reply, TurnInput } from "@zc/orchestrator";
-import { createVoiceHandler, type VoiceDeps } from "../server/voice";
+import { createVoiceHandler, voiceBodyLimit, type VoiceDeps } from "../server/voice";
 
 const reply = (text: string): Reply => ({ session_id: "s", phase: "IDLE", messages: [{ kind: "info", text }], card: null, candidates: [], result: null, audit: [], trace: {}, readback: null });
 function deps(over: Partial<VoiceDeps> = {}) {
@@ -98,4 +98,21 @@ describe("voice route: audio -> checks -> ASR -> the same orchestrator turn as t
     expect(readdirSync(dir).sort()).toEqual(["captures.jsonl", "v1.wav"]);
     expect(JSON.parse(readFileSync(join(dir, "captures.jsonl"), "utf8"))).toMatchObject({ id: "v1", hypothesis: "ادفع الماي", reference: null, provider: "fake" });
   });
+  it("the request's abort signal reaches the ASR call (a closed tab stops the upload, nothing is retried)", async () => {
+    let seen: AbortSignal | undefined;
+    const transcriber = { id: "t", async transcribe(_w: Uint8Array, o?: { signal?: AbortSignal }) { seen = o?.signal; throw new AsrError("cancelled", "gone"); } };
+    const { d, turns } = deps({ asr: { ...asrFromEnv({ ASR_PROVIDER: "fake" }), transcriber } });
+    const ctl = new AbortController();
+    const r = await createVoiceHandler(d)(form({ file: wavOf(0.5) }), ctl.signal);
+    expect(seen).toBe(ctl.signal);
+    expect(r).toMatchObject({ status: 502, error: "asr_cancelled" });
+    expect(turns).toHaveLength(0);
+  });
+  it("the route's body cap fits the longest allowed clip plus form fields, and no more", () => {
+    const asr = asrFromEnv({ ASR_PROVIDER: "fake" });
+    const clip = (asr.maxSeconds + 1) * 32_000;
+    expect(voiceBodyLimit(asr)).toBeGreaterThan(clip);
+    expect(voiceBodyLimit(asr)).toBeLessThan(clip + 64 * 1024);
+  });
 });
+
