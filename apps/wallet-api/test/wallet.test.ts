@@ -124,7 +124,7 @@ describe("POST /quotes (pre-check, no side effects)", () => {
   });
   it("monthly limit for person-to-person transfers (2,500,000 IQD, ZainCash Fees & Limits)", async () => {
     const w = makeWallet();
-    w.db.prepare("UPDATE users SET balance_iqd = 9000000 WHERE id = ?").run(DEMO_USER);
+    w.db.prepare("UPDATE users SET balance_iqd = 9000000, daily_limit_iqd = 9000000 WHERE id = ?").run(DEMO_USER);
     expect((await q(w, { kind: "transfer", from: DEMO_USER, to_contact: ahmed, amount_iqd: 2_600_000 })).json.errors).toContain("LIMIT_EXCEEDED");
   });
   it("bill: amount comes from the wallet, fee shown", async () => {
@@ -294,7 +294,7 @@ describe("POST /transfers: business rules fail closed", () => {
   });
   it("monthly limit counts this month's earlier transfers", async () => {
     const w = makeWallet();
-    w.db.prepare("UPDATE users SET balance_iqd = 9000000 WHERE id = ?").run(DEMO_USER);
+    w.db.prepare("UPDATE users SET balance_iqd = 9000000, daily_limit_iqd = 9000000 WHERE id = ?").run(DEMO_USER);
     const t1 = await w.mint(S, transferPayload(ahmed, 1_000_000));
     expect((await exec(w, "/transfers", "k1", t1, transferBody(S, ahmed, 1_000_000))).status).toBe(200);
     const t2 = await w.mint(S, transferPayload(ahmed, 1_600_000));

@@ -153,7 +153,7 @@ describe("running due schedules: exactly once, with the same safety as paying no
   });
   it("the monthly limit is enforced when it runs (2.5M for person-to-person)", async () => {
     const w = makeWallet();
-    w.db.prepare("UPDATE users SET balance_iqd = 9000000 WHERE id=?").run(DEMO_USER);
+    w.db.prepare("UPDATE users SET balance_iqd = 9000000, daily_limit_iqd = 9000000 WHERE id=?").run(DEMO_USER);
     await schedule(w, 1_500_000, HOUR, "a");
     await schedule(w, 1_500_000, HOUR, "b");
     w.clock.advance(HOUR);

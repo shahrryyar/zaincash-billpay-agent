@@ -11,6 +11,9 @@ import type { Db } from "./db";
 import { applySeed } from "./seed";
 
 const DAY = 86_400_000;
+const BAGHDAD_OFFSET_MS = 3 * 3_600_000; // Asia/Baghdad is UTC+3 all year (no DST)
+/** Client idempotency keys must not collide with the scheduler's own `sched:<id>` keys. */
+const RESERVED_KEY_PREFIX = "sched:";
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -123,6 +126,11 @@ export function createApp(opts: AppOptions) {
   const monthBills = (userId: string, code?: string): number =>
     (db.prepare(`SELECT COALESCE(SUM(t.amount_iqd),0) s FROM transactions t JOIN bill_accounts a ON a.id=t.counterparty_id JOIN billers b ON b.id=a.biller_id
                  WHERE t.owner_id=? AND t.kind='bill_pay' AND t.created_at>=? ${code ? "AND b.code=?" : ""}`).get(...(code ? [userId, monthStart(), code] : [userId, monthStart()])) as Row).s;
+  const dayStart = (): number => Math.floor((now() + BAGHDAD_OFFSET_MS) / DAY) * DAY - BAGHDAD_OFFSET_MS;
+  /** Debits (transfers + bills) of today's Baghdad calendar day against users.daily_limit_iqd. Amounts only, fees excluded. */
+  const dayDebits = (userId: string): number =>
+    (db.prepare("SELECT COALESCE(SUM(amount_iqd),0) s FROM transactions WHERE owner_id=? AND created_at>=?").get(userId, dayStart()) as Row).s;
+  const overDaily = (user: Row, amount: number): boolean => dayDebits(user.id) + amount > user.daily_limit_iqd;
 
   /** Ordered business checks. Returns the first failing code or null. `all` collects every failing code (for quotes). */
   function transferChecks(user: Row, contactId: string, amount: number, all: boolean): { codes: string[]; contact?: Row } {
@@ -132,7 +140,7 @@ export function createApp(opts: AppOptions) {
     if (!contact) { codes.push("CONTACT_NOT_FOUND"); return { codes }; }
     if (contact.wallet_user_id === null && push("CONTACT_NOT_WALLET_USER")) return { codes, contact };
     if ((amount % SMALLEST_UNIT_IQD !== 0 || amount > MAX_AMOUNT_IQD) && push("INVALID_AMOUNT")) return { codes, contact };
-    if (monthTransfers(user.id) + amount > MONTHLY_LIMIT_IQD.transfer && push("LIMIT_EXCEEDED")) return { codes, contact };
+    if ((monthTransfers(user.id) + amount > MONTHLY_LIMIT_IQD.transfer || overDaily(user, amount)) && push("LIMIT_EXCEEDED")) return { codes, contact };
     if (user.balance_iqd < amount + p2pFee(amount) && push("INSUFFICIENT_BALANCE")) return { codes, contact };
     const recipient = contact.wallet_user_id === null ? undefined : (db.prepare("SELECT balance_iqd FROM users WHERE id=?").get(contact.wallet_user_id) as Row | undefined);
     if (recipient && recipient.balance_iqd + amount > WALLET_CAPACITY_IQD && push("RECIPIENT_WALLET_FULL")) return { codes, contact };
@@ -149,7 +157,7 @@ export function createApp(opts: AppOptions) {
     const final = amount ?? bill?.amount_iqd ?? 0;
     const total = final + biller.fee_iqd;
     if (final % SMALLEST_UNIT_IQD !== 0 && push("INVALID_AMOUNT")) return { codes, amount: final };
-    if (monthBills(user.id) + final > MONTHLY_LIMIT_IQD.bill && push("LIMIT_EXCEEDED")) return { codes, amount: final };
+    if ((monthBills(user.id) + final > MONTHLY_LIMIT_IQD.bill || overDaily(user, final)) && push("LIMIT_EXCEEDED")) return { codes, amount: final };
     if (biller.code === "mobile_topup" && monthBills(user.id, "mobile_topup") + final > MONTHLY_LIMIT_IQD.mobile_topup && push("LIMIT_EXCEEDED")) return { codes, amount: final };
     if (user.balance_iqd < total && push("INSUFFICIENT_BALANCE")) return { codes, amount: final };
     return { codes, amount: final };
@@ -172,13 +180,13 @@ export function createApp(opts: AppOptions) {
     if (!user) return err(c, 404, "USER_NOT_FOUND", "unknown user");
     if (q.kind === "transfer") {
       const r = transferChecks(user, q.to_contact, q.amount_iqd, true);
-      return c.json({ ok: r.codes.length === 0, kind: "transfer", amount_iqd: q.amount_iqd, limit_iqd: MONTHLY_LIMIT_IQD.transfer, fee_iqd: p2pFee(q.amount_iqd), total_iqd: q.amount_iqd + p2pFee(q.amount_iqd), balance_after_iqd: user.balance_iqd - q.amount_iqd - p2pFee(q.amount_iqd), errors: r.codes, counterparty_name: r.contact?.display_name ?? null });
+      return c.json({ ok: r.codes.length === 0, kind: "transfer", amount_iqd: q.amount_iqd, limit_iqd: Math.min(MONTHLY_LIMIT_IQD.transfer, user.daily_limit_iqd), fee_iqd: p2pFee(q.amount_iqd), total_iqd: q.amount_iqd + p2pFee(q.amount_iqd), balance_after_iqd: user.balance_iqd - q.amount_iqd - p2pFee(q.amount_iqd), errors: r.codes, counterparty_name: r.contact?.display_name ?? null });
     }
     const loaded = loadBill(q.bill_account, user.id);
     if (!loaded) return c.json({ ok: false, kind: "bill_pay", errors: ["BILL_ACCOUNT_NOT_FOUND"] });
     const r = billChecks(user, loaded.account, loaded.biller, loaded.bill, q.amount_iqd ?? null, true);
     const fee = loaded.biller.fee_iqd;
-    return c.json({ ok: r.codes.length === 0, kind: "bill_pay", amount_iqd: r.amount, limit_iqd: loaded.biller.code === "mobile_topup" ? MONTHLY_LIMIT_IQD.mobile_topup : MONTHLY_LIMIT_IQD.bill, fee_iqd: fee, total_iqd: r.amount + fee, balance_after_iqd: user.balance_iqd - r.amount - fee, errors: r.codes, counterparty_name: loaded.biller.name_ar });
+    return c.json({ ok: r.codes.length === 0, kind: "bill_pay", amount_iqd: r.amount, limit_iqd: Math.min(loaded.biller.code === "mobile_topup" ? MONTHLY_LIMIT_IQD.mobile_topup : MONTHLY_LIMIT_IQD.bill, user.daily_limit_iqd), fee_iqd: fee, total_iqd: r.amount + fee, balance_after_iqd: user.balance_iqd - r.amount - fee, errors: r.codes, counterparty_name: loaded.biller.name_ar });
   });
 
   // ------------------------------------------------------------------ confirmation tokens (server-issued, payload-bound)
@@ -303,6 +311,7 @@ export function createApp(opts: AppOptions) {
   async function handleExecute(c: Context, kind: "transfer" | "bill_pay", path: string, schema: z.ZodType<Row>) {
     const key = c.req.header("idempotency-key");
     if (!key || key.length > 128) return err(c, 400, "IDEMPOTENCY_KEY_REQUIRED", "Idempotency-Key header (1-128 chars) is required");
+    if (key.startsWith(RESERVED_KEY_PREFIX)) return err(c, 400, "IDEMPOTENCY_KEY_RESERVED", `the ${RESERVED_KEY_PREFIX} key prefix is reserved for scheduled runs`);
     const parsed = schema.safeParse(await c.req.json().catch(() => null));
     if (!parsed.success) return err(c, 400, "BAD_REQUEST", "invalid request body");
     const body = parsed.data;
@@ -406,6 +415,7 @@ export function createApp(opts: AppOptions) {
   app.post("/scheduled", async (c) => {
     const key = c.req.header("idempotency-key");
     if (!key || key.length > 128) return err(c, 400, "IDEMPOTENCY_KEY_REQUIRED", "Idempotency-Key header (1-128 chars) is required");
+    if (key.startsWith(RESERVED_KEY_PREFIX)) return err(c, 400, "IDEMPOTENCY_KEY_RESERVED", `the ${RESERVED_KEY_PREFIX} key prefix is reserved for scheduled runs`);
     const parsed = ScheduleBody.safeParse(await c.req.json().catch(() => null));
     if (!parsed.success) return err(c, 400, "BAD_REQUEST", "invalid request body");
     const body = parsed.data;
@@ -439,31 +449,46 @@ export function createApp(opts: AppOptions) {
     const ids = (db.prepare("SELECT id FROM scheduled_payments WHERE status='scheduled' AND run_at<=? ORDER BY run_at, rowid LIMIT 100").all(t) as Row[]).map((r) => r.id as string);
     const result = { executed: [] as string[], failed: [] as { id: string; code: string }[] };
     for (const id of ids) {
-      db.transaction(() => {
-        const sp = db.prepare("SELECT rowid seq, * FROM scheduled_payments WHERE id=? AND status='scheduled'").get(id) as Row | undefined;
-        if (!sp) return; // another runner got it
-        const finish = (code: string) => {
-          db.prepare("UPDATE scheduled_payments SET status='failed', failure_code=?, finished_at=? WHERE id=?").run(code, now(), id);
-          audit("schedule.failed", `sched:${id}`, { schedule_id: id, code });
-          result.failed.push({ id, code });
-        };
-        if (now() > sp.run_at + SCHEDULE_MISSED_AFTER_MS) return finish("SCHEDULE_MISSED"); // never pay something that is a day stale
-        const body = JSON.parse(sp.body_json) as Row;
-        const user = db.prepare("SELECT * FROM users WHERE id=?").get(sp.owner_id) as Row;
-        const payload = schedulePayload(sp.kind, user, body, sp.run_at);
-        if ("error" in payload) return finish((payload.error.body as any).error.code);
-        if (sha(canonicalJSON(payload)) !== sp.payload_hash) return finish("AUTHORIZATION_MISMATCH"); // what would be paid differs from what the user approved
-        const bill = sp.kind === "bill_pay" ? loadBill(body.bill_account, user.id) : null;
-        const out = settle(sp.kind, user, body, bill, `sched:${id}`, `sched:${id}`, null, (o) => o);
-        if (out.status === 200) {
-          const txId = (out.body as any).transaction.id as string;
-          db.prepare("UPDATE scheduled_payments SET status='executed', transaction_id=?, finished_at=? WHERE id=?").run(txId, now(), id);
-          audit("schedule.executed", `sched:${id}`, { schedule_id: id, transaction_id: txId });
-          result.executed.push(id);
-        } else finish((out.body as any).error.code);
-      }).immediate();
+      let r: { executed?: string; failed?: { id: string; code: string } } | null;
+      try { r = runOne(id); } catch {
+        // a throw (e.g. a UNIQUE clash) rolled this row's transaction back: record it honestly, never retry forever, keep going
+        const marked = db.transaction(() => {
+          const ok = db.prepare("UPDATE scheduled_payments SET status='failed', failure_code='EXECUTION_ERROR', finished_at=? WHERE id=? AND status='scheduled'").run(now(), id).changes === 1;
+          if (ok) audit("schedule.failed", `sched:${id}`, { schedule_id: id, code: "EXECUTION_ERROR" });
+          return ok;
+        }).immediate();
+        r = marked ? { failed: { id, code: "EXECUTION_ERROR" } } : null;
+      }
+      if (r?.executed) result.executed.push(r.executed);
+      if (r?.failed) result.failed.push(r.failed);
     }
     return result;
+  }
+
+  /** One due row in its own IMMEDIATE transaction. The outcome is reported only after it committed. */
+  function runOne(id: string): { executed?: string; failed?: { id: string; code: string } } | null {
+    return db.transaction(() => {
+      const sp = db.prepare("SELECT rowid seq, * FROM scheduled_payments WHERE id=? AND status='scheduled'").get(id) as Row | undefined;
+      if (!sp) return null; // another runner got it
+      const finish = (code: string) => {
+        db.prepare("UPDATE scheduled_payments SET status='failed', failure_code=?, finished_at=? WHERE id=?").run(code, now(), id);
+        audit("schedule.failed", `sched:${id}`, { schedule_id: id, code });
+        return { failed: { id, code } };
+      };
+      if (now() > sp.run_at + SCHEDULE_MISSED_AFTER_MS) return finish("SCHEDULE_MISSED"); // never pay something that is a day stale
+      const body = JSON.parse(sp.body_json) as Row;
+      const user = db.prepare("SELECT * FROM users WHERE id=?").get(sp.owner_id) as Row;
+      const payload = schedulePayload(sp.kind, user, body, sp.run_at);
+      if ("error" in payload) return finish((payload.error.body as any).error.code);
+      if (sha(canonicalJSON(payload)) !== sp.payload_hash) return finish("AUTHORIZATION_MISMATCH"); // what would be paid differs from what the user approved
+      const bill = sp.kind === "bill_pay" ? loadBill(body.bill_account, user.id) : null;
+      const out = settle(sp.kind, user, body, bill, `sched:${id}`, `sched:${id}`, null, (o) => o);
+      if (out.status !== 200) return finish((out.body as any).error.code);
+      const txId = (out.body as any).transaction.id as string;
+      db.prepare("UPDATE scheduled_payments SET status='executed', transaction_id=?, finished_at=? WHERE id=?").run(txId, now(), id);
+      audit("schedule.executed", `sched:${id}`, { schedule_id: id, transaction_id: txId });
+      return { executed: id };
+    }).immediate();
   }
 
   // ------------------------------------------------------------------ admin (demo / eval only)
