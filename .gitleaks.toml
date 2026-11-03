@@ -1,0 +1,9 @@
+# Default gitleaks rules plus one allowlist: env var NAMES in render.yaml («- key: TURNS_PER_10_MIN_GLOBAL») look like
+# generic API keys to the entropy rule. Values marked sync: false are entered in Render's dashboard, never here.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "render.yaml env var names"
+regexTarget = "line"
+regexes = ['''^\s*- key: [A-Z][A-Z0-9_]*\s*(#.*)?$''']
