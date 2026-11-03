@@ -9,6 +9,8 @@
     "test": "vitest run --testTimeout=60000",
     "typecheck": "tsc -p tsconfig.json",
     "eval": "tsx src/run.ts",
+    "rescore": "tsx src/rescore.ts",
+    "compare": "tsx src/compare.ts",
     "eval:voice": "tsx src/voice.ts",
     "check:web": "tsx src/readiness-web.ts",
     "dialect-sheet": "tsx src/dialect-sheet.ts"

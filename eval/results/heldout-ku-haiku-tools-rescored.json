@@ -1,0 +1,269 @@
+{
+  "meta": {
+    "source": "eval/results/heldout-ku-haiku-tools.json",
+    "source_meta": {
+      "split": "heldout-ku",
+      "mode": "tools",
+      "model": "anthropic:claude-haiku-5-5",
+      "commit": "49319bd",
+      "dirty": false,
+      "dataset": "eval/data/heldout-ku.final.jsonl",
+      "dataset_sha256": "55bd3ce1a02afa1e67fb9857edea5a2565dc1442a680f1ed77684da9f40e7056",
+      "n": 90,
+      "date": "2026-10-19T16:33:26.403Z",
+      "temperature": "per adapter (see packages/llm)"
+    },
+    "dataset_sha256": "55bd3ce1a02afa1e67fb9857edea5a2565dc1442a680f1ed77684da9f40e7056",
+    "rescored_at": "2026-11-03T18:05:11.606Z",
+    "scorer_version": "2.2",
+    "method": "offline re-score of stored stage observations and replies with the current score.ts; stored wallet outcomes kept; can only lower a stored e2e; no model or orchestrator was run"
+  },
+  "metrics": {
+    "e2e_stored": {
+      "rate": 0.9222222222222223,
+      "lo": 0.8480613974425688,
+      "hi": 0.9618151848912118,
+      "n": 90
+    },
+    "e2e_rescored": {
+      "rate": 0.9222222222222223,
+      "lo": 0.8480613974425688,
+      "hi": 0.9618151848912118,
+      "n": 90
+    },
+    "e2e_payment_rows": {
+      "rate": 0.9113924050632911,
+      "lo": 0.8282165767260217,
+      "hi": 0.9564147042505586,
+      "n": 79
+    },
+    "e2e_payment_rows_stored": {
+      "rate": 0.9113924050632911,
+      "lo": 0.8282165767260217,
+      "hi": 0.9564147042505586,
+      "n": 79
+    },
+    "e2e_alternative_rows": {
+      "rate": 1,
+      "lo": 0.7411670300055737,
+      "hi": 1,
+      "n": 11
+    },
+    "e2e_alternative_rows_stored": {
+      "rate": 1,
+      "lo": 0.7411670300055737,
+      "hi": 1,
+      "n": 11
+    },
+    "ambiguity_recall": {
+      "rate": 0.92,
+      "lo": 0.7503389087653979,
+      "hi": 0.9777795989158738,
+      "n": 25
+    },
+    "ambiguity_precision": {
+      "rate": 1,
+      "lo": 0.8568833796149266,
+      "hi": 1,
+      "n": 23
+    },
+    "ambiguity_recall_any_slot": {
+      "rate": 0.92,
+      "lo": 0.7503389087653979,
+      "hi": 0.9777795989158738,
+      "n": 25
+    },
+    "ambiguity_precision_any_slot": {
+      "rate": 1,
+      "lo": 0.8568833796149266,
+      "hi": 1,
+      "n": 23
+    }
+  },
+  "categories": [
+    {
+      "category": "ambiguous_amount",
+      "n": 4,
+      "e2e": 3,
+      "ci": {
+        "rate": 0.75,
+        "lo": 0.3006418400969081,
+        "hi": 0.954412739704631,
+        "n": 4
+      }
+    },
+    {
+      "category": "ambiguous_recipient",
+      "n": 7,
+      "e2e": 7,
+      "ci": {
+        "rate": 1,
+        "lo": 0.6456695613241317,
+        "hi": 1,
+        "n": 7
+      }
+    },
+    {
+      "category": "injection",
+      "n": 3,
+      "e2e": 3,
+      "ci": {
+        "rate": 1,
+        "lo": 0.43850296436068037,
+        "hi": 1,
+        "n": 3
+      }
+    },
+    {
+      "category": "insufficient_balance",
+      "n": 4,
+      "e2e": 4,
+      "ci": {
+        "rate": 1,
+        "lo": 0.5101091596030786,
+        "hi": 0.9999999999999999,
+        "n": 4
+      }
+    },
+    {
+      "category": "malformed",
+      "n": 4,
+      "e2e": 4,
+      "ci": {
+        "rate": 1,
+        "lo": 0.5101091596030786,
+        "hi": 0.9999999999999999,
+        "n": 4
+      }
+    },
+    {
+      "category": "missing_amount",
+      "n": 5,
+      "e2e": 5,
+      "ci": {
+        "rate": 1,
+        "lo": 0.5655175313406071,
+        "hi": 1,
+        "n": 5
+      }
+    },
+    {
+      "category": "ordinary_bill",
+      "n": 8,
+      "e2e": 8,
+      "ci": {
+        "rate": 1,
+        "lo": 0.6755924316585924,
+        "hi": 1,
+        "n": 8
+      }
+    },
+    {
+      "category": "ordinary_transfer",
+      "n": 11,
+      "e2e": 11,
+      "ci": {
+        "rate": 1,
+        "lo": 0.7411670300055737,
+        "hi": 1,
+        "n": 11
+      }
+    },
+    {
+      "category": "out_of_scope",
+      "n": 4,
+      "e2e": 4,
+      "ci": {
+        "rate": 1,
+        "lo": 0.5101091596030786,
+        "hi": 0.9999999999999999,
+        "n": 4
+      }
+    },
+    {
+      "category": "previous_amount",
+      "n": 3,
+      "e2e": 3,
+      "ci": {
+        "rate": 1,
+        "lo": 0.43850296436068037,
+        "hi": 1,
+        "n": 3
+      }
+    },
+    {
+      "category": "scheduled",
+      "n": 9,
+      "e2e": 9,
+      "ci": {
+        "rate": 1,
+        "lo": 0.700854948272956,
+        "hi": 1,
+        "n": 9
+      }
+    },
+    {
+      "category": "similar_names",
+      "n": 5,
+      "e2e": 1,
+      "ci": {
+        "rate": 0.2,
+        "lo": 0.03622410822563066,
+        "hi": 0.6244653729700049,
+        "n": 5
+      }
+    },
+    {
+      "category": "spelling_variant",
+      "n": 10,
+      "e2e": 10,
+      "ci": {
+        "rate": 1,
+        "lo": 0.7224671969739421,
+        "hi": 0.9999999999999999,
+        "n": 10
+      }
+    },
+    {
+      "category": "two_actions",
+      "n": 5,
+      "e2e": 3,
+      "ci": {
+        "rate": 0.6,
+        "lo": 0.23072427940911855,
+        "hi": 0.8823792268590028,
+        "n": 5
+      }
+    },
+    {
+      "category": "unknown_biller",
+      "n": 4,
+      "e2e": 4,
+      "ci": {
+        "rate": 1,
+        "lo": 0.5101091596030786,
+        "hi": 0.9999999999999999,
+        "n": 4
+      }
+    },
+    {
+      "category": "unknown_contact",
+      "n": 4,
+      "e2e": 4,
+      "ci": {
+        "rate": 1,
+        "lo": 0.5101091596030786,
+        "hi": 0.9999999999999999,
+        "n": 4
+      }
+    }
+  ],
+  "changed": [],
+  "notes": {
+    "failure_code_checks_skipped": 11,
+    "stages_without_label": 0,
+    "stages_without_reply": 0,
+    "replies_possibly_truncated": 0,
+    "cases_missing_from_data": 0
+  }
+}

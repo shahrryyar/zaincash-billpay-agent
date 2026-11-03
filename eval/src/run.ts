@@ -1,10 +1,11 @@
 // Evaluation harness (docs/12). Runs labelled cases through the REAL orchestrator (same code as the demo) against a
 // fresh seeded mock wallet per case, and scores state, slots, ambiguity, end-to-end and the safety gates.
 //   pnpm --filter @zc/eval eval -- --split dev [--mode tools|workflow] [--model <id>] [--limit N] [--concurrency 4]
-//   held-out: needs --allow-heldout, a matching eval/data/heldout.sha256, and is logged in eval/results/heldout-runs.log
+//   held-out: needs --allow-heldout, a matching eval/data/<split>.sha256, a clean tree, no LLM cache; the attempt is logged in
+//   eval/results/heldout-runs.log BEFORE the first model call (see heldout-guard.ts)
 import { createHash } from "node:crypto";
 import { execSync } from "node:child_process";
-import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chatFromEnv, createUnderstander, fileStore } from "@zc/llm";
@@ -12,6 +13,8 @@ import { cacheOnlyClient } from "./cache-only";
 import { labelsCaption } from "./labels";
 import { runCase, type EvalCase as Case, type CaseResult, type Stage } from "./case";
 import { safetyMetrics } from "./safety-metrics";
+import { heldoutGuard, isSpent, loadFrozenSets, logAttemptStarted } from "./heldout-guard";
+import { ambiguityMetrics, categoryTable, e2eSplit, s1Ids } from "./metrics";
 import { localToMs } from "./score";
 import { fmtRate, percentile, requestsPerTurn, wilson } from "./stats";
 
@@ -35,33 +38,24 @@ const mode = (args.get("mode") ?? process.env.LLM_MODE ?? "tools") as "tools" | 
 const dataPath = resolve(root, args.get("data") ?? `eval/data/${split}.final.jsonl`);
 const dataRaw = readFileSync(dataPath, "utf8");
 const datasetSha = createHash("sha256").update(dataRaw).digest("hex");
-const frozen = readdirSync(resolve(root, "eval/data")).filter((p) => /^heldout.*\.sha256$/.test(p));
-const frozenName = frozen.find((p) => readFileSync(resolve(root, "eval/data", p), "utf8").split(/\s/)[0] === datasetSha)?.replace(/\.sha256$/, "");
-if (frozenName && frozenName !== split) { console.error(`Refusing: frozen ${frozenName} data cannot be run under split ${split}.`); process.exit(3); }
 let cases: Case[] = dataRaw.split("\n").filter(Boolean).map((l) => JSON.parse(l));
+const git = (c: string) => { try { return execSync(c, { cwd: root, encoding: "utf8" }).trim(); } catch { return "unknown"; } };
+const dirtyTree = () => git("git status --porcelain -- . ':!eval/results' ':!.cache'") !== "";
+const heldoutLog = resolve(root, "eval/results/heldout-runs.log");
+const guard = heldoutGuard({
+  split, datasetSha, caseIds: cases.map((c) => c.id), frozen: loadFrozenSets(resolve(root, "eval/data")),
+  allowHeldout: args.has("allow-heldout"), cacheOnly: args.has("cache-only"), llmCache: process.env.LLM_CACHE === "1",
+  partial: args.has("limit") || args.has("ids"), dirty: dirtyTree(), spent: isSpent(resolve(root, "eval/results"), heldoutLog, datasetSha),
+});
+if (guard.refuse) { console.error(guard.refuse); process.exit(3); }
+const isHeldout = guard.heldout; // heldout and heldout-ku are spent; heldout2 is fresh (2026-10-19)
 if (args.get("ids")) { const want = new Set((args.get("ids") as string).split(",")); cases = cases.filter((c) => want.has(c.id)); }
 if (args.get("limit")) cases = cases.slice(0, Number(args.get("limit")));
 
-const isHeldout = split.startsWith("heldout"); // heldout (spent, commit 1445bff) and heldout2 (fresh, 2026-10-19)
-if (isHeldout) {
-  if (args.has("cache-only")) { console.error("Refusing: offline cache replay is for development, never held-out."); process.exit(3); }
-  const shaFile = resolve(root, `eval/data/${split}.sha256`);
-  if (!args.has("allow-heldout")) { console.error("Refusing: held-out is run once. Pass --allow-heldout (and see docs/12)."); process.exit(3); }
-  if (!existsSync(shaFile) || !readFileSync(shaFile, "utf8").startsWith(datasetSha)) { console.error(`Refusing: held-out file does not match eval/data/${split}.sha256 (frozen hash).`); process.exit(3); }
-  // run once: a committed result for this exact dataset means it is spent (the .log file is not committed, the results are)
-  const resultsDir = resolve(root, "eval/results");
-  const spent = existsSync(resultsDir) && readdirSync(resultsDir).filter((f) => f.endsWith(".json")).some((f) => {
-    try { return (JSON.parse(readFileSync(resolve(resultsDir, f), "utf8")) as { meta?: { dataset_sha256?: string } }).meta?.dataset_sha256 === datasetSha; } catch { return false; }
-  });
-  if (spent) { console.error(`Refusing: ${split} was already run once (a result for this dataset is in eval/results/).`); process.exit(3); }
-  if (args.has("limit") || args.has("ids")) { console.error("Refusing: no partial held-out runs."); process.exit(3); }
-}
-
 const hashFiles = (paths: string[]): string => { const h = createHash("sha256"); for (const p of [...paths].sort()) h.update(p).update("\0").update(readFileSync(resolve(root, p))).update("\0"); return h.digest("hex"); };
-const git = (c: string) => { try { return execSync(c, { cwd: root, encoding: "utf8" }).trim(); } catch { return "unknown"; } };
 const sourceHash = () => hashFiles(git("git ls-files apps packages eval/src").split("\n").filter((p) => /\.(ts|tsx|json)$/.test(p)));
 // Capture provenance BEFORE calls: a development run can finish after another commit/edit.
-const start = { date: new Date().toISOString(), commit: git("git rev-parse --short HEAD"), dirty: git("git status --porcelain -- . ':!eval/results' ':!.cache'") !== "", source_sha256: sourceHash(), seed_sha256: hashFiles(["apps/wallet-api/src/seed.ts", "apps/wallet-api/src/db.ts", "apps/wallet-api/src/fees.ts"]), prompt_sha256: hashFiles(["packages/llm/src/prompt.ts", "packages/llm/src/kurdish.ts", "packages/llm/src/tools.ts", "packages/core/src/schema.ts"]), scorer_sha256: hashFiles(["eval/src/run.ts", "eval/src/case.ts", "eval/src/score.ts", "eval/src/safety-metrics.ts", "eval/src/cache-only.ts"]) };
+const start = { date: new Date().toISOString(), commit: git("git rev-parse --short HEAD"), dirty: dirtyTree(), source_sha256: sourceHash(), seed_sha256: hashFiles(["apps/wallet-api/src/seed.ts", "apps/wallet-api/src/db.ts", "apps/wallet-api/src/fees.ts"]), prompt_sha256: hashFiles(["packages/llm/src/prompt.ts", "packages/llm/src/kurdish.ts", "packages/llm/src/tools.ts", "packages/core/src/schema.ts"]), scorer_sha256: hashFiles(["eval/src/run.ts", "eval/src/case.ts", "eval/src/score.ts", "eval/src/safety-metrics.ts", "eval/src/metrics.ts", "eval/src/cache-only.ts"]) };
 const { chat, description } = args.has("cache-only")
   ? { chat: cacheOnlyClient(args.get("cache-client-id") ?? `anthropic:${process.env.LLM_MODEL || "claude-haiku-5-5"}`, fileStore(resolve(root, ".cache/llm"))), description: ["OFFLINE CACHE REPLAY ONLY: no provider calls; a missing response fails closed."] }
   : chatFromEnv(process.env, { cacheDir: resolve(root, ".cache/llm") });
@@ -72,6 +66,8 @@ async function main() {
   if (!Number.isInteger(conc) || conc < 1 || conc > 16 || cases.length === 0) throw new Error("Need nonempty data and integer concurrency in 1..16");
   const tag = args.get("tag") ?? `${split}-${chat.id.replace(/[^a-z0-9.-]+/gi, "_")}-${mode}-${new Date().toISOString().slice(0, 10)}`;
   if (!/^[a-z0-9._-]+$/i.test(tag) || existsSync(resolve(root, `eval/results/${tag}.json`))) throw new Error("Use a new plain tag: existing result files are never overwritten");
+  // spent from here on, even if the run crashes: logged BEFORE the first model call
+  if (isHeldout) logAttemptStarted(heldoutLog, { date: new Date().toISOString(), tag, model: chat.id, mode, sha: datasetSha, commit: start.commit });
   const results: CaseResult[] = new Array(cases.length);
   let next = 0, done = 0;
   await Promise.all(Array.from({ length: conc }, async () => {
@@ -89,14 +85,11 @@ async function main() {
   const expOf = (id: string) => (cases.find((c) => c.id === id) as Case).expected;
   const accepting = (r: CaseResult) => (expOf(r.id).accept_states?.length ?? 0) > 0;
   const scored = results.filter((r) => !accepting(r)); // injection rows are scored on safety only
-  const posAmb = scored.filter((r) => expOf(r.id).final_state === "CLARIFYING");
-  const predAmb = scored.filter((r) => first(r).observed.phase === "CLARIFYING");
-  const tp = posAmb.filter((r) => first(r).observed.phase === "CLARIFYING").length;
   const intentRows = results.filter((r) => r.intentOk !== null && !accepting(r));
   const lat = results.flatMap((r) => r.card_ms === null ? [] : [r.card_ms]), response = results.map((r) => first(r).ms), conf = results.flatMap((r) => (r.confirm_ms == null ? [] : [r.confirm_ms]));
-  // Alternative-safe-state rows specify no payment payload; legacy multi-action labels omit later actions.
-  // They still exercise the no-confirm boundary across ALL cases, but cannot define semantic unsafe-payment S1.
-  const must = results.filter((r) => expOf(r.id).must_not_execute && !r.safety_only && !r.unlabelled_queue);
+  // Alternative-safe-state rows specify no payment payload: they still exercise the no-confirm boundary across ALL cases
+  // (S2), but cannot define semantic unsafe-payment S1.
+  const must = results.filter((r) => s1Ids(cases).has(r.id)); // dataset labels only, never runtime flags such as unlabelled_queue
   const paymentRows = scored.filter((r) => expOf(r.id).final_state === "AWAITING_CONFIRM");
   const slotRate = (field: "to" | "biller" | "amount_iqd" | "due_local") => {
     const rs = paymentRows.filter((r) => expOf(r.id)[field] != null);
@@ -110,9 +103,8 @@ async function main() {
     state_and_payload_accuracy_first_turn: wilson(cnt((r) => first(r).fullOk && !accepting(r)), scored.length),
     intent_accuracy: wilson(intentRows.filter((r) => r.intentOk).length, intentRows.length),
     slots_first_turn: { recipient: slotRate("to"), biller: slotRate("biller"), amount: slotRate("amount_iqd"), schedule_time: slotRate("due_local") },
-    ambiguity_recall: wilson(tp, posAmb.length),
-    ambiguity_precision: wilson(tp, predAmb.length),
-    e2e_completion: wilson(cnt((r) => r.e2e), n),
+    ...ambiguityMetrics(scored.map((r) => ({ exp: expOf(r.id), first: first(r) }))), // strict = the labelled slot; *_any_slot = any slot
+    ...e2eSplit(results, expOf),
     ...safetyMetrics(results, new Set(must.map((r) => r.id))),
     safety_only_cases: cnt((r) => r.safety_only),
     unsafe_card_on_must_not_execute: wilson(must.filter((r) => r.unsafe_card).length, must.length),
@@ -126,8 +118,8 @@ async function main() {
     model_requests_per_turn: requestsPerTurn(results),
   };
   const rpt = metrics.model_requests_per_turn;
-  const cats = [...new Set(results.map((r) => r.category))].sort().map((cat) => { const rs = results.filter((r) => r.category === cat); return { category: cat, n: rs.length, e2e: rs.filter((r) => r.e2e).length }; });
-  const meta = { split, mode, model: chat.id, commit: start.commit, dirty: start.dirty, started_at: start.date, dataset: dataPath.replace(root + "/", ""), dataset_sha256: datasetSha, n, date: new Date().toISOString(), scorer_version: "2.1", seed_sha256: start.seed_sha256, prompt_sha256: start.prompt_sha256, scorer_sha256: start.scorer_sha256, source_sha256: start.source_sha256, source_changed_during_run: sourceHash() !== start.source_sha256, configuration: { primary: process.env.LLM_PROVIDER ?? "anthropic", fallbacks: process.env.LLM_FALLBACKS ?? "", request_interval_ms: Number(process.env.LLM_REQUEST_INTERVAL_MS ?? 0), response_cache: args.has("cache-only") || process.env.LLM_CACHE === "1", cache_only: args.has("cache-only"), temperature: (process.env.LLM_PROVIDER ?? "anthropic") === "anthropic" ? "provider default (omitted)" : 0, concurrency: conc } };
+  const cats = categoryTable(results);
+  const meta = { split, mode, model: chat.id, commit: start.commit, dirty: start.dirty, started_at: start.date, dataset: dataPath.replace(root + "/", ""), dataset_sha256: datasetSha, n, date: new Date().toISOString(), scorer_version: "2.2", seed_sha256: start.seed_sha256, prompt_sha256: start.prompt_sha256, scorer_sha256: start.scorer_sha256, source_sha256: start.source_sha256, source_changed_during_run: sourceHash() !== start.source_sha256, configuration: { primary: process.env.LLM_PROVIDER ?? "anthropic", fallbacks: process.env.LLM_FALLBACKS ?? "", request_interval_ms: Number(process.env.LLM_REQUEST_INTERVAL_MS ?? 0), response_cache: args.has("cache-only") || process.env.LLM_CACHE === "1", cache_only: args.has("cache-only"), temperature: (process.env.LLM_PROVIDER ?? "anthropic") === "anthropic" ? "provider default (omitted)" : 0, concurrency: conc } };
   mkdirSync(resolve(root, "eval/results"), { recursive: true });
   writeFileSync(resolve(root, `eval/results/${tag}.json`), JSON.stringify({ meta, metrics, categories: cats, cases: results }, null, 2));
   const failures = results.filter((r) => !r.e2e);
@@ -138,9 +130,10 @@ async function main() {
     labelsCaption(split), "",
     "| Metric | Value (Wilson 95% CI) |", "|---|---|",
     `| State accuracy, first turn | ${fmtRate(metrics.state_accuracy_first_turn)} |`, `| State and payload accuracy, first turn (composite) | ${fmtRate(metrics.state_and_payload_accuracy_first_turn)} |`,
-    `| Intent accuracy | ${fmtRate(metrics.intent_accuracy)} |`, `| Ambiguity recall | ${fmtRate(metrics.ambiguity_recall)} |`, `| Ambiguity precision | ${fmtRate(metrics.ambiguity_precision)} |`,
+    `| Intent accuracy | ${fmtRate(metrics.intent_accuracy)} |`, `| Ambiguity recall (labelled slot) | ${fmtRate(metrics.ambiguity_recall)} |`, `| Ambiguity precision (labelled slot) | ${fmtRate(metrics.ambiguity_precision)} |`,
+    `| Ambiguity recall / precision, any slot (loose) | ${fmtRate(metrics.ambiguity_recall_any_slot)} / ${fmtRate(metrics.ambiguity_precision_any_slot)} |`,
     ...Object.entries(metrics.slots_first_turn).map(([key, value]) => `| First-turn ${key} on labelled payment cards | ${fmtRate(value)} |`),
-    `| End-to-end completion | ${fmtRate(metrics.e2e_completion)} |`, `| S1 unsafe execution | ${fmtRate(metrics.unsafe_execution_S1)}; events=${metrics.unsafe_execution_S1.events} |`,
+    `| End-to-end completion, all rows | ${fmtRate(metrics.e2e_completion)} |`, `| End-to-end completion, payment rows (alternative-safe-state rows excluded) | ${fmtRate(metrics.e2e_payment_rows)} |`, `| S1 unsafe execution | ${fmtRate(metrics.unsafe_execution_S1)}; events=${metrics.unsafe_execution_S1.events} |`,
     `| No-confirm bypass across all cases | ${fmtRate(metrics.confirmation_bypass_S2)} |`,
     `| Alternative-state cases scored on no-confirm safety only | ${metrics.safety_only_cases} |`,
     `| Later actions without independent labels (not complete E2E) | ${metrics.unlabelled_queued_cases} |`,
@@ -148,7 +141,7 @@ async function main() {
     `| p50 / p95 first response (all states) | ${metrics.latency_ms_first_response.p50} / ${metrics.latency_ms_first_response.p95} ms |`,
     `| LLM errors | ${metrics.llm_errors} |`,
     `| Upstream model requests per model turn (retries included, cache hits excluded; mean / max per case) | ${rpt ? `${rpt.mean.toFixed(2)} / ${rpt.max_per_case}, ${rpt.requests} requests over ${rpt.turns} turns` : "not counted"} |`, `| Tokens (billed at normal rate / output / cache read / cache write) | ${metrics.usage_total.input} / ${metrics.usage_total.output} / ${metrics.usage_total.cacheRead} / ${metrics.usage_total.cacheWrite} |`, "",
-    "| Category | e2e | n |", "|---|---|---|", ...cats.map((x) => `| ${x.category} | ${x.e2e} | ${x.n} |`), "",
+    "| Category | e2e | n | rate (Wilson 95% CI) |", "|---|---|---|---|", ...cats.map((x) => `| ${x.category} | ${x.e2e} | ${x.n} | ${fmtRate(x.ci)} |`), "",
     `## Failures (${failures.length})`, ...failures.map((r) => `- ${r.id} [${r.category}] «${r.text}» → ${r.failure}${r.llm_error ? ` (llm error: ${r.llm_error.slice(0, 120)})` : ""}`), "",
   ].join("\n");
   writeFileSync(resolve(root, `eval/results/${tag}.md`), md);
