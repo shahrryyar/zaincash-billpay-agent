@@ -719,6 +719,15 @@ describe("review fixes: fuzzy ranking, yes-with-name, typed cancel, recipient ch
     expect(r.card?.recipient?.name).toBe("حسن"); // read as the correction «حسن»: a card the user still has to confirm
     expect(e.txCount()).toBe(SEED_TX);
   });
+  it("a NEW ambiguous request while «تقصد حسين؟» is open asks only which Ahmed (live demo, 2026-11-03)", async () => {
+    const msg = "دز عشرة آلاف لحسينن", next = "هلو، دز خمسين ألف لأحمد";
+    const e = setup({ script: { [msg]: transferIntent("حسينن", 10_000, "عشرة آلاف"), [next]: transferIntent("أحمد", 50_000, "خمسين ألف") } });
+    expect(text(await e.orch.turn("s", { text: msg }))).toContain("تقصد حسين؟");
+    const r = await e.orch.turn("s", { text: next });
+    expect(text(r)).toContain("باسم أحمد");
+    expect(text(r)).not.toContain("ما لگيت"); // not also "no contact named «هلو، دز خمسين ألف لأحمد»"
+    expect(r.candidates).toHaveLength(2);
+  });
   it("«اي حسين» to «تقصد حسين؟» is a yes", async () => {
     const msg = "دز عشرة آلاف لحسيين";
     const e = setup({ script: { [msg]: transferIntent("حسيين", 10_000, "عشرة آلاف") } });

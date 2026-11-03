@@ -593,9 +593,10 @@ export function createOrchestrator(opts: OrchestratorOptions) {
         // not an answer: maybe a new request, so ask the model. If it changed nothing, the user still used up a turn
         // (at most 2 per slot), otherwise garbage input could keep the question open forever.
         const slot = s.machine.clarifySlot as "recipient" | "amount" | "biller";
-        const before = s.machine.clarifyTurns[slot] ?? 0;
+        const before = s.machine.clarifyTurns[slot] ?? 0, pending = s.machine.current;
         await dispatch(s, { type: "INPUT_RECEIVED", text, asrConfidence: asr }, tc);
-        if (s.machine.phase === "CLARIFYING" && s.machine.clarifySlot === slot && (s.machine.clarifyTurns[slot] ?? 0) === before && !tc.reply.trace.llm_error)
+        // a NEW request that asks the same slot again («دز لأحمد» while «تقصد حسين؟» is open) replaced `current`: not a miss
+        if (s.machine.phase === "CLARIFYING" && s.machine.clarifySlot === slot && s.machine.current === pending && (s.machine.clarifyTurns[slot] ?? 0) === before && !tc.reply.trace.llm_error)
           await dispatch(s, slot === "recipient" ? { type: "RESOLUTION", slot, result: "none", name: text } : { type: "SLOT_ANSWER", slot, filled: false }, tc);
       }
       return finalize(s, tc);
