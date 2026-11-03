@@ -35,7 +35,8 @@ services:
         value: "60"
       - key: TURNS_PER_10_MIN_IP # per client IP; judges behind one venue NAT share it
         value: "100"
-      - key: TURNS_PER_10_MIN_GLOBAL # whole instance
+      # whole instance, every client together
+      - key: TURNS_PER_10_MIN_GLOBAL
         value: "150"
       - key: SANDBOX_MAX         # one in-memory wallet per browser session; the free plan has 512 MB
         value: "60"
