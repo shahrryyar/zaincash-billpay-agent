@@ -78,7 +78,7 @@ pnpm eval -- --split dev --mode tools   # evaluation harness on the dev set
 **No Anthropic key?** Use a free provider from the organisers' guide (no payment card): set `LLM_PROVIDER=groq` (or
 `gemini`), its key and its exact model id in `.env` (see `.env.example`), then run `pnpm smoke` to check the model drives
 the agent. Free tiers may train on prompts (all data here is synthetic) and have rate limits: configure only available fallbacks in
-`LLM_FALLBACKS`. The current laptop uses Gemini 3.5 Flash-Lite with LLM_REQUEST_INTERVAL_MS=5000 for its observed 15 RPM quota. Pacing is per process; avoid concurrent web/eval API consumers. Any number reported must name the model it was measured with.
+`LLM_FALLBACKS`. The current laptop uses Gemini 3.5 Flash-Lite with a rolling cap of LLM_REQUESTS_PER_MIN=14 (observed quota 15 RPM), a 20 s maximum wait and a 30 s turn deadline; over the cap it answers busy instead of queueing. Limits are per process; avoid concurrent web/eval API consumers. Any number reported must name the model it was measured with.
 
 ### Run it for judges
 
@@ -87,7 +87,7 @@ the agent. Free tiers may train on prompts (all data here is synthetic) and have
   time have independent balances and the demo panel only affects the caller.
   ```bash
   docker build -t zc-billpay .
-  docker run -p 3000:3000 -e LLM_PROVIDER=gemini -e GEMINI_MODEL=gemini-3.5-flash-lite -e GEMINI_API_KEY=... -e LLM_REQUEST_INTERVAL_MS=5000 zc-billpay    # key in the host's secret store, not the image
+  docker run -p 3000:3000 -e LLM_PROVIDER=gemini -e GEMINI_MODEL=gemini-3.5-flash-lite -e GEMINI_API_KEY=... -e LLM_REQUESTS_PER_MIN=14 zc-billpay    # key in the host's secret store, not the image
   docker run -p 3000:3000 -e LLM_PROVIDER=fake zc-billpay        # no key: scripted sentences only
   ```
   **Render:** [the live demo](https://zc-billpay-agent.onrender.com) runs on one **free** Docker instance in Frankfurt.

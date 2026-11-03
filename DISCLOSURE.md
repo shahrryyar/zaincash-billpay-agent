@@ -18,7 +18,7 @@ Current as of 2026-10-25. The organisers ask for the provider and model behind e
 
 | Component | Provider and model | Where | Status |
 |---|---|---|---|
-| Intent understanding (live demo, current dev runs) | Google AI Studio, `gemini-3.5-flash-lite`, tools mode, temperature 0, free tier, `LLM_REQUEST_INTERVAL_MS=5000`, no fallback configured | `packages/llm`; host secrets | Current |
+| Intent understanding (live demo, current dev runs) | Google AI Studio, `gemini-3.5-flash-lite`, tools mode, temperature 0, free tier, rolling cap 14 requests/minute (`LLM_REQUESTS_PER_MIN`; the hosted service also keeps a 5 s minimum gap), no fallback configured | `packages/llm`; host secrets | Current |
 | Intent understanding (historical results) | Anthropic `claude-haiku-5-5` (both held-out runs); `claude-sonnet-5-5` (one dev comparison) | `eval/results/heldout-*.md`, `dev-sonnet-tools.md` | Paid key removed 2026-10-21; not used since |
 | Intent understanding (backup, no model) | `LLM_PROVIDER=fake`: scripted demo sentences only | `packages/orchestrator/src/demo-script.ts` | Disclosed backup, not model quality |
 | Speech to text (hosted demo, optional) | RegaLabs streaming recognizer `/v1/audio/transcriptions/stream`, automatic language; checkpoint/version not supplied | `packages/asr/src/regalabs-stream.ts` | Current; accuracy not measured |

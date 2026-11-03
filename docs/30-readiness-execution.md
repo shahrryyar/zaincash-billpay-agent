@@ -125,9 +125,9 @@ Claude Code compared the three October organiser documents with the repo ([docs/
 **Gemini evaluation not run.** No `GEMINI_API_KEY` (or any other provider key) was available in that cloud environment, so no dev evaluation was run and **no new model numbers exist** for this date. The latest Gemini 3.5 Flash-Lite development results remain those in the CURRENT-DEV-RESULTS block above (Arabic dev 93/120, 77.5% [69.2, 84.1] at `97f9d93`; Sorani dev 54/60, 90.0% [79.9, 95.3] at `8b8fe86`). Both commits were dirty, and both sets were tuned on. To run next, sequentially with the key in `.env`:
 
 ```bash
-LLM_REQUEST_INTERVAL_MS=5000 pnpm eval -- --split dev --mode tools --concurrency 1 --tag gemini35-ar-dev-<date>
-LLM_REQUEST_INTERVAL_MS=5000 pnpm eval -- --split dev-ku --mode tools --concurrency 1 --tag gemini35-ku-dev-<date>
-LLM_REQUEST_INTERVAL_MS=5000 pnpm eval -- --split codeswitch-dev --mode tools --concurrency 1 --tag gemini35-codeswitch-dev-<date>
+pnpm eval -- --split dev --mode tools --concurrency 1 --tag gemini35-ar-dev-<date>
+pnpm eval -- --split dev-ku --mode tools --concurrency 1 --tag gemini35-ku-dev-<date>
+pnpm eval -- --split codeswitch-dev --mode tools --concurrency 1 --tag gemini35-codeswitch-dev-<date>
 ```
 
 Those reports will include the new "upstream model requests per model turn" row, which sizes the daily free-tier budget for a demo. Never use `--allow-heldout` for these.

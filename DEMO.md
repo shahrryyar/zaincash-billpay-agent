@@ -9,12 +9,12 @@ Open the URL a few minutes before presenting; after 15 idle minutes the free ser
 
 ## Before (10 minutes ahead)
 - [ ] App open in Chrome (hosted URL, or `pnpm dev` on the laptop). Hosted on a free plan: open it early, it sleeps.
-- [ ] Stop concurrent dev/eval API consumers; this Gemini project/model allows 15 requests/minute. LLM_REQUEST_INTERVAL_MS=5000 spaces calls only within each process.
+- [ ] Stop concurrent dev/eval API consumers; this Gemini project/model allows 15 requests/minute. The app caps itself at 14 starts per rolling minute (LLM_REQUESTS_PER_MIN) and answers busy past a 20 s wait; the cap is per process.
 - [ ] Model check: `pnpm smoke` passes with the model you will use (15/15 or say which fail and why).
 - [ ] «لوحة العرض» → «إعادة ضبط»: balance 200,000 د.ع, no faults.
 - [ ] Backup ready: `LLM_PROVIDER=fake pnpm dev` (scripted sentences) and the recorded video.
 - [ ] Know your numbers: held-out 81.1% end to end, 0/180 observed unconfirmed debits (historical scorer v1) (Claude Haiku 5.5, commit `1445bff`); 1,000
-      concurrent requests → 50 debits, 0 duplicates; 21 failure modes, each tested. Plus any newer run, with its model.
+      concurrent requests → 50 debits, 0 duplicates; 27 failure modes, each tested. Plus any newer run, with its model.
 
 ## Minute 1 — the whole idea
 Say: "One sentence in Iraqi Arabic. The model understands; code moves money."

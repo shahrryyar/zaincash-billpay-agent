@@ -27,7 +27,7 @@ Fixed: design brief 22/10, MVP 08/11. Tentative: Espresso Lab meet and greet, MV
 - [x] Working app that can be demoed live.
 - [ ] **(human)** Rehearse on an unseen input someone else gives you.
 - [ ] Held-out results on a set not tuned on: heldout2 is frozen and unspent. It needs **(human)** review → freeze of data, prompt, code and scorer → one run on the final provider. Only the author decides when.
-- [x] At least three documented failure modes with handling: FM-01–FM-21 in FAILURE_MODES.md.
+- [x] At least three documented failure modes with handling: FM-01–FM-27 in FAILURE_MODES.md.
 - [x] Full disclosure of models, tools, data and AI coding assistants, including a per-component provider table and the changes since the brief (DISCLOSURE.md, docs/19).
 
 ## Demo Day, date TBC (NS-26–NS-29)

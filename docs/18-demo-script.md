@@ -5,11 +5,11 @@ Goal: judges understand it in **the first 60 seconds** (5%), see it survive **th
 ## 0:00–0:20 — Problem (one breath)
 > "Sending money in a wallet takes 8+ taps. For my mother, it takes calling me. Here, one Iraqi sentence is enough, and nothing moves until you confirm."
 
-No interviews exist yet: do **not** show a quote. If real ones happen, show one; otherwise say "hypotheses from 500 App Store reviews".
+Evidence to say: five interviews in Sulaymaniyah (ages 19–22); 2/5 had sent money to the wrong person. No quotes: none were recorded with permission.
 
 ## 0:20–1:00 — Hero scenario (voice if the key works, otherwise text, said honestly)
 1. Hold 🎤: «دز خمسين ألف لأحمد». (Or type it.)
-2. Read-back «سمعتك تگول: «…» — صح؟» → tap «صح، كمّل» (RegaLabs returns no confidence, so voice is always read back).
+2. The transcript lands as an editable draft in the composer (RegaLabs returns no confidence). Read it, fix a misheard name or number if needed, then tap send. Nothing reaches the model before that.
 3. Agent: «عندك اثنين أحمد، ياهو تقصد؟» with two cards.
 4. Tap **أحمد علي ••4471**.
 5. Card: Transfer · Ahmed Ali ••4471 · 50,000 IQD · fee 300 (ZainCash public 0.5%, min 300) · 200,000 → 149,700 · *nothing sent yet*.
@@ -35,7 +35,7 @@ Architecture one-pager (docs/03 diagram), disclosure (docs/19), what's next (Wha
 ## Pre-demo checklist
 - [ ] `/admin/reset` → seed state, balance 200,000.
 - [ ] Faults OFF except during the break-it segment.
-- [ ] LLM key valid, quota OK; fallback provider configured.
+- [ ] LLM key valid and quota OK (no fallback is configured; the busy reply is honest). Stop any eval runs: they share the quota.
 - [ ] `pnpm --filter @zc/asr check` passes (RegaLabs reachable, inside its daily window, `acm` accepted); if not → **say so** and demo text only.
 - [ ] Offline backup: a screen recording of the full demo.
 - [ ] Phone hotspot as network backup.

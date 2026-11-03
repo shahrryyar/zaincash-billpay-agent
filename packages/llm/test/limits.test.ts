@@ -177,6 +177,14 @@ describe("request plumbing", () => {
     expect(n).toBe(2);
     expect(description.join("|")).toMatch(/2 requests per rolling minute/);
   });
+  it("chatFromEnv: LLM_REQUEST_TIMEOUT_MS bounds one upstream request; a bad value is refused", async () => {
+    let calls = 0;
+    const hang: FetchLike = (_u, init) => { calls++; return new Promise((_, rej) => (init as { signal?: AbortSignal }).signal?.addEventListener("abort", () => rej(Object.assign(new Error("aborted"), { name: "AbortError" })))); };
+    const { chat } = chatFromEnv({ LLM_PROVIDER: "gemini", GEMINI_API_KEY: "k", GEMINI_MODEL: "g", LLM_REQUEST_TIMEOUT_MS: "30", LLM_REQUESTS_PER_MIN: "0" }, { fetch: hang });
+    await expect(chat.complete(REQ)).rejects.toThrow();
+    expect(calls).toBe(2); // own timeout retried once, then given up
+    expect(() => chatFromEnv({ LLM_PROVIDER: "gemini", GEMINI_API_KEY: "k", GEMINI_MODEL: "g", LLM_REQUEST_TIMEOUT_MS: "0" }, { fetch: hang })).toThrow(/LLM_REQUEST_TIMEOUT_MS/);
+  });
   it("chatFromEnv: default limit is 14 per minute", () => {
     const { description } = chatFromEnv({ LLM_PROVIDER: "gemini", GEMINI_API_KEY: "k", GEMINI_MODEL: "g" }, { fetch: (async () => ({})) as never });
     expect(description.join("|")).toMatch(/14 requests per rolling minute/);

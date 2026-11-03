@@ -24,6 +24,8 @@ export function chatFromEnv(env: Env, o: FactoryOptions = {}): { chat: ChatClien
   const intervalMs = Number(env.LLM_REQUEST_INTERVAL_MS ?? 0);
   const perMinute = Number(env.LLM_REQUESTS_PER_MIN ?? 14);
   const maxWaitMs = Number(env.LLM_MAX_WAIT_MS ?? 20_000);
+  const timeoutMs = Number(env.LLM_REQUEST_TIMEOUT_MS ?? 15_000); // one upstream request; Gemini Flash-Lite p95 is ~14 s on dev
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) throw new Error("LLM_REQUEST_TIMEOUT_MS must be > 0");
   const description: string[] = [];
   const clients: ChatClient[] = [];
 
@@ -37,12 +39,12 @@ export function chatFromEnv(env: Env, o: FactoryOptions = {}): { chat: ChatClien
     } else if (name === "local") {
       const base = env.LOCAL_BASE_URL, model = env.LOCAL_MODEL;
       if (!base || !model) { description.push("local: skipped (set LOCAL_BASE_URL and LOCAL_MODEL)"); continue; }
-      c = openAIChat({ baseUrl: base, apiKey: "local", model, label: "local", ...(o.fetch ? { fetch: o.fetch } : {}) });
+      c = openAIChat({ baseUrl: base, apiKey: "local", model, label: "local", timeoutMs, ...(o.fetch ? { fetch: o.fetch } : {}) });
     } else if (OPENAI_FORMAT[name]) {
       const p = OPENAI_FORMAT[name] as (typeof OPENAI_FORMAT)[string];
       const key = env[p.keyVar], model = env[p.modelVar];
       if (!key || !model) { description.push(`${name}: skipped (set ${p.keyVar} and ${p.modelVar})`); continue; }
-      c = openAIChat({ baseUrl: p.base, apiKey: key, model, label: name, ...(o.fetch ? { fetch: o.fetch } : {}) });
+      c = openAIChat({ baseUrl: p.base, apiKey: key, model, label: name, timeoutMs, ...(o.fetch ? { fetch: o.fetch } : {}) });
     } else { description.push(`${name}: unknown provider, ignored`); continue; }
     const limited = withRateLimit(c, { perMinute, intervalMs, maxWaitMs, ...(o.now ? { now: o.now } : {}) });
     clients.push(withBudget(withRetry(withCircuitBreaker(limited, o.now ? { now: o.now } : {}), { maxDelayMs: maxWaitMs, ...(o.now ? { now: o.now } : {}) }), { maxTokensPerDay: cap, ...(o.now ? { now: o.now } : {}) }));

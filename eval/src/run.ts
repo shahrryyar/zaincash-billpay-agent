@@ -26,6 +26,8 @@ for (const l of existsSync(resolve(root, ".env")) ? readFileSync(resolve(root, "
   const m = /^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$/.exec(l);
   if (m && !l.trim().startsWith("#") && process.env[m[1] as string] === undefined) process.env[m[1] as string] = (m[2] as string).replace(/\s+#.*$/, "").replace(/^["']|["']$/g, "");
 }
+// An eval waits for a request slot instead of failing fast: a busy reply (right for the live demo) is not a quality result.
+process.env.LLM_MAX_WAIT_MS ??= "120000";
 if (args.get("model")) {
   const modelVar: Record<string, string> = { anthropic: "LLM_MODEL", gemini: "GEMINI_MODEL", groq: "GROQ_MODEL", openrouter: "OPENROUTER_MODEL", local: "LOCAL_MODEL" };
   const key = modelVar[process.env.LLM_PROVIDER ?? "anthropic"];
